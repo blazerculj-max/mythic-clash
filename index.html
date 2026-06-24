@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mythic Clash: Wars of Pantheons</title>
+  <meta name="description" content="Mitološka card-battle igra — bogovi, heroji in pošasti šestih panteonov v areni. Originalna igra navdihnjena po javnih mitologijah." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============================ START SCREEN ============================ -->
+  <section id="start-screen" class="screen">
+    <div class="start-inner">
+      <header class="start-header">
+        <h1 class="game-title">MYTHIC CLASH</h1>
+        <p class="game-subtitle">Wars of Pantheons</p>
+        <p class="game-tagline">Šest mitologij. Ena arena. Tri točke slave do zmage.</p>
+      </header>
+
+      <div class="deck-select-block">
+        <h2 class="section-label">Izberi svoj deck</h2>
+        <div id="deck-grid" class="deck-grid"><!-- decki se generirajo iz decks.js --></div>
+      </div>
+
+      <div class="start-actions">
+        <button id="start-battle" class="btn btn-primary" disabled>Začni bitko</button>
+        <button id="rules-toggle" class="btn btn-ghost">Pravila igre</button>
+      </div>
+
+      <div id="rules-box" class="rules-box hidden">
+        <h3>Kako se igra</h3>
+        <ul>
+          <li>Vsak igralec ima deck 40 kart in vleče 7 kart na začetku.</li>
+          <li>Imaš enega <b>aktivnega bojevnika</b> (Champion) in do 5 v rezervi.</li>
+          <li>Na svojem turnu lahko: postaviš bojevnika v rezervo, pripneš <b>1 Divine Energy</b>, igraš Relic in Oracle karte, izvedeš <b>Ascension</b>, retreataš ali napadeš.</li>
+          <li><b>Napad konča tvoj turn.</b></li>
+          <li>Ko bojevniku HP pade na 0, je premagan — nasprotnik dobi <b>1 Glory</b>, ti pa postaviš novega aktivnega iz rezerve.</li>
+          <li>Zmaga prvi do <b>3 Glory</b> — ali tisti, čigar nasprotnik ostane brez bojevnikov / kart v decku.</li>
+          <li><b>Weakness</b> = napad istega tipa naredi +20 škode. <b>Resistance</b> = −20 škode.</li>
+          <li><b>Omen Roll</b> je naključni 50/50 (Favorable / Dark Omen) za posebne učinke.</li>
+        </ul>
+      </div>
+
+      <footer class="start-footer">
+        Inspired by public-domain world mythologies. No copyrighted trading card IP is used.
+      </footer>
+    </div>
+  </section>
+
+  <!-- ============================ GAME SCREEN ============================ -->
+  <section id="game-screen" class="screen hidden">
+    <div class="board">
+
+      <!-- nasprotnikova cona -->
+      <div id="opp-zone" class="zone zone-opp"></div>
+
+      <!-- sredina: realm -->
+      <div class="mid-row">
+        <div class="realm-block">
+          <div class="realm-label">REALM</div>
+          <div id="realm-slot" class="realm-slot"></div>
+          <div id="realm-text" class="realm-text"></div>
+        </div>
+        <div id="turn-indicator" class="turn-indicator"></div>
+      </div>
+
+      <!-- tvoja cona -->
+      <div id="you-zone" class="zone zone-you"></div>
+
+      <!-- stranska plošča: akcije + log -->
+      <aside class="side-panel">
+        <div class="panel-block">
+          <h3 class="panel-title">Akcije</h3>
+          <div id="action-list" class="action-list"></div>
+        </div>
+        <div class="panel-block log-block">
+          <h3 class="panel-title">Dnevnik bitke</h3>
+          <ul id="log-list" class="log-list"></ul>
+        </div>
+      </aside>
+
+      <!-- roka -->
+      <div class="hand-row">
+        <div class="hand-head">
+          <span class="hand-label">Tvoja roka</span>
+          <span class="hand-count">Kart: <b id="hand-count">0</b></span>
+        </div>
+        <div id="hand" class="hand"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================ VICTORY SCREEN ============================ -->
+  <section id="victory-screen" class="screen hidden">
+    <div class="victory-inner">
+      <h1 id="victory-title" class="victory-title">Zmaga!</h1>
+      <p id="victory-sub" class="victory-sub"></p>
+      <div class="victory-stats">
+        <div class="vstat"><span class="vstat-label">Turnov</span><span id="vstat-turns" class="vstat-val">0</span></div>
+        <div class="vstat"><span class="vstat-label">Glory</span><span id="vstat-glory" class="vstat-val">0</span></div>
+        <div class="vstat"><span class="vstat-label">Skupna škoda</span><span id="vstat-damage" class="vstat-val">0</span></div>
+        <div class="vstat"><span class="vstat-label">Potegnjene karte</span><span id="vstat-cards" class="vstat-val">0</span></div>
+      </div>
+      <button id="play-again" class="btn btn-primary">Igraj znova</button>
+    </div>
+  </section>
+
+  <!-- ============================ MODAL (card detail) ============================ -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <button id="modal-close" class="modal-close" aria-label="Zapri">✕</button>
+      <div id="modal-card" class="modal-card"></div>
+    </div>
+  </div>
+
+  <!-- ============================ TOAST ============================ -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ============================ IN-GAME CONCEDE ============================ -->
+  <button id="concede" class="concede-btn hidden">Predaja</button>
+
+  <!-- ============================ SCRIPTS (vrstni red je pomemben) ============================ -->
+  <script src="cards.js"></script>
+  <script src="decks.js"></script>
+  <script src="engine.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
