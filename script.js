@@ -94,6 +94,7 @@ function renderChampion(inst, opts = {}) {
 
   node.innerHTML = `
     <div class="champ-art">
+      ${artImg(d, "champ-art-img")}
       <span class="pantheon-badge">${st.symbol}</span>
       <span class="hp-badge">${hp}/${inst.maxHp}</span>
       ${d.symbol || ""}<span style="font-size:0.9em">${pantheonGlyph(d)}</span>
@@ -120,6 +121,14 @@ function pantheonGlyph(d) {
   return ""; // pantheon badge je dovolj; lik prikazuje pantheon simbol
 }
 
+/* Slika karte iz art/<id>.png. Če slike ni, se <img> skrije in ostane
+   placeholder (gradient + simbol), ki je za njo. */
+function artImg(d, cls) {
+  if (!d || !d.id) return "";
+  return `<img class="${cls}" src="art/${d.id}.png" alt="" loading="lazy"
+    onerror="this.style.display='none'">`;
+}
+
 /* ---------------------- HAND card render ------------------------- */
 function renderHandCard(inst) {
   const d = def(inst);
@@ -139,7 +148,7 @@ function renderHandCard(inst) {
 
   node.innerHTML = `
     <div class="rarity-bar" style="background:${rar.color}"></div>
-    <div class="card-art">${artGlyph}</div>
+    <div class="card-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${artGlyph}</span></div>
     <div class="card-body">
       <div class="card-name">${d.name}</div>
       <div class="card-meta">${d.type}${d.pantheon ? " · " + d.pantheon : ""}</div>
@@ -557,7 +566,7 @@ function openCardModal(d) {
   if (d.flavorText) body += `<div class="m-flavor">“${d.flavorText}”</div>`;
 
   mc.innerHTML = `
-    <div class="m-art">${glyph}<span class="m-rarity" style="color:${rar.color}">${d.rarity}</span></div>
+    <div class="m-art">${artImg(d, "m-art-img")}<span class="m-art-glyph">${glyph}</span><span class="m-rarity" style="color:${rar.color}">${d.rarity}</span></div>
     <div class="m-body"><div class="m-name">${d.name}</div>${body}</div>`;
   back.classList.remove("hidden");
 }
