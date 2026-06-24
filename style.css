@@ -189,7 +189,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); z-index: 5; }
 .card .card-art {
-  height: 56px; display: flex; align-items: center; justify-content: center;
+  height: 132px; display: flex; align-items: center; justify-content: center;
   font-size: 30px; background: var(--c-grad);
 }
 .card .card-body { background: rgba(8,8,16,0.82); padding: 6px 8px; }
@@ -199,20 +199,20 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 
 /* champion in play (larger) */
 .champ {
-  width: 168px; border-radius: var(--radius); overflow: hidden;
+  width: 200px; border-radius: var(--radius); overflow: hidden;
   border: 1px solid rgba(255,255,255,0.12); position: relative;
   background: rgba(8,8,16,0.6); cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.champ.active-champ { width: 196px; }
+.champ.active-champ { width: 240px; }
 .champ:hover { transform: translateY(-3px); }
 .champ.is-active-turn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-dim), 0 0 24px rgba(233,196,106,0.18); }
 .champ.targetable { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
 .champ .champ-art {
-  height: 78px; display: flex; align-items: center; justify-content: center;
+  height: 150px; display: flex; align-items: center; justify-content: center;
   font-size: 42px; background: var(--c-grad); position: relative;
 }
-.champ.active-champ .champ-art { height: 92px; font-size: 52px; }
+.champ.active-champ .champ-art { height: 185px; font-size: 52px; }
 .champ .pantheon-badge { position: absolute; top: 6px; left: 8px; font-size: 16px; opacity: 0.9; }
 .champ .hp-badge {
   position: absolute; top: 6px; right: 8px; font-size: 12px; font-weight: 700;
@@ -248,7 +248,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .st-poison { background: rgba(120,200,80,0.2); color: #bce69a; }
 
 .empty-active {
-  width: 196px; height: 150px; border: 1px dashed var(--panel-edge); border-radius: var(--radius);
+  width: 240px; height: 185px; border: 1px dashed var(--panel-edge); border-radius: var(--radius);
   display: flex; align-items: center; justify-content: center; color: var(--ink-dim); font-size: 13px; text-align: center;
 }
 
@@ -264,7 +264,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .hand-zone { grid-column: 1 / span 2; grid-row: 4; padding: 4px 14px 18px; }
 .hand-zone .reserve-label { margin-left: 4px; }
 .hand { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px 12px; }
-.hand .card { width: 100px; flex: 0 0 auto; }
+.hand .card { width: 132px; flex: 0 0 auto; }
 .hand .card.selected-hand { box-shadow: 0 0 0 2px var(--gold-bright); transform: translateY(-6px); }
 
 /* ---------------------- ACTION BAR ---------------------- */
@@ -337,8 +337,8 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
   .zone-you { grid-row: 3; grid-column: 1; }
   .side-panel { grid-row: 4; grid-column: 1; flex-direction: column; }
   .hand-zone { grid-row: 5; grid-column: 1; }
-  .champ.active-champ { width: 168px; }
-  .champ { width: 140px; }
+  .champ.active-champ { width: 200px; }
+  .champ { width: 168px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -378,6 +378,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top center;
   z-index: 0;
 }
 /* glyph placeholder ostane za sliko */
