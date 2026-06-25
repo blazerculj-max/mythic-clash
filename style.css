@@ -515,4 +515,4 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 .status-img { width: 12px; height: 12px; object-fit: contain; border-radius: 3px; flex: 0 0 auto; }
 
 /* energijske karte: pokaži cel simbol (contain), ne odreži */
-.card-art-energy .card-art-img { object-fit: contain; object-position: center; padding: 12px; }
+.card-art-energy .card-art-img { object-fit: cover; object-position: center; padding: 0; }
