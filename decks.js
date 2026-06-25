@@ -50,9 +50,9 @@ const STARTER_DECKS = {
     list: [
       // 16 Champions
       "norse-thor", "norse-thor-asc", "norse-odin", "norse-loki",
-      "norse-freyja", "norse-fenrir", "norse-valkyrie", "norse-frostgiant",
+      "norse-freya", "norse-fenrir", "norse-valkyrie", "norse-frostgiant",
       ...rep("norse-valkyrie", 1), ...rep("norse-frostgiant", 1),
-      ...rep("norse-fenrir", 1), ...rep("norse-freyja", 1),
+      ...rep("norse-fenrir", 1), ...rep("norse-freya", 1),
       ...rep("norse-valkyrie", 1), ...rep("norse-loki", 1),
       ...rep("norse-frostgiant", 1), ...rep("norse-valkyrie", 1),
       // 14 Energy

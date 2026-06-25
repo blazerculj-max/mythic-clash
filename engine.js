@@ -595,8 +595,8 @@ function defeatChampion(owner, champ) {
 
 function onDefeatTriggers(loserOwner, winnerOwner) {
   // Freyja Chooser of Slain: Norse defeated -> draw
-  if (allChampions(loserOwner).concat(loserOwner.discard).some(c => def(c).id === "norse-freyja")) {
-    if (allChampions(loserOwner).some(c => def(c).id === "norse-freyja")) {
+  if (allChampions(loserOwner).concat(loserOwner.discard).some(c => def(c).id === "norse-freya")) {
+    if (allChampions(loserOwner).some(c => def(c).id === "norse-freya")) {
       drawCard(loserOwner, 1);
       logMsg(loserOwner.name + ": Freyja vleče karto (Chooser of Slain).");
     }

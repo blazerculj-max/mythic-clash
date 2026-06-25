@@ -213,8 +213,8 @@ const CARDS = {
     flavorText: "His smile is the last warning you'll get.",
     deckTags: ["Ragnarok"]
   },
-  "norse-freyja": {
-    id: "norse-freyja", name: "Freyja, Keeper of Fallen", type: "Champion",
+  "norse-freya": {
+    id: "norse-freya", name: "Freyja, Keeper of Fallen", type: "Champion",
     pantheon: "Norse", rarity: "Rare", stage: "basic", hp: 100,
     attacks: [
       { name: "Falcon Cloak", cost: ["Sky"], damage: 30, effect: null, text: "She flies between worlds." },
