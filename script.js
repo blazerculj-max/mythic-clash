@@ -84,6 +84,54 @@ function statusHtml(status) {
 }
 
 /* ---------------------- CHAMPION render -------------------------- */
+// Izračuna, katero energijo še manjka za napad (vrne seznam manjkajočih tipov).
+function missingEnergyFor(champ, cost) {
+  const pool = champ.energy.slice();
+  const dID = def(champ).id;
+  const lugh = dID === "celtic-lugh";
+  const specific = cost.filter(c => c !== "Any");
+  const anyCount = cost.filter(c => c === "Any").length;
+  const missing = [];
+  for (const need of specific) {
+    let i = pool.indexOf(need);
+    if (i < 0 && lugh && need === "Sun" && pool.length > 0) i = 0;
+    if (i < 0) { missing.push(need); continue; }
+    pool.splice(i, 1);
+  }
+  // koliko "Any" še manjka
+  let anyShort = Math.max(0, anyCount - pool.length);
+  for (let k = 0; k < anyShort; k++) missing.push("Any");
+  return missing;
+}
+
+// Vrne HTML vrstico stanja napada na aktivnem bojevniku.
+function attackStatusRow(champ, atk) {
+  const ready = canPayCost(champ, atk.cost) && !champ.status.stun && !champ.justPlayed;
+  const missing = missingEnergyFor(champ, atk.cost);
+  const costHtml = atk.cost.map(c => {
+    const s = ENERGY_STYLE[c] || ENERGY_STYLE.Any;
+    // označi, katere so že pokrite (zatemnimo manjkajoče)
+    return `<span class="edot mini" style="background:${s.color}" title="${c}">${s.glyph}</span>`;
+  }).join("");
+  let tip;
+  if (champ.status.stun) tip = `<span class="atk-tip stun">omamljen</span>`;
+  else if (champ.justPlayed) tip = `<span class="atk-tip wait">pravkar postavljen</span>`;
+  else if (ready) tip = `<span class="atk-tip ok">✓ pripravljen</span>`;
+  else {
+    const need = missing.map(m => {
+      const s = ENERGY_STYLE[m] || ENERGY_STYLE.Any;
+      return `<span class="edot mini need" style="background:${s.color}" title="${m}">${s.glyph}</span>`;
+    }).join("");
+    tip = `<span class="atk-tip miss">rabi ${need}</span>`;
+  }
+  return `<div class="champ-atk ${ready ? "rdy" : ""}">
+    <span class="ca-cost">${costHtml}</span>
+    <span class="ca-name">${atk.name}</span>
+    <span class="ca-dmg">${atk.damage || 0}</span>
+    ${tip}
+  </div>`;
+}
+
 function renderChampion(inst, opts = {}) {
   const d = def(inst);
   const st = PANTHEON_STYLE[d.pantheon];
@@ -93,6 +141,31 @@ function renderChampion(inst, opts = {}) {
   node.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
   if (opts.isTurnActive) node.classList.add("is-active-turn");
   if (opts.targetable) node.classList.add("targetable");
+
+  // POINTER: če je izbrana energija v roki in je to igralčev bojevnik,
+  // osvetli ga; zeleno če bi ta energija odklenila kakšen napad.
+  const me0 = G.players[0];
+  const isMineChampForHint = me0 && (
+    (me0.active && me0.active.uid === inst.uid) || me0.reserve.some(c => c.uid === inst.uid)
+  );
+  if (isMineChampForHint && G.turn === 0 && !G.over) {
+    const selH = selectedHandInst();
+    if (selH && def(selH).type === "Energy" && !me0.energyAttachedThisTurn) {
+      const etype = def(selH).energyType;
+      // simuliraj: bi ta energija odklenila napad, ki zdaj ni plačljiv?
+      const sim = { ...inst, energy: inst.energy.concat([etype]) };
+      const unlocks = (def(inst).attacks || []).some(atk =>
+        !canPayCost(inst, atk.cost) && canPayCost(sim, atk.cost));
+      node.classList.add(unlocks ? "unlocks-attack" : "energy-hint");
+    }
+  }
+
+  // Stanje napadov – samo za IGRALČEVEGA aktivnega (pomoč: kaj rabiš)
+  let atkStatusHtml = "";
+  const isMyActive = opts.active && G.players[0] && G.players[0].active && G.players[0].active.uid === inst.uid;
+  if (isMyActive && (d.attacks || []).length) {
+    atkStatusHtml = `<div class="champ-atk-list">${d.attacks.map(atk => attackStatusRow(inst, atk)).join("")}</div>`;
+  }
 
   node.innerHTML = `
     <div class="champ-art">
@@ -108,6 +181,7 @@ function renderChampion(inst, opts = {}) {
       <div class="energy-dots">${energyDotsHtml(inst.energy)}</div>
       ${inst.relic ? `<span class="relic-chip">⚜ ${CARDS[inst.relic].name}</span>` : ""}
       <div class="status-row">${statusHtml(inst.status)}</div>
+      ${atkStatusHtml}
     </div>`;
 
   node.addEventListener("click", (e) => {

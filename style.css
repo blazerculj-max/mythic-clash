@@ -469,3 +469,27 @@ body.dragging-reserve .zone-you .active-slot::after {
 }
 body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-out infinite; border-radius: var(--radius); }
 @keyframes enemyPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,94,0); } 50% { box-shadow: 0 0 0 3px rgba(255,107,94,0.5); } }
+
+/* ---------------------- Attack readiness on active champ --------- */
+.champ-atk-list { display: flex; flex-direction: column; gap: 4px; margin-top: 7px;
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; }
+.champ-atk {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.04); border-radius: 6px; padding: 3px 6px; font-size: 10px;
+}
+.champ-atk.rdy { background: rgba(120,220,150,0.12); box-shadow: inset 0 0 0 1px rgba(120,220,150,0.3); }
+.ca-cost { display: inline-flex; gap: 2px; }
+.ca-name { color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ca-dmg { color: #ffb38a; font-family: "SF Mono", monospace; font-weight: 700; }
+.atk-tip { grid-column: 1 / -1; font-size: 9px; font-family: "SF Mono", monospace; letter-spacing: 0.03em; display: flex; align-items: center; gap: 3px; }
+.atk-tip.ok { color: #7fe6a0; }
+.atk-tip.miss { color: var(--ink-dim); }
+.atk-tip.stun { color: #b39bff; }
+.atk-tip.wait { color: var(--ink-dim); }
+.edot.mini { width: 12px; height: 12px; font-size: 7px; }
+.edot.mini.need { box-shadow: 0 0 0 1px #fff inset; animation: needPulse 1.4s ease-in-out infinite; }
+@keyframes needPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* pointer: ko izberemo energijo v roki, osvetli aktivnega bojevnika */
+.champ.energy-hint { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 18px rgba(233,196,106,0.45); }
+.champ.unlocks-attack { box-shadow: 0 0 0 2px #7fe6a0, 0 0 20px rgba(120,220,150,0.5); }
