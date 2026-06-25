@@ -4,6 +4,7 @@
 ============================================================================ */
 
 let selectedHandUid = null;   // izbrana karta v roki
+let dragHandUid = null;       // uid karte, ki jo trenutno vlečemo
 let relicTargetMode = false;  // čakamo izbiro tarče za relic
 
 /* ---------------------- DOM helperji ----------------------------- */
@@ -112,6 +113,36 @@ function renderChampion(inst, opts = {}) {
     e.stopPropagation();
     handleChampClick(inst, opts);
   });
+
+  // drop tarča: spusti energijo/relic-attach na svojega bojevnika
+  const isMine = G.players[0] && allChampions(G.players[0]).some(c => c.uid === inst.uid);
+  if (isMine) {
+    node.addEventListener("dragover", (e) => {
+      if (!dragHandUid) return;
+      const sel = G.players[0].hand.find(i => i.uid === dragHandUid);
+      if (!sel) return;
+      const sd = def(sel);
+      if (sd.type === "Energy" || (sd.type === "Relic" && sd.relicMode === "attach")) {
+        e.preventDefault();
+        node.classList.add("drop-hover");
+      }
+    });
+    node.addEventListener("dragleave", () => node.classList.remove("drop-hover"));
+    node.addEventListener("drop", (e) => {
+      e.preventDefault();
+      node.classList.remove("drop-hover");
+      const uid = dragHandUid;
+      const sel = uid && G.players[0].hand.find(i => i.uid === uid);
+      if (!sel) return;
+      const sd = def(sel);
+      const p = G.players[0];
+      if (sd.type === "Energy") {
+        const r = attachEnergy(p, sel, inst); flash(r); selectedHandUid = null; render();
+      } else if (sd.type === "Relic" && sd.relicMode === "attach") {
+        const r = playRelic(p, sel, inst); flash(r); selectedHandUid = null; relicTargetMode = false; render();
+      }
+    });
+  }
   if (opts.shake) node.classList.add("shake", "hit-flash");
   return node;
 }
@@ -130,6 +161,76 @@ function artImg(d, cls) {
 }
 
 /* ---------------------- HAND card render ------------------------- */
+/* ---------------------- Effect labels (kratki opisi) ------------- */
+const EFFECT_LABEL = {
+  burn: "🔥 Burn", burnEnemy: "🔥 Burn", curse: "💀 Curse", curseEnemy: "💀 Curse",
+  freeze: "❄️ Freeze", freezeEnemy: "❄️ Freeze", poison: "☠️ Poison",
+  stunOmen: "💫 Stun (Omen)", blessActive: "✨ Blessing", selfShield: "🛡️ Shield",
+  shieldAll: "🛡️ Shield vsem", dmgPlus20: "+20 škode", dmgReduce20: "−20 škode",
+  dmgEnemy30: "30 dodatne škode", draw1: "🃏 Potegni 1", draw2: "🃏 Potegni 2",
+  draw3: "🃏 Potegni 3", draw2attach: "🃏 Potegni 2 + pripni energijo",
+  heal20: "❤️ Heal 20", healActive40: "❤️ Heal 40", healActive60: "❤️ Heal 60",
+  healEndTurn10: "❤️ Heal 10/turn", healReserve: "❤️ Heal rezervo", healReserve30: "❤️ Heal rezervo 30",
+  natureHeal10: "❤️ Heal 10", selfDamage20: "⚠️ −20 sebi", selfDamage30: "⚠️ −30 sebi",
+  reserveBuff: "⬆️ Buff rezerve", reserveReduce10: "⬇️ Rezerva −10", swapHint: "🔄 Zamenjaj aktivnega",
+  greekSkyPlus10: "+10 Sky (Greek)", norseWarPlus10: "+10 War (Norse)",
+  underworldPlus10: "+10 Underworld", nonNorseRetreatPlus1: "Retreat +1 (ne-Norse)",
+};
+function effectShort(key) { return key ? (EFFECT_LABEL[key] || "✦ poseben učinek") : ""; }
+
+/* en napad kot vrstica: ime, cost ikone, damage, učinek */
+function attackRowHtml(atk) {
+  const eff = atk.effect ? `<span class="atk-eff">${effectShort(atk.effect)}</span>` : "";
+  return `<div class="atk-row">
+    <span class="atk-cost">${costToHtml(atk.cost)}</span>
+    <span class="atk-name">${atk.name}</span>
+    <span class="atk-dmg">${atk.damage || 0}</span>
+    ${eff}
+  </div>`;
+}
+
+/* ---------------------- Igraj izbrano karto --------------------- */
+// Vrne true če je karta odigrana; false če potrebuje tarčo (energija/relic-attach).
+function playSelectedCard() {
+  const p = G.players[0];
+  if (G.turn !== 0 || G.over || G.awaitingNewActive !== null) return false;
+  const sel = selectedHandInst();
+  if (!sel) return false;
+  const sd = def(sel);
+
+  if (sd.type === "Champion" && sd.stage === "basic") {
+    if (p.reserve.length >= MAX_RESERVE) { toast("Rezerva je polna (5)."); return false; }
+    const r = playReserveChampion(p, sel); flash(r); selectedHandUid = null; render(); return true;
+  }
+  if (sd.type === "Champion" && sd.stage === "ascended") {
+    const target = allChampions(p).find(c => c.cardId === sd.ascendsFrom && !c.justPlayed);
+    if (!target) { toast("Ni veljavnega bojevnika za ascension."); return false; }
+    const r = ascend(p, target); flash(r); selectedHandUid = null; render(); return true;
+  }
+  if (sd.type === "Oracle") {
+    const r = playOracle(p, sel); flash(r); selectedHandUid = null; render(); return true;
+  }
+  if (sd.type === "Realm") {
+    const r = playRealm(p, sel); flash(r); selectedHandUid = null; render(); return true;
+  }
+  if (sd.type === "Relic" && sd.relicMode === "instant") {
+    const r = playRelic(p, sel, p.active); flash(r); selectedHandUid = null; render(); return true;
+  }
+  // Energija ali relic-attach: potrebuje tarčo
+  if (sd.type === "Energy") {
+    if (!p.active) { toast("Ni aktivnega bojevnika."); return false; }
+    relicTargetMode = false;
+    toast("Klikni svojega bojevnika, da pripneš energijo.");
+    return false;
+  }
+  if (sd.type === "Relic" && sd.relicMode === "attach") {
+    relicTargetMode = true;
+    toast(`Klikni bojevnika, da pripneš ${sd.name}.`);
+    return false;
+  }
+  return false;
+}
+
 function renderHandCard(inst) {
   const d = def(inst);
   const pan = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
@@ -146,13 +247,64 @@ function renderHandCard(inst) {
   if (d.type === "Oracle") artGlyph = "📜";
   if (d.type === "Realm") artGlyph = "🏛";
 
+  // tip-specifičen info blok
+  let infoHtml = "";
+  if (d.type === "Champion") {
+    const hpLine = `<div class="card-hp">❤️ ${d.hp} HP</div>`;
+    const atks = (d.attacks || []).map(attackRowHtml).join("");
+    const wr = [];
+    if (d.weakness) wr.push(`<span class="wk">W: ${d.weakness}</span>`);
+    if (d.resistance) wr.push(`<span class="rs">R: ${d.resistance}</span>`);
+    const wrLine = wr.length ? `<div class="card-wr">${wr.join("")}</div>` : "";
+    infoHtml = `${hpLine}<div class="atk-list">${atks}</div>${wrLine}`;
+  } else if (d.type === "Energy") {
+    const s = ENERGY_STYLE[d.energyType] || ENERGY_STYLE.Any;
+    infoHtml = `<div class="energy-line"><span class="edot" style="background:${s.color}">${s.glyph}</span> ${d.energyType} energija</div>`;
+  } else {
+    // Relic / Oracle / Realm -> učinek
+    const effKey = d.effect || d.realmEffect;
+    const lab = effKey ? effectShort(effKey) : "";
+    const txt = d.text || "";
+    infoHtml = `<div class="card-effect">${lab ? `<b>${lab}</b><br>` : ""}<span class="ce-text">${txt}</span></div>`;
+  }
+
+  const isSelected = selectedHandUid === inst.uid;
+  const playable = isHandCardPlayable(inst);
+  const playBtnHtml = (isSelected && playable)
+    ? `<button class="card-play-btn">▶ Igraj</button>` : "";
+
   node.innerHTML = `
     <div class="rarity-bar" style="background:${rar.color}"></div>
     <div class="card-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${artGlyph}</span></div>
     <div class="card-body">
       <div class="card-name">${d.name}</div>
       <div class="card-meta">${d.type}${d.pantheon ? " · " + d.pantheon : ""}</div>
-    </div>`;
+      ${infoHtml}
+    </div>
+    ${playBtnHtml}`;
+
+  const pb = node.querySelector(".card-play-btn");
+  if (pb) {
+    pb.addEventListener("click", (e) => {
+      e.stopPropagation();
+      playSelectedCard();
+    });
+  }
+
+  node.setAttribute("draggable", "true");
+  node.addEventListener("dragstart", (e) => {
+    dragHandUid = inst.uid;
+    selectedHandUid = inst.uid;
+    node.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", inst.uid); } catch (_) {}
+    document.body.classList.add("dragging-card");
+  });
+  node.addEventListener("dragend", () => {
+    dragHandUid = null;
+    node.classList.remove("dragging");
+    document.body.classList.remove("dragging-card");
+  });
 
   node.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -611,5 +763,31 @@ window.addEventListener("DOMContentLoaded", () => {
   // klik izven kart prekliče izbiro/retreat
   $("#game-screen").addEventListener("click", () => {
     if (retreatMode) { retreatMode = false; render(); }
+  });
+
+  // drop v lastno cono = odigraj karto (champion v rezervo / oracle / realm / ascend)
+  const youZone = $("#you-zone");
+  youZone.addEventListener("dragover", (e) => {
+    if (!dragHandUid) return;
+    const sel = G.players[0] && G.players[0].hand.find(i => i.uid === dragHandUid);
+    if (!sel) return;
+    const sd = def(sel);
+    // energija in relic-attach gresta na bojevnika (ne na cono)
+    if (sd.type === "Energy" || (sd.type === "Relic" && sd.relicMode === "attach")) return;
+    e.preventDefault();
+    youZone.classList.add("drop-zone-hover");
+  });
+  youZone.addEventListener("dragleave", (e) => {
+    if (e.target === youZone) youZone.classList.remove("drop-zone-hover");
+  });
+  youZone.addEventListener("drop", (e) => {
+    const sel = G.players[0] && G.players[0].hand.find(i => i.uid === dragHandUid);
+    youZone.classList.remove("drop-zone-hover");
+    if (!sel) return;
+    const sd = def(sel);
+    if (sd.type === "Energy" || (sd.type === "Relic" && sd.relicMode === "attach")) return;
+    e.preventDefault();
+    selectedHandUid = sel.uid;
+    playSelectedCard();
   });
 });
