@@ -57,29 +57,42 @@ function startBattle() {
 }
 
 /* ---------------------- ENERGY / cost render --------------------- */
+// En energijski "dot": če obstaja slika art/energy-<tip>.png, jo pokaže;
+// sicer (ali ob napaki) ostane barvni krog z emoji glyphom.
+function edotHtml(type, extraCls) {
+  const s = ENERGY_STYLE[type] || ENERGY_STYLE.Any;
+  const cls = "edot" + (extraCls ? " " + extraCls : "");
+  // "Any" nima slike – samo glyph
+  if (type === "Any") {
+    return `<span class="${cls}" style="background:${s.color}" title="${type}">${s.glyph}</span>`;
+  }
+  const file = "art/energy-" + String(type).toLowerCase() + ".png";
+  return `<span class="${cls}" style="background:${s.color}" title="${type}">
+    <img class="edot-img" src="${file}" alt="" onerror="this.style.display='none';this.parentNode.classList.add('noimg')">
+    <span class="edot-glyph">${s.glyph}</span>
+  </span>`;
+}
+
 function costToHtml(cost) {
-  return cost.map(c => {
-    const s = ENERGY_STYLE[c] || ENERGY_STYLE.Any;
-    return `<span class="edot" style="background:${s.color}" title="${c}">${s.glyph}</span>`;
-  }).join("");
+  return cost.map(c => edotHtml(c)).join("");
 }
 
 function energyDotsHtml(energyArr) {
-  return energyArr.map(t => {
-    const s = ENERGY_STYLE[t] || ENERGY_STYLE.Any;
-    return `<span class="edot" style="background:${s.color}" title="${t}">${s.glyph}</span>`;
-  }).join("");
+  return energyArr.map(t => edotHtml(t)).join("");
 }
 
+function statusIcon(name) {
+  return `<img class="status-img" src="art/status-${name}.png" alt="" onerror="this.style.display='none'">`;
+}
 function statusHtml(status) {
   const out = [];
-  if (status.burn) out.push(`<span class="status-chip st-burn">BURN</span>`);
-  if (status.freeze) out.push(`<span class="status-chip st-freeze">FREEZE</span>`);
-  if (status.stun) out.push(`<span class="status-chip st-stun">STUN</span>`);
-  if (status.curse) out.push(`<span class="status-chip st-curse">CURSE</span>`);
-  if (status.blessing) out.push(`<span class="status-chip st-blessing">BLESS ${status.blessing}</span>`);
-  if (status.shield) out.push(`<span class="status-chip st-shield">SHIELD</span>`);
-  if (status.poison) out.push(`<span class="status-chip st-poison">POISON ${status.poison}</span>`);
+  if (status.burn) out.push(`<span class="status-chip st-burn">${statusIcon("burn")}BURN</span>`);
+  if (status.freeze) out.push(`<span class="status-chip st-freeze">${statusIcon("freeze")}FREEZE</span>`);
+  if (status.stun) out.push(`<span class="status-chip st-stun">${statusIcon("stun")}STUN</span>`);
+  if (status.curse) out.push(`<span class="status-chip st-curse">${statusIcon("curse")}CURSE</span>`);
+  if (status.blessing) out.push(`<span class="status-chip st-blessing">${statusIcon("blessing")}BLESS ${status.blessing}</span>`);
+  if (status.shield) out.push(`<span class="status-chip st-shield">${statusIcon("shield")}SHIELD</span>`);
+  if (status.poison) out.push(`<span class="status-chip st-poison">${statusIcon("poison")}POISON ${status.poison}</span>`);
   return out.join("");
 }
 
@@ -108,20 +121,13 @@ function missingEnergyFor(champ, cost) {
 function attackStatusRow(champ, atk) {
   const ready = canPayCost(champ, atk.cost) && !champ.status.stun && !champ.justPlayed;
   const missing = missingEnergyFor(champ, atk.cost);
-  const costHtml = atk.cost.map(c => {
-    const s = ENERGY_STYLE[c] || ENERGY_STYLE.Any;
-    // označi, katere so že pokrite (zatemnimo manjkajoče)
-    return `<span class="edot mini" style="background:${s.color}" title="${c}">${s.glyph}</span>`;
-  }).join("");
+  const costHtml = atk.cost.map(c => edotHtml(c, "mini")).join("");
   let tip;
   if (champ.status.stun) tip = `<span class="atk-tip stun">omamljen</span>`;
   else if (champ.justPlayed) tip = `<span class="atk-tip wait">pravkar postavljen</span>`;
   else if (ready) tip = `<span class="atk-tip ok">✓ pripravljen</span>`;
   else {
-    const need = missing.map(m => {
-      const s = ENERGY_STYLE[m] || ENERGY_STYLE.Any;
-      return `<span class="edot mini need" style="background:${s.color}" title="${m}">${s.glyph}</span>`;
-    }).join("");
+    const need = missing.map(m => edotHtml(m, "mini need")).join("");
     tip = `<span class="atk-tip miss">rabi ${need}</span>`;
   }
   return `<div class="champ-atk ${ready ? "rdy" : ""}">
@@ -384,8 +390,7 @@ function renderHandCard(inst) {
     const wrLine = wr.length ? `<div class="card-wr">${wr.join("")}</div>` : "";
     infoHtml = `${hpLine}<div class="atk-list">${atks}</div>${wrLine}`;
   } else if (d.type === "Energy") {
-    const s = ENERGY_STYLE[d.energyType] || ENERGY_STYLE.Any;
-    infoHtml = `<div class="energy-line"><span class="edot" style="background:${s.color}">${s.glyph}</span> ${d.energyType} energija</div>`;
+    infoHtml = `<div class="energy-line">${edotHtml(d.energyType)} ${d.energyType} energija</div>`;
   } else {
     // Relic / Oracle / Realm -> učinek
     const effKey = d.effect || d.realmEffect;

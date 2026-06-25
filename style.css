@@ -493,3 +493,14 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 /* pointer: ko izberemo energijo v roki, osvetli aktivnega bojevnika */
 .champ.energy-hint { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 18px rgba(233,196,106,0.45); }
 .champ.unlocks-attack { box-shadow: 0 0 0 2px #7fe6a0, 0 0 20px rgba(120,220,150,0.5); }
+
+/* ---------------------- Energy & status images ------------------- */
+/* edot vsebuje sliko (prekrije krog) + glyph zadaj kot fallback */
+.edot { position: relative; overflow: hidden; }
+.edot .edot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.edot .edot-glyph { position: relative; z-index: 0; }
+.edot.noimg { } /* če slika manjka, glyph ostane viden */
+
+/* status ikone v chipih */
+.status-chip { display: inline-flex; align-items: center; gap: 3px; }
+.status-img { width: 12px; height: 12px; object-fit: contain; border-radius: 3px; flex: 0 0 auto; }
