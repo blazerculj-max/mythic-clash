@@ -190,13 +190,13 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); z-index: 5; }
 .card .card-art {
-  height: 150px; display: flex; align-items: center; justify-content: center;
+  height: 172px; display: flex; align-items: center; justify-content: center;
   font-size: 30px; background: var(--c-grad); position: relative; overflow: hidden;
 }
 /* nežna vinjeta okoli slike, da contain "letterbox" izgleda namerno */
 .card .card-art::before {
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  box-shadow: inset 0 0 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 22px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 .card .card-body { background: rgba(8,8,16,0.82); padding: 6px 8px; }
 .card .card-name { font-size: 12px; font-weight: 700; line-height: 1.1; }
@@ -215,13 +215,13 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .champ.is-active-turn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-dim), 0 0 24px rgba(233,196,106,0.18); }
 .champ.targetable { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
 .champ .champ-art {
-  height: 165px; display: flex; align-items: center; justify-content: center;
+  height: 180px; display: flex; align-items: center; justify-content: center;
   font-size: 42px; background: var(--c-grad); position: relative; overflow: hidden;
 }
-.champ.active-champ .champ-art { height: 200px; font-size: 52px; }
+.champ.active-champ .champ-art { height: 215px; font-size: 52px; }
 .champ .champ-art::before {
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  box-shadow: inset 0 0 34px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 26px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 .champ .pantheon-badge { position: absolute; top: 6px; left: 8px; font-size: 16px; opacity: 0.9; }
 .champ .hp-badge {
@@ -387,8 +387,8 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: center 22%;
   z-index: 1;
 }
 /* glyph placeholder ostane za sliko */
@@ -515,4 +515,4 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 .status-img { width: 12px; height: 12px; object-fit: contain; border-radius: 3px; flex: 0 0 auto; }
 
 /* energijske karte: pokaži cel simbol (contain), ne odreži */
-.card-art-energy .card-art-img { object-fit: contain; padding: 12px; }
+.card-art-energy .card-art-img { object-fit: contain; object-position: center; padding: 12px; }
