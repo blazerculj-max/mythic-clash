@@ -5,6 +5,7 @@
 
 let selectedHandUid = null;   // izbrana karta v roki
 let dragHandUid = null;       // uid karte, ki jo trenutno vlečemo
+let dragChampUid = null;      // uid bojevnika, ki ga trenutno vlečemo
 let relicTargetMode = false;  // čakamo izbiro tarče za relic
 
 /* ---------------------- DOM helperji ----------------------------- */
@@ -114,35 +115,86 @@ function renderChampion(inst, opts = {}) {
     handleChampClick(inst, opts);
   });
 
-  // drop tarča: spusti energijo/relic-attach na svojega bojevnika
-  const isMine = G.players[0] && allChampions(G.players[0]).some(c => c.uid === inst.uid);
-  if (isMine) {
-    node.addEventListener("dragover", (e) => {
-      if (!dragHandUid) return;
-      const sel = G.players[0].hand.find(i => i.uid === dragHandUid);
-      if (!sel) return;
-      const sd = def(sel);
-      if (sd.type === "Energy" || (sd.type === "Relic" && sd.relicMode === "attach")) {
-        e.preventDefault();
-        node.classList.add("drop-hover");
-      }
+  // --- DRAG bojevnika (samo igralčevi, ali nasprotnikov aktivni kot tarča) ---
+  const me = G.players[0];
+  const amMineActive = me && me.active && me.active.uid === inst.uid;
+  const amMineReserve = me && me.reserve.some(c => c.uid === inst.uid);
+  const isMineChamp = amMineActive || amMineReserve;
+
+  if (isMineChamp && !G.over) {
+    node.setAttribute("draggable", "true");
+    node.addEventListener("dragstart", (e) => {
+      dragChampUid = inst.uid;
+      node.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", "champ:" + inst.uid); } catch (_) {}
+      document.body.classList.add("dragging-champ");
+      if (amMineActive) document.body.classList.add("dragging-active");
+      if (amMineReserve) document.body.classList.add("dragging-reserve");
     });
-    node.addEventListener("dragleave", () => node.classList.remove("drop-hover"));
-    node.addEventListener("drop", (e) => {
-      e.preventDefault();
-      node.classList.remove("drop-hover");
-      const uid = dragHandUid;
-      const sel = uid && G.players[0].hand.find(i => i.uid === uid);
-      if (!sel) return;
-      const sd = def(sel);
-      const p = G.players[0];
-      if (sd.type === "Energy") {
-        const r = attachEnergy(p, sel, inst); flash(r); selectedHandUid = null; render();
-      } else if (sd.type === "Relic" && sd.relicMode === "attach") {
-        const r = playRelic(p, sel, inst); flash(r); selectedHandUid = null; relicTargetMode = false; render();
-      }
+    node.addEventListener("dragend", () => {
+      dragChampUid = null;
+      node.classList.remove("dragging");
+      document.body.classList.remove("dragging-champ", "dragging-active", "dragging-reserve");
     });
   }
+
+  // drop tarča na bojevniku: energija/relic iz roke ALI bojevnik-na-bojevnika
+  const me2 = G.players[0];
+  const opp2 = G.players[1];
+  const isMine = me2 && allChampions(me2).some(c => c.uid === inst.uid);
+  const isEnemyActive = opp2 && opp2.active && opp2.active.uid === inst.uid;
+
+  node.addEventListener("dragover", (e) => {
+    // 1) karta iz roke (energija/relic-attach) na svojega bojevnika
+    if (dragHandUid && isMine) {
+      const sel = me2.hand.find(i => i.uid === dragHandUid);
+      if (sel) {
+        const sd = def(sel);
+        if (sd.type === "Energy" || (sd.type === "Relic" && sd.relicMode === "attach")) {
+          e.preventDefault(); node.classList.add("drop-hover"); return;
+        }
+      }
+    }
+    // 2) bojevnik na bojevnika
+    if (dragChampUid) {
+      const drole = champRole(dragChampUid);
+      // rezerva -> moj aktivni (swap/retreat/choose) : dovolimo drop na MOJ aktivni
+      if (drole === "reserve" && isMine && me2.active && me2.active.uid === inst.uid) {
+        e.preventDefault(); node.classList.add("drop-hover"); return;
+      }
+      // moj aktivni -> nasprotnikov aktivni (napad)
+      if (drole === "active" && isEnemyActive && G.turn === 0 && !G.over) {
+        e.preventDefault(); node.classList.add("drop-target-enemy"); return;
+      }
+    }
+  });
+  node.addEventListener("dragleave", () => node.classList.remove("drop-hover", "drop-target-enemy"));
+  node.addEventListener("drop", (e) => {
+    node.classList.remove("drop-hover", "drop-target-enemy");
+    const p = G.players[0];
+
+    // karta iz roke
+    if (dragHandUid && isMine) {
+      const sel = me2.hand.find(i => i.uid === dragHandUid);
+      if (sel) {
+        const sd = def(sel);
+        if (sd.type === "Energy") { e.preventDefault(); const r = attachEnergy(p, sel, inst); flash(r); selectedHandUid = null; render(); return; }
+        if (sd.type === "Relic" && sd.relicMode === "attach") { e.preventDefault(); const r = playRelic(p, sel, inst); flash(r); selectedHandUid = null; relicTargetMode = false; render(); return; }
+      }
+    }
+    // bojevnik na bojevnika
+    if (dragChampUid) {
+      const drole = champRole(dragChampUid);
+      const dragInst = allChampions(p).find(c => c.uid === dragChampUid);
+      if (drole === "reserve" && isMine && me2.active && me2.active.uid === inst.uid && dragInst) {
+        e.preventDefault(); doSwapOrRetreat(dragInst); return;
+      }
+      if (drole === "active" && isEnemyActive && G.turn === 0 && !G.over) {
+        e.preventDefault(); doAttackGesture(); return;
+      }
+    }
+  });
   if (opts.shake) node.classList.add("shake", "hit-flash");
   return node;
 }
@@ -389,6 +441,57 @@ function handleChampClick(inst, opts) {
 
 function flash(r) {
   if (r && r.ok === false && r.msg) toast(r.msg);
+}
+
+/* ---- DRAG GESTURE HELPERS (skladno s pravili) ------------------- */
+// vrne vlogo bojevnika: "active" | "reserve" | null (za človeka)
+function champRole(uid) {
+  const p = G.players[0];
+  if (p.active && p.active.uid === uid) return "active";
+  if (p.reserve.some(c => c.uid === uid)) return "reserve";
+  return null;
+}
+
+// spusti rezervnega na aktivno mesto -> izbira novega aktivnega / prosti swap / retreat
+function doSwapOrRetreat(reserveInst) {
+  const p = G.players[0];
+  // 1) po porazu: izbira novega aktivnega (brez stroška)
+  if (G.awaitingNewActive === 0) {
+    const r = chooseNewActive(0, reserveInst); flash(r); render(); return;
+  }
+  // 2) ni igralčeva poteza -> ne dovolimo
+  if (G.turn !== 0 || G.over) { toast("Nisi na potezi."); return; }
+  // 3) prosti swap (Janus/Morrigan)
+  if (p._mayFreeSwap) { const r = freeSwap(p, reserveInst); flash(r); render(); return; }
+  // 4) navadni retreat (stane energijo; engine preveri pravila)
+  const r = retreat(p, reserveInst);
+  flash(r);
+  if (r && r.ok) { render(); }
+  else { render(); }
+}
+
+// spusti svojega aktivnega na nasprotnikovega -> napad (izbere najmočnejši plačljiv napad)
+function doAttackGesture() {
+  const p = G.players[0];
+  const a = p.active;
+  if (G.turn !== 0 || G.over || !a) return;
+  if (a.status.stun) { toast("Tvoj bojevnik je omamljen to potezo."); return; }
+  if (a.justPlayed) { toast("Pravkar postavljen bojevnik ne more napasti to potezo."); return; }
+  const dd = def(a);
+  // izberi najmočnejši napad, ki ga lahko plačaš
+  let best = -1, bestDmg = -1;
+  dd.attacks.forEach((atk, i) => {
+    if (canPayCost(a, atk.cost) && (atk.damage || 0) > bestDmg) { best = i; bestDmg = atk.damage || 0; }
+  });
+  if (best < 0) { toast("Premalo energije za napad."); return; }
+  // če sta dva napada možna, opozori da je izbran najmočnejši
+  const affordable = dd.attacks.filter(atk => canPayCost(a, atk.cost)).length;
+  if (affordable > 1) toast(`Napad: ${dd.attacks[best].name} (najmočnejši). Za drugega uporabi gumbe.`);
+  const r = performAttack(best);
+  flash(r);
+  selectedHandUid = null;
+  render();
+  afterHumanAction();
 }
 
 let toastTimer = null;
@@ -644,7 +747,19 @@ function renderZone(container, player, isYou) {
     activeSlot.appendChild(champNode);
   } else {
     const empty = el("div", "empty-active", isYou && G.awaitingNewActive === 0
-      ? "Izberi novega aktivnega iz rezerve →" : "Ni aktivnega bojevnika");
+      ? "Spusti rezervo sem za novega aktivnega" : "Ni aktivnega bojevnika");
+    if (isYou) {
+      empty.addEventListener("dragover", (e) => {
+        if (dragChampUid && champRole(dragChampUid) === "reserve") { e.preventDefault(); empty.classList.add("drop-hover"); }
+      });
+      empty.addEventListener("dragleave", () => empty.classList.remove("drop-hover"));
+      empty.addEventListener("drop", (e) => {
+        empty.classList.remove("drop-hover");
+        if (!dragChampUid) return;
+        const dragInst = G.players[0].reserve.find(c => c.uid === dragChampUid);
+        if (dragInst) { e.preventDefault(); doSwapOrRetreat(dragInst); }
+      });
+    }
     activeSlot.appendChild(empty);
   }
   wrap.appendChild(activeSlot);
