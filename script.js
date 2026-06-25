@@ -406,7 +406,7 @@ function renderHandCard(inst) {
 
   node.innerHTML = `
     <div class="rarity-bar" style="background:${rar.color}"></div>
-    <div class="card-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${artGlyph}</span></div>
+    <div class="card-art${d.type === "Energy" ? " card-art-energy" : ""}">${artImg(d, "card-art-img")}<span class="card-art-glyph">${artGlyph}</span></div>
     <div class="card-body">
       <div class="card-name">${d.name}</div>
       <div class="card-meta">${d.type}${d.pantheon ? " · " + d.pantheon : ""}</div>

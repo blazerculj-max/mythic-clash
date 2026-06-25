@@ -497,10 +497,14 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 /* ---------------------- Energy & status images ------------------- */
 /* edot vsebuje sliko (prekrije krog) + glyph zadaj kot fallback */
 .edot { position: relative; overflow: hidden; }
-.edot .edot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.edot .edot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
 .edot .edot-glyph { position: relative; z-index: 0; }
 .edot.noimg { } /* če slika manjka, glyph ostane viden */
 
 /* status ikone v chipih */
 .status-chip { display: inline-flex; align-items: center; gap: 3px; }
 .status-img { width: 12px; height: 12px; object-fit: contain; border-radius: 3px; flex: 0 0 auto; }
+
+/* energijske karte: pokaži cel simbol (contain), ne odreži */
+.card-art-energy .card-art-img { object-fit: contain; padding: 6px; }
+.card-art-energy::after { display: none; } /* brez spodnje zatemnitve na simbolu */
