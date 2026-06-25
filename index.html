@@ -53,10 +53,10 @@
     <div class="board">
 
       <!-- nasprotnikova cona -->
-      <div id="opp-zone" class="zone zone-opp"></div>
+      <div id="opp-zone" class="player-zone zone-opp"></div>
 
       <!-- sredina: realm -->
-      <div class="mid-row">
+      <div class="zone-mid">
         <div class="realm-block">
           <div class="realm-label">REALM</div>
           <div id="realm-slot" class="realm-slot"></div>
@@ -66,22 +66,22 @@
       </div>
 
       <!-- tvoja cona -->
-      <div id="you-zone" class="zone zone-you"></div>
+      <div id="you-zone" class="player-zone zone-you"></div>
 
       <!-- stranska plošča: akcije + log -->
       <aside class="side-panel">
-        <div class="panel-block">
-          <h3 class="panel-title">Akcije</h3>
+        <div class="action-panel">
+          <h4>Akcije</h4>
           <div id="action-list" class="action-list"></div>
         </div>
-        <div class="panel-block log-block">
-          <h3 class="panel-title">Dnevnik bitke</h3>
-          <ul id="log-list" class="log-list"></ul>
+        <div class="log-panel">
+          <h4>Dnevnik bitke</h4>
+          <div id="log-list" class="log-list"></div>
         </div>
       </aside>
 
       <!-- roka -->
-      <div class="hand-row">
+      <div class="hand-zone">
         <div class="hand-head">
           <span class="hand-label">Tvoja roka</span>
           <span class="hand-count">Kart: <b id="hand-count">0</b></span>

@@ -499,7 +499,8 @@ function renderZone(container, player, isYou) {
 
   // reserve
   const resCol = el("div");
-  resCol.style.flex = "1";
+  resCol.style.flex = "1 1 0";
+  resCol.style.minWidth = "0";
   resCol.appendChild(el("div", "reserve-label", `REZERVA (${player.reserve.length}/${MAX_RESERVE})`));
   const resRow = el("div", "reserve-row");
   player.reserve.forEach(inst => {
