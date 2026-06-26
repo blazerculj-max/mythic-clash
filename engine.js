@@ -174,9 +174,11 @@ function beginTurn(isFirstEver) {
   if (p.active) p.active.justPlayed = false;
   for (const r of p.reserve) r.justPlayed = false;
 
-  // Draw 1
-  if (!isFirstEver || true) { // vedno vlečemo (poenostavitev prototipa)
+  // Draw 1 — prvi igralec NE vleče na prvi potezi (zmanjša first-player advantage)
+  if (!isFirstEver) {
     drawCard(p, 1);
+  } else {
+    logMsg(p.name + " začenja in zato na prvi potezi ne vleče karte.");
   }
 }
 
@@ -536,6 +538,8 @@ function performAttack(attackIndex) {
     resist: def(target).resistance === effectiveTypeOfAttack(attack),
     effPct: effInfo ? effInfo.pct : 100,
     omen: omenResult,
+    atkType: effectiveTypeOfAttack(attack),
+    heavy: (attack.cost || []).length >= 3,
   };
 
   // efekt napada

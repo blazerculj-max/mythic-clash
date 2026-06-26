@@ -188,6 +188,11 @@ function renderChampion(inst, opts = {}) {
   const isMyActive = opts.active && G.players[0] && G.players[0].active && G.players[0].active.uid === inst.uid;
   if (isMyActive && (d.attacks || []).length) {
     atkStatusHtml = `<div class="champ-atk-list">${d.attacks.map(atk => attackStatusRow(inst, atk)).join("")}</div>`;
+    // glow če lahko zdaj napade (igralčeva poteza, energija, ni stun/justPlayed)
+    if (G.turn === 0 && !G.over && !inst.status.stun && !inst.justPlayed &&
+        (d.attacks || []).some(atk => canPayCost(inst, atk.cost))) {
+      node.classList.add("attack-ready");
+    }
   }
 
   node.innerHTML = `
@@ -860,6 +865,12 @@ function playAttackFx() {
     setTimeout(() => {
       targetNode.classList.add("shake", "hit-flash");
       setTimeout(() => targetNode.classList.remove("shake", "hit-flash"), 420);
+      // particle burst v barvi tipa napada
+      spawnParticles(targetNode, la.atkType, la.heavy ? 22 : 14);
+      // screen shake + flash pri močnih ali zelo učinkovitih napadih
+      if (la.heavy || (la.effPct && la.effPct >= 150) || la.damage >= 90) {
+        screenImpact(la.heavy ? "big" : "small");
+      }
     }, 130);
 
     // floating damage number (na slot, da ni odrezan)
@@ -881,6 +892,77 @@ function playAttackFx() {
       setTimeout(() => fd.remove(), 1100);
     }
   }
+}
+
+/* ---------------------- PARTICLE SYSTEM -------------------------- */
+// barve delcev po tipu energije napada
+const PARTICLE_COLORS = {
+  Sky: ["#bfe0ff", "#7fb3ff", "#ffffff"],
+  War: ["#ff8a6b", "#ff5e4d", "#ffd0c0"],
+  Wisdom: ["#d6c4ff", "#b89bff", "#fff"],
+  Underworld: ["#b6a8d0", "#7a6f8f", "#3a2f50"],
+  Nature: ["#aef0c0", "#6fd98a", "#d6ffe2"],
+  Trickery: ["#ffc4ef", "#ff9be0", "#fff"],
+  Fire: ["#ffd24a", "#ff8a3d", "#ff5722"],
+  Frost: ["#d6fffb", "#8fe6e0", "#bfe3ee"],
+  Sun: ["#ffe9a8", "#ffd24a", "#fff7e0"],
+  Moon: ["#e4e0ff", "#c9c2ff", "#fff"],
+  _default: ["#ffe9a8", "#e9c46a", "#fff"],
+};
+
+function spawnParticles(targetEl, type, count) {
+  if (!targetEl) return;
+  // koren za delce: igralni zaslon (da niso odrezani)
+  const layer = ensureFxLayer();
+  const rect = targetEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = PARTICLE_COLORS[type] || PARTICLE_COLORS._default;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 70;
+    const dx = Math.cos(ang) * dist;
+    const dy = Math.sin(ang) * dist - 10; // rahlo navzgor
+    const size = 4 + Math.random() * 7;
+    const col = colors[Math.floor(Math.random() * colors.length)];
+    p.style.left = cx + "px";
+    p.style.top = cy + "px";
+    p.style.width = size + "px";
+    p.style.height = size + "px";
+    p.style.background = col;
+    p.style.boxShadow = `0 0 ${size}px ${col}`;
+    p.style.setProperty("--dx", dx + "px");
+    p.style.setProperty("--dy", dy + "px");
+    p.style.animationDelay = (Math.random() * 60) + "ms";
+    layer.appendChild(p);
+    setTimeout(() => p.remove(), 750);
+  }
+}
+
+let _fxLayer = null;
+function ensureFxLayer() {
+  if (_fxLayer && document.body.contains(_fxLayer)) return _fxLayer;
+  _fxLayer = document.createElement("div");
+  _fxLayer.className = "fx-layer";
+  document.body.appendChild(_fxLayer);
+  return _fxLayer;
+}
+
+// screen shake + flash
+function screenImpact(size) {
+  const board = document.querySelector(".board") || document.body;
+  board.classList.remove("screen-shake-big", "screen-shake-small");
+  void board.offsetWidth; // restart animacije
+  board.classList.add(size === "big" ? "screen-shake-big" : "screen-shake-small");
+  setTimeout(() => board.classList.remove("screen-shake-big", "screen-shake-small"), 450);
+  // bel flash overlay
+  const flash = ensureFxLayer();
+  const ov = document.createElement("div");
+  ov.className = "screen-flash" + (size === "big" ? " big" : "");
+  flash.appendChild(ov);
+  setTimeout(() => ov.remove(), 280);
 }
 
 function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
