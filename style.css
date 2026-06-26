@@ -159,7 +159,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 /* ============================================================================
    GAME BOARD
 ============================================================================ */
-#game-screen { min-height: 100vh; display: flex; flex-direction: column; }
+#game-screen { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -177,21 +177,22 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .icon-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
 
 .board {
-  flex: 1; display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  grid-template-rows: auto auto auto;
-  gap: 14px; padding: 14px; max-width: 1240px; width: 100%; margin: 0 auto;
+  flex: 1; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 10px; padding: 10px; max-width: 1240px; width: 100%; margin: 0 auto;
+  overflow: hidden;
 }
 .player-zone {
   border: 1px solid var(--panel-edge); border-radius: var(--radius);
-  background: var(--panel); padding: 12px 14px; position: relative;
-  min-width: 0; overflow: hidden;
+  background: var(--panel); padding: 10px 12px; position: relative;
+  min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
 }
 .zone-opp { grid-column: 1; grid-row: 1; }
 .zone-mid { grid-column: 1; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 18px;
-  border: 1px dashed var(--panel-edge); border-radius: var(--radius); padding: 10px; min-height: 64px; }
+  border: 1px dashed var(--panel-edge); border-radius: var(--radius); padding: 7px 10px; min-height: 0; }
 .zone-you { grid-column: 1; grid-row: 3; }
-.side-panel { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.side-panel { grid-column: 2; grid-row: 1 / span 4; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow: hidden; }
 
 .zone-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .zone-head .who { font-size: 14px; letter-spacing: 0.1em; color: var(--gold); font-family: "SF Mono", monospace; }
@@ -244,10 +245,10 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .champ.is-active-turn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-dim), 0 0 24px rgba(233,196,106,0.18); }
 .champ.targetable { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
 .champ .champ-art {
-  height: 180px; display: flex; align-items: center; justify-content: center;
+  height: 130px; display: flex; align-items: center; justify-content: center;
   font-size: 42px; background: var(--c-grad); position: relative; overflow: hidden;
 }
-.champ.active-champ .champ-art { height: 215px; font-size: 52px; }
+.champ.active-champ .champ-art { height: 158px; font-size: 52px; }
 .champ .champ-art::before {
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   box-shadow: inset 0 0 26px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(255,255,255,0.05);
@@ -300,16 +301,21 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .hand .card.playable { animation: playablePulse 1.8s ease-in-out infinite; }
 
 /* ---------------------- HAND ---------------------- */
-.hand-zone { grid-column: 1 / span 2; grid-row: 4; padding: 4px 14px 18px; }
+.hand-zone { grid-column: 1 / span 2; grid-row: 4; padding: 2px 10px 6px; min-height: 0; }
 .hand-zone .reserve-label { margin-left: 4px; }
-.hand { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px 12px; }
-.hand .card { width: 168px; flex: 0 0 auto; }
+.hand { display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 6px 4px 8px; align-items: flex-start; }
+.hand .card { width: 132px; flex: 0 0 auto; }
+.hand .card .card-art { height: 116px; }
+.hand .card .card-name { font-size: 12px; }
+.hand .card .card-meta { font-size: 9px; }
+/* (compact hand cards defined above) */
 .hand .card.selected-hand { box-shadow: 0 0 0 2px var(--gold-bright); transform: translateY(-6px); }
 
 /* ---------------------- ACTION BAR ---------------------- */
 .action-panel {
   border: 1px solid var(--panel-edge); border-radius: var(--radius);
   background: var(--panel); padding: 12px;
+  flex: 0 0 auto; max-height: 50%; overflow-y: auto;
 }
 .action-panel h4 { font-size: 12px; letter-spacing: 0.14em; color: var(--gold); font-family: "SF Mono", monospace; margin-bottom: 10px; text-transform: uppercase; }
 .action-btn {
@@ -327,7 +333,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 .hint { font-size: 11px; color: var(--ink-dim); line-height: 1.5; margin-top: 6px; }
 
 /* ---------------------- LOG ---------------------- */
-.log-panel { flex: 1; border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 12px; display: flex; flex-direction: column; min-height: 180px; }
+.log-panel { flex: 1; border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 12px; display: flex; flex-direction: column; min-height: 0; }
 .log-panel h4 { font-size: 12px; letter-spacing: 0.14em; color: var(--gold); font-family: "SF Mono", monospace; margin-bottom: 8px; text-transform: uppercase; }
 .log-list { overflow-y: auto; font-size: 12px; line-height: 1.55; color: var(--ink-dim); flex: 1; }
 .log-list div { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -370,14 +376,32 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 
 /* ---------------------- RESPONSIVE ---------------------- */
 @media (max-width: 900px) {
-  .board { grid-template-columns: 1fr; }
+  .board {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1.1fr) auto minmax(0, 1.1fr) auto auto;
+    gap: 7px; padding: 7px;
+  }
   .zone-opp { grid-row: 1; grid-column: 1; }
   .zone-mid { grid-row: 2; grid-column: 1; }
   .zone-you { grid-row: 3; grid-column: 1; }
-  .side-panel { grid-row: 4; grid-column: 1; flex-direction: column; }
-  .hand-zone { grid-row: 5; grid-column: 1; }
-  .champ.active-champ { width: 200px; }
-  .champ { width: 168px; }
+  .hand-zone { grid-row: 4; grid-column: 1; }
+  .side-panel { grid-row: 5; grid-column: 1; flex-direction: row; gap: 8px; max-height: 30vh; }
+  .action-panel { flex: 1; min-width: 0; }
+  .log-panel { flex: 1; min-height: 0; max-height: 28vh; }
+  /* manjše karte na mobilcu */
+  .champ.active-champ { width: 150px; }
+  .champ.active-champ .champ-art { height: 120px; }
+  .champ { width: 124px; }
+  .champ .champ-art { height: 95px; }
+  .hand .card { width: 108px; }
+  .hand .card .card-art { height: 92px; }
+}
+
+/* zelo nizki zasloni: še bolj kompaktno */
+@media (max-height: 700px) {
+  .champ.active-champ .champ-art { height: 120px; }
+  .champ .champ-art { height: 100px; }
+  .hand .card .card-art { height: 92px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
