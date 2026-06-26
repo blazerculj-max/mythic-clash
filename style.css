@@ -580,3 +580,12 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
   35% { transform: translateX(-50%) translateY(-4px) scale(1); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-54px) scale(0.95); }
 }
+
+/* ---------------------- Effectiveness badges --------------------- */
+.eff-badge {
+  display: inline-block; font-family: "SF Mono", monospace; font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
+}
+.eff-badge.eff-good { color: #1a2a14; background: #7fe6a0; }
+.eff-badge.eff-bad { color: #2a1414; background: #ff8a8a; }
+.floating-dmg .fd-tag.omen { color: #ffe39a; box-shadow: 0 0 0 1px rgba(255,210,80,0.6); margin-left: 4px; }

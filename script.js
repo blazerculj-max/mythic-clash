@@ -667,10 +667,24 @@ function renderActions() {
   // Attacks
   if (a) {
     const dd = def(a);
+    const enemyActive = G.players[1] && G.players[1].active;
     dd.attacks.forEach((atk, i) => {
       const can = canPayCost(a, atk.cost) && !a.status.stun && !a.justPlayed;
       const btn = el("button", "action-btn attack");
-      btn.innerHTML = `${atk.name} <span class="ab-cost">${atk.damage} dmg · ${costToHtml(atk.cost)}</span>`;
+      // predogled škode proti dejanskemu nasprotniku
+      let dmgLabel = `${atk.damage} dmg`;
+      let effBadge = "";
+      if (enemyActive) {
+        const prev = previewDamage(a, G.players[0], enemyActive, atk);
+        if (prev) {
+          dmgLabel = `~${prev.dmg} dmg`;
+          if (prev.pct !== 100) {
+            const cls = prev.pct > 100 ? "eff-good" : "eff-bad";
+            effBadge = ` <span class="eff-badge ${cls}">${prev.pct}%</span>`;
+          }
+        }
+      }
+      btn.innerHTML = `${atk.name} <span class="ab-cost">${dmgLabel} · ${costToHtml(atk.cost)}</span>${effBadge}`;
       btn.disabled = !can;
       btn.addEventListener("click", () => {
         const r = performAttack(i);
@@ -835,8 +849,11 @@ function playAttackFx() {
     if (la.damage > 0) {
       const fd = el("div", "floating-dmg");
       let extra = "";
-      if (la.weak) extra = `<span class="fd-tag weak">WEAK +20</span>`;
-      else if (la.resist) extra = `<span class="fd-tag resist">RESIST −20</span>`;
+      if (la.weak) extra = `<span class="fd-tag weak">WEAK ×1.5</span>`;
+      else if (la.resist) extra = `<span class="fd-tag resist">RESIST ×0.6</span>`;
+      else if (la.effPct && la.effPct > 100) extra = `<span class="fd-tag weak">${la.effPct}%</span>`;
+      else if (la.effPct && la.effPct < 100) extra = `<span class="fd-tag resist">${la.effPct}%</span>`;
+      if (la.omen === true) extra += `<span class="fd-tag omen">OMEN ✓</span>`;
       fd.innerHTML = `<span class="fd-num">−${la.damage}</span>${extra}`;
       slot.appendChild(fd);
       setTimeout(() => fd.remove(), 1100);

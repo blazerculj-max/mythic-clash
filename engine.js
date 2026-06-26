@@ -304,13 +304,21 @@ function canPayCost(champ, cost) {
 }
 
 /* ---------------------- Damage / combat -------------------------- */
+/* Predogled škode/učinkovitosti za UI (brez metanja Omena — pričakovana vrednost). */
+function previewDamage(attacker, attackerOwner, defender, attack) {
+  if (!attacker || !defender || !attack) return null;
+  const res = computeDamage(attacker, attackerOwner, defender, attack, { wantBreakdown: true });
+  return { dmg: res.dmg, pct: res.eff.pct, parts: res.eff.parts };
+}
+
 function effectiveTypeOfAttack(attack) {
   // primarni tip napada = prvi ne-Any v costu (za weakness/resistance)
   const t = attack.cost.find(c => c !== "Any");
   return t || null;
 }
 
-function computeDamage(attacker, attackerOwner, defender, attack) {
+function computeDamage(attacker, attackerOwner, defender, attack, options) {
+  options = options || {};
   let dmg = attack.damage;
   const ad = def(attacker);
   const dd = def(defender);
@@ -358,11 +366,8 @@ function computeDamage(attacker, attackerOwner, defender, attack) {
   if (ad.id === "slavic-morana" && defender.status.freeze) dmg += 10;
   if ((ad.id === "slavic-rusalka" || ad.id === "celtic-banshee") && defender.status.curse) dmg += 10;
 
-  // --- weakness / resistance ---
-  if (atkType) {
-    if (dd.weakness === atkType) dmg += 20;
-    if (dd.resistance === atkType) dmg -= 20;
-  }
+  // --- weakness / resistance se zdaj obravnava kot MULTIPLIKATOR spodaj ---
+  // (osnovna + ploščati modifikatorji so izračunani; zdaj uporabi učinkovitost)
 
   // --- branilčevi modifikatorji (-) ---
   // Shield: -20 (enkratno) — odštejemo tu in odstranimo status v applyAttack
@@ -402,7 +407,60 @@ function computeDamage(attacker, attackerOwner, defender, attack) {
   }
 
   if (dmg < 0) dmg = 0;
+
+  // ============================================================
+  //  UČINKOVITOST (multiplikatorji) — daje globino napadom
+  // ============================================================
+  const eff = computeEffectiveness(attacker, attackerOwner, defender, attack, atkType, options);
+  dmg = Math.round((dmg * eff.mult) / 5) * 5; // zaokroži na 5
+
+  if (dmg < 0) dmg = 0;
+  if (options && options.wantBreakdown) {
+    return { dmg, eff };
+  }
   return dmg;
+}
+
+/* ----------------------------------------------------------------
+   UČINKOVITOST napada: vrne { mult, label, parts[] }
+   - type advantage (weakness)  -> ×1.5
+   - type resistance            -> ×0.6
+   - HP/level prednost          -> do ×1.1
+   - Omen Roll na močnih napadih -> ×1.3 ob Favorable
+   options.omen: če podan (true/false) uporabi ta rezultat (za prikaz pred metom);
+                 sicer ne meče (samo prikaz pričakovane vrednosti).
+---------------------------------------------------------------- */
+function computeEffectiveness(attacker, attackerOwner, defender, attack, atkType, options) {
+  options = options || {};
+  const dd = def(defender);
+  const ad = def(attacker);
+  let mult = 1;
+  const parts = [];
+
+  // 1) Type matchup
+  if (atkType) {
+    if (dd.weakness === atkType) { mult *= 1.5; parts.push({ k: "WEAK", v: "×1.5", good: true }); }
+    else if (dd.resistance === atkType) { mult *= 0.6; parts.push({ k: "RESIST", v: "×0.6", good: false }); }
+  }
+
+  // 2) HP/level prednost: če ima napadalec večji max HP od branilca
+  const hpDiff = (attacker.maxHp || 0) - (defender.maxHp || 0);
+  if (hpDiff >= 40) { mult *= 1.1; parts.push({ k: "PREVLADA", v: "×1.1", good: true }); }
+  else if (hpDiff <= -40) { mult *= 0.92; parts.push({ k: "ŠIBKEJŠI", v: "×0.92", good: false }); }
+
+  // 3) Omen Roll na močnih napadih (3+ energije v ceni)
+  const heavy = (attack.cost || []).length >= 3;
+  if (heavy) {
+    let favorable;
+    if (typeof options.omen === "boolean") favorable = options.omen;
+    else favorable = null; // prikaz: pričakovana vrednost
+    if (favorable === true) { mult *= 1.3; parts.push({ k: "OMEN ✓", v: "×1.3", good: true }); }
+    else if (favorable === false) { parts.push({ k: "OMEN ✗", v: "×1.0", good: false }); }
+    else { mult *= 1.15; parts.push({ k: "OMEN", v: "~50%", good: null }); } // pričakovana (povprečje 1.0 in 1.3)
+  }
+
+  const pct = Math.round(mult * 100);
+  return { mult, pct, parts };
 }
 
 function ownerOf(champ) {
@@ -447,8 +505,14 @@ function performAttack(attackIndex) {
   const target = o.active;
   if (!target) return { ok: false, msg: "Nasprotnik nima aktivnega bojevnika." };
 
-  // omen-based predefekt (stun chance ipd. se razreši po škodi)
-  const dmg = computeDamage(a, p, target, attack);
+  // Omen Roll na močnih napadih (3+ energije) — vrže se enkrat tu
+  const heavyAttack = (attack.cost || []).length >= 3;
+  const omenResult = heavyAttack ? omenRoll() : null;
+
+  // izračun škode z dejanskim omenom
+  const dmgRes = computeDamage(a, p, target, attack, { omen: omenResult, wantBreakdown: true });
+  const dmg = dmgRes.dmg;
+  const effInfo = dmgRes.eff;
 
   // izvedi škodo
   if (dmg > 0) {
@@ -458,7 +522,9 @@ function performAttack(attackIndex) {
   // porabi shield (enkratno)
   if (target.status.shield && dmg > 0) delete target.status.shield;
 
-  logMsg(p.name + ": " + def(a).name + " uporabi " + attack.name + " za " + dmg + " škode.");
+  let omenMsg = "";
+  if (heavyAttack) omenMsg = omenResult ? " (Omen ✓)" : " (Omen ✗)";
+  logMsg(p.name + ": " + def(a).name + " uporabi " + attack.name + " za " + dmg + " škode" + omenMsg + ".");
   shakeTarget = o; // za UI animacijo
   // podatki za UI animacijo (floating damage + lunge)
   lastAttack = {
@@ -468,6 +534,8 @@ function performAttack(attackIndex) {
     attackName: attack.name,
     weak: def(target).weakness === effectiveTypeOfAttack(attack),
     resist: def(target).resistance === effectiveTypeOfAttack(attack),
+    effPct: effInfo ? effInfo.pct : 100,
+    omen: omenResult,
   };
 
   // efekt napada
@@ -933,8 +1001,13 @@ function aiTakeTurn(onStep, onDone) {
       .map((atk, i) => ({ atk, i }))
       .filter(x => canPayCost(p.active, x.atk.cost));
     if (atks.length === 0) { endTurnIfStillAI(); return; }
-    // izberi največjo škodo
-    atks.sort((a, b) => b.atk.damage - a.atk.damage);
+    // izberi po DEJANSKI pričakovani škodi proti nasprotnikovem aktivnem
+    const enemyActive = opp().active;
+    atks.forEach(x => {
+      const prev = enemyActive ? previewDamage(p.active, p, enemyActive, x.atk) : null;
+      x.eff = prev ? prev.dmg : (x.atk.damage || 0);
+    });
+    atks.sort((a, b) => b.eff - a.eff);
     performAttack(atks[0].i);
     // performAttack običajno kliče endTurn sam
   });
@@ -971,7 +1044,7 @@ if (typeof window !== "undefined") {
     attachEnergy, canPayCost, performAttack, playReserveChampion,
     playRelic, playOracle, playRealm, ascend, retreat, freeSwap,
     chooseNewActive, aiTakeTurn, cur, opp, def, allChampions,
-    findAscensionInHand, omenRoll, makeInstance,
+    findAscensionInHand, omenRoll, makeInstance, previewDamage,
     GLORY_TO_WIN, MAX_RESERVE,
     clearShake() { shakeTarget = null; },
     clearLastAttack() { lastAttack = null; },
