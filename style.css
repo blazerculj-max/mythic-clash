@@ -545,3 +545,38 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 
 /* energijske karte: pokaži cel simbol (contain), ne odreži */
 .card-art-energy .card-art-img { object-fit: cover; object-position: center; padding: 0; }
+
+/* ---------------------- ATTACK FX -------------------------------- */
+/* napadalec se zažene proti tarči */
+@keyframes lungeAnim {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(var(--lunge-y, -14px)) scale(1.04); }
+  100% { transform: translateY(0); }
+}
+.champ.lunge { animation: lungeAnim 0.34s cubic-bezier(.4,1.4,.5,1); z-index: 10; }
+
+/* floating damage number */
+.floating-dmg {
+  position: absolute; left: 50%; top: 30%; transform: translateX(-50%);
+  z-index: 30; pointer-events: none; text-align: center;
+  animation: floatUp 1.05s ease-out forwards;
+}
+.floating-dmg .fd-num {
+  display: block; font-family: Georgia, serif; font-weight: 800;
+  font-size: 40px; color: #ff5e4d;
+  text-shadow: 0 2px 0 #5a0e08, 0 0 20px rgba(255,94,77,0.8), 0 4px 14px rgba(0,0,0,0.6);
+}
+.floating-dmg.zero .fd-num { color: #cfcfdf; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
+.floating-dmg .fd-tag {
+  display: inline-block; margin-top: 2px; font-family: "SF Mono", monospace;
+  font-size: 10px; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 999px;
+  background: rgba(0,0,0,0.6); color: #fff;
+}
+.floating-dmg .fd-tag.weak { color: #ff8a6b; box-shadow: 0 0 0 1px rgba(255,138,107,0.5); }
+.floating-dmg .fd-tag.resist { color: #7ab8ff; box-shadow: 0 0 0 1px rgba(122,184,255,0.5); }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.7); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.15); }
+  35% { transform: translateX(-50%) translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-54px) scale(0.95); }
+}

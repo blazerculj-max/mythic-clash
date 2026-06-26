@@ -798,7 +798,55 @@ function render() {
   // retreat mode highlight
   if (retreatMode) toast("Klikni rezervo za retreat (ali ponovno klikni za preklic).");
 
+  // animacija napada (lunge + shake + floating damage)
+  playAttackFx();
+
   window.clearShake && window.clearShake();
+}
+
+/* ---------------------- ATTACK FX -------------------------------- */
+function playAttackFx() {
+  const la = window.lastAttack;
+  if (!la) return;
+  window.clearLastAttack && window.clearLastAttack();
+
+  const targetZone = la.targetOwnerIndex === 0 ? "#you-zone" : "#opp-zone";
+  const attackerZone = la.attackerOwnerIndex === 0 ? "#you-zone" : "#opp-zone";
+  const targetNode = document.querySelector(`${targetZone} .active-champ`);
+  const attackerNode = document.querySelector(`${attackerZone} .active-champ`);
+
+  // lunge napadalca proti tarči
+  if (attackerNode) {
+    const dir = la.attackerOwnerIndex === 0 ? -1 : 1; // ti spodaj -> udari navzgor
+    attackerNode.style.setProperty("--lunge-y", `${dir * 14}px`);
+    attackerNode.classList.add("lunge");
+    setTimeout(() => attackerNode.classList.remove("lunge"), 360);
+  }
+
+  if (targetNode) {
+    const slot = targetNode.closest(".active-slot") || targetNode.parentNode;
+    // shake + flash z rahlim zamikom (ko "udari")
+    setTimeout(() => {
+      targetNode.classList.add("shake", "hit-flash");
+      setTimeout(() => targetNode.classList.remove("shake", "hit-flash"), 420);
+    }, 130);
+
+    // floating damage number (na slot, da ni odrezan)
+    if (la.damage > 0) {
+      const fd = el("div", "floating-dmg");
+      let extra = "";
+      if (la.weak) extra = `<span class="fd-tag weak">WEAK +20</span>`;
+      else if (la.resist) extra = `<span class="fd-tag resist">RESIST −20</span>`;
+      fd.innerHTML = `<span class="fd-num">−${la.damage}</span>${extra}`;
+      slot.appendChild(fd);
+      setTimeout(() => fd.remove(), 1100);
+    } else {
+      const fd = el("div", "floating-dmg zero");
+      fd.innerHTML = `<span class="fd-num">0</span><span class="fd-tag">BLOK</span>`;
+      slot.appendChild(fd);
+      setTimeout(() => fd.remove(), 1100);
+    }
+  }
 }
 
 function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
@@ -820,9 +868,8 @@ function renderZone(container, player, isYou) {
   const activeSlot = el("div", "active-slot");
   if (player.active) {
     const isTurnActive = (G.turn === G.players.indexOf(player));
-    const sh = (window.shakeTarget === player);
     const targetable = false;
-    const champNode = renderChampion(player.active, { active: true, isTurnActive, shake: sh && !isYou ? true : (sh && isYou) });
+    const champNode = renderChampion(player.active, { active: true, isTurnActive });
     activeSlot.appendChild(champNode);
   } else {
     const empty = el("div", "empty-active", isYou && G.awaitingNewActive === 0

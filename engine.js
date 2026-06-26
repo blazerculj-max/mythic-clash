@@ -460,6 +460,15 @@ function performAttack(attackIndex) {
 
   logMsg(p.name + ": " + def(a).name + " uporabi " + attack.name + " za " + dmg + " škode.");
   shakeTarget = o; // za UI animacijo
+  // podatki za UI animacijo (floating damage + lunge)
+  lastAttack = {
+    attackerOwnerIndex: G.players.indexOf(p),
+    targetOwnerIndex: G.players.indexOf(o),
+    damage: dmg,
+    attackName: attack.name,
+    weak: def(target).weakness === effectiveTypeOfAttack(attack),
+    resist: def(target).resistance === effectiveTypeOfAttack(attack),
+  };
 
   // efekt napada
   applyAttackEffect(attack, a, p, target, o);
@@ -478,6 +487,7 @@ function performAttack(attackIndex) {
 }
 
 let shakeTarget = null; // UI hint
+let lastAttack = null;  // zadnji napad za UI animacijo
 
 function applyAttackEffect(attack, attacker, attackerOwner, target, targetOwner) {
   switch (attack.effect) {
@@ -961,11 +971,14 @@ if (typeof window !== "undefined") {
     attachEnergy, canPayCost, performAttack, playReserveChampion,
     playRelic, playOracle, playRealm, ascend, retreat, freeSwap,
     chooseNewActive, aiTakeTurn, cur, opp, def, allChampions,
-    findAscensionInHand, omenRoll,
+    findAscensionInHand, omenRoll, makeInstance,
     GLORY_TO_WIN, MAX_RESERVE,
-    get shakeTarget() { return shakeTarget; },
     clearShake() { shakeTarget = null; },
+    clearLastAttack() { lastAttack = null; },
   });
+  // pravi živi getterji (Object.assign bi jih "sploščil" v statične vrednosti)
+  Object.defineProperty(window, "shakeTarget", { get() { return shakeTarget; }, configurable: true });
+  Object.defineProperty(window, "lastAttack", { get() { return lastAttack; }, configurable: true });
 }
 if (typeof module !== "undefined") {
   module.exports = {
