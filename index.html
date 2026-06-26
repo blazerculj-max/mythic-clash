@@ -41,6 +41,22 @@
           <li><strong>Weakness</strong> = napad istega tipa naredi +20 škode. <strong>Resistance</strong> = −20 škode.</li>
           <li><strong>Omen Roll</strong> je naključni 50/50 (Favorable / Dark Omen) za posebne učinke.</li>
         </ul>
+        <h3 style="margin-top:18px;">Statusi</h3>
+        <ul class="status-glossary">
+          <li><strong>🔥 Burn</strong> — −10 HP na koncu vsake tvoje poteze.</li>
+          <li><strong>❄️ Freeze</strong> — ne more retreatati; 50% odtajanje na začetku poteze.</li>
+          <li><strong>💫 Stun</strong> — ne more napasti naslednjo potezo.</li>
+          <li><strong>💀 Curse</strong> — napadi naredijo −10 škode.</li>
+          <li><strong>✨ Blessing</strong> — napadi naredijo +10 škode (2 potezi).</li>
+          <li><strong>🛡️ Shield</strong> — naslednji udarec −20 (enkratno).</li>
+          <li><strong>☠️ Poison</strong> — −10 HP na koncu poteze, vsako potezo +10 več.</li>
+        </ul>
+        <h3 style="margin-top:18px;">Učinkovitost napada</h3>
+        <ul>
+          <li><strong>150%</strong> (zeleno) — napad zadene šibkost (weakness) tarče.</li>
+          <li><strong>60%</strong> (rdeče) — tarča je odporna (resistance).</li>
+          <li><strong>Omen ✓</strong> — močni napadi (3+ energije) imajo 50% za ×1.3 bonus.</li>
+        </ul>
       </div>
 
       <footer class="credits">
@@ -121,6 +137,16 @@
 
   <!-- ============================ IN-GAME CONCEDE ============================ -->
   <button id="concede" class="concede-btn hidden">Predaja</button>
+  <button id="help-btn" class="help-btn hidden" title="Statusi in pravila">?</button>
+
+  <!-- glossar statusov (modal) -->
+  <div id="glossary-backdrop" class="modal-backdrop hidden">
+    <div class="modal glossary-modal">
+      <button id="glossary-close" class="modal-close" aria-label="Zapri">✕</button>
+      <h3 class="glossary-title">Statusi</h3>
+      <div id="glossary-body" class="glossary-body"></div>
+    </div>
+  </div>
 
   <!-- ============================ SCRIPTS (vrstni red je pomemben) ============================ -->
   <script src="cards.js"></script>

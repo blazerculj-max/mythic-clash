@@ -53,6 +53,7 @@ function startBattle() {
   $("#game-screen").classList.remove("hidden");
   $("#victory-screen").classList.add("hidden");
   $("#concede").classList.remove("hidden");
+  $("#help-btn").classList.remove("hidden");
   render();
 }
 
@@ -81,18 +82,34 @@ function energyDotsHtml(energyArr) {
   return energyArr.map(t => edotHtml(t)).join("");
 }
 
+/* Pojasnila statusov (točno kot deluje engine) */
+const STATUS_INFO = {
+  burn:     { name: "Burn",     icon: "burn",     short: "−10 HP na koncu vsake tvoje poteze." },
+  freeze:   { name: "Freeze",   icon: "freeze",   short: "Ne more retreatati. 50% možnost odtajanja na začetku poteze." },
+  stun:     { name: "Stun",     icon: "stun",     short: "Ne more napasti naslednjo potezo." },
+  curse:    { name: "Curse",    icon: "curse",    short: "Napadi tega bojevnika naredijo −10 škode." },
+  blessing: { name: "Blessing", icon: "blessing", short: "Napadi naredijo +10 škode (traja 2 potezi)." },
+  shield:   { name: "Shield",   icon: "shield",   short: "Naslednji prejeti udarec je −20 škode (enkratno)." },
+  poison:   { name: "Poison",   icon: "poison",   short: "−10 HP na koncu poteze, vsako potezo +10 več." },
+};
+
 function statusIcon(name) {
   return `<img class="status-img" src="art/status-${name}.png" alt="" onerror="this.style.display='none'">`;
 }
+function statusChip(key, label) {
+  const info = STATUS_INFO[key];
+  const tip = info ? `${info.name}: ${info.short}` : key;
+  return `<span class="status-chip st-${key}" title="${tip}" data-status="${key}">${statusIcon(info ? info.icon : key)}${label}</span>`;
+}
 function statusHtml(status) {
   const out = [];
-  if (status.burn) out.push(`<span class="status-chip st-burn">${statusIcon("burn")}BURN</span>`);
-  if (status.freeze) out.push(`<span class="status-chip st-freeze">${statusIcon("freeze")}FREEZE</span>`);
-  if (status.stun) out.push(`<span class="status-chip st-stun">${statusIcon("stun")}STUN</span>`);
-  if (status.curse) out.push(`<span class="status-chip st-curse">${statusIcon("curse")}CURSE</span>`);
-  if (status.blessing) out.push(`<span class="status-chip st-blessing">${statusIcon("blessing")}BLESS ${status.blessing}</span>`);
-  if (status.shield) out.push(`<span class="status-chip st-shield">${statusIcon("shield")}SHIELD</span>`);
-  if (status.poison) out.push(`<span class="status-chip st-poison">${statusIcon("poison")}POISON ${status.poison}</span>`);
+  if (status.burn) out.push(statusChip("burn", "BURN"));
+  if (status.freeze) out.push(statusChip("freeze", "FREEZE"));
+  if (status.stun) out.push(statusChip("stun", "STUN"));
+  if (status.curse) out.push(statusChip("curse", "CURSE"));
+  if (status.blessing) out.push(statusChip("blessing", `BLESS ${status.blessing}`));
+  if (status.shield) out.push(statusChip("shield", "SHIELD"));
+  if (status.poison) out.push(statusChip("poison", `POISON ${status.poison}`));
   return out.join("");
 }
 
@@ -996,6 +1013,7 @@ function showVictory() {
   $("#vstat-cards").textContent = you.stats.cardsDrawn;
   $("#victory-screen").classList.remove("hidden");
   $("#concede").classList.add("hidden");
+  $("#help-btn").classList.add("hidden");
 }
 
 /* ---------------------- WIRING ----------------------------------- */
@@ -1011,12 +1029,34 @@ window.addEventListener("DOMContentLoaded", () => {
     $("#game-screen").classList.add("hidden");
     $("#start-screen").classList.remove("hidden");
     $("#concede").classList.add("hidden");
+    $("#help-btn").classList.add("hidden");
     chosenDeck = null;
     $("#start-battle").disabled = true;
     document.querySelectorAll(".deck-card").forEach(c => c.classList.remove("selected"));
   });
   $("#concede").addEventListener("click", () => {
     if (G.players.length) { G.over = true; G.winner = 1; showVictory(); }
+  });
+
+  // glossar statusov (gumb "?")
+  $("#help-btn").addEventListener("click", () => {
+    const body = $("#glossary-body");
+    body.innerHTML = Object.keys(STATUS_INFO).map(k => {
+      const i = STATUS_INFO[k];
+      return `<div class="gloss-row">
+        <span class="gloss-icon">${statusIcon(i.icon)}</span>
+        <span class="gloss-text"><b>${i.name}</b><br>${i.short}</span>
+      </div>`;
+    }).join("") + `
+      <h3 class="glossary-title" style="margin-top:18px;">Učinkovitost</h3>
+      <div class="gloss-row"><span class="gloss-text"><b style="color:#7fe6a0;">150%</b> — napad zadene šibkost tarče.</span></div>
+      <div class="gloss-row"><span class="gloss-text"><b style="color:#ff8a8a;">60%</b> — tarča je odporna.</span></div>
+      <div class="gloss-row"><span class="gloss-text"><b style="color:#ffe39a;">Omen ✓</b> — močni napadi (3+ energije) imajo 50% za ×1.3 bonus.</span></div>`;
+    $("#glossary-backdrop").classList.remove("hidden");
+  });
+  $("#glossary-close").addEventListener("click", () => $("#glossary-backdrop").classList.add("hidden"));
+  $("#glossary-backdrop").addEventListener("click", (e) => {
+    if (e.target === $("#glossary-backdrop")) $("#glossary-backdrop").classList.add("hidden");
   });
   // klik izven kart prekliče izbiro/retreat
   $("#game-screen").addEventListener("click", () => {

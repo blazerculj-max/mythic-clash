@@ -589,3 +589,25 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 .eff-badge.eff-good { color: #1a2a14; background: #7fe6a0; }
 .eff-badge.eff-bad { color: #2a1414; background: #ff8a8a; }
 .floating-dmg .fd-tag.omen { color: #ffe39a; box-shadow: 0 0 0 1px rgba(255,210,80,0.6); margin-left: 4px; }
+
+/* ---------------------- Help button + glossary ------------------- */
+.help-btn {
+  position: fixed; top: 14px; right: 90px; z-index: 150;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(20,20,34,0.85); color: var(--gold-bright);
+  border: 1px solid var(--gold-dim); font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s, transform 0.1s;
+}
+.help-btn:hover { background: rgba(40,34,18,0.9); transform: translateY(-1px); }
+
+.status-chip { cursor: help; }
+
+.glossary-modal { max-width: 420px; padding: 26px 24px; }
+.glossary-title { color: var(--gold); font-family: Georgia, serif; font-size: 18px; margin-bottom: 14px; }
+.glossary-body { display: flex; flex-direction: column; gap: 12px; }
+.gloss-row { display: flex; gap: 11px; align-items: flex-start; }
+.gloss-icon { flex: 0 0 auto; }
+.gloss-icon .status-img { width: 24px; height: 24px; border-radius: 5px; }
+.gloss-text { font-size: 13px; line-height: 1.5; color: var(--ink-dim); }
+.gloss-text b { color: var(--ink); }
+.status-glossary li { margin-bottom: 5px; }
