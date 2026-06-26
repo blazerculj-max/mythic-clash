@@ -52,21 +52,21 @@ const STARTER_DECKS = {
     blurb: "Agresiven nordijski deck. Veliko War napadov, hitri pritisk in Thor, Storm Unleashed.",
     style: "Aggro • War • Burst",
     list: [
-      // 16 Champions — jedro War (Valkyrie, Fenrir) + Frost splash
-      ...rep("norse-valkyrie", 4),   // War, poceni agresija
-      ...rep("norse-fenrir", 3),     // War, velik damage
-      ...rep("norse-frostgiant", 2), // Frost body
-      ...rep("norse-freya", 2),      // Sky/War utility
+      // 16 Champions — jedro War, a manj eksplozivno (manj Valkyrie/Fenrir)
+      ...rep("norse-valkyrie", 3),   // War, poceni agresija (4->3)
+      ...rep("norse-fenrir", 2),     // War, velik damage (3->2)
+      ...rep("norse-frostgiant", 3), // Frost body (2->3, počasnejši wall)
+      ...rep("norse-freya", 3),      // Sky/War utility + heal (2->3)
       ...rep("norse-thor", 2),       // War/Sky
       ...rep("norse-loki", 1),       // Trickery splash
-      "norse-odin",                  // Wisdom/Sky
+      ...rep("norse-odin", 1),       // Wisdom/Sky draw (0->1, manj tempa)
       "norse-thor-asc",              // ascension
       // 14 Energy — War težišče + nekaj Sky/Frost
-      ...rep("energy-war", 8), ...rep("energy-sky", 3), ...rep("energy-frost", 3),
+      ...rep("energy-war", 7), ...rep("energy-sky", 3), ...rep("energy-frost", 4),
       // 6 Oracle
       ...rep("oracle-valkyries", 2),     // draw3
-      ...rep("oracle-prophecy-war", 2),  // blessing
-      "oracle-tricksters-bargain", "oracle-march-legion",
+      ...rep("oracle-prophecy-war", 1),  // blessing (2->1)
+      "oracle-tricksters-bargain", "oracle-march-legion", "oracle-ritual-rebirth",
       // 3 Relic
       ...rep("relic-runestone", 2), "relic-spear-mars",
       // 1 Realm
@@ -115,26 +115,27 @@ const STARTER_DECKS = {
     blurb: "Slovansko-keltski deck narave in statusov. Nadzor tempa, zdravljenje in prekletstva okoli Nature jedra.",
     style: "Nature • Status • Control",
     list: [
-      // 16 Champions — jedro Nature (Vesna, Druid, Cernunnos, Leshy) + nekaj splasha
-      ...rep("celtic-druid", 3),     // Nature, draw/utility
-      ...rep("slavic-vesna", 3),     // Nature, heal
-      ...rep("celtic-cernunnos", 2), // Nature body
-      ...rep("slavic-leshy", 2),     // Nature wall
-      ...rep("slavic-morana", 1),    // Frost splash
-      ...rep("slavic-svarog", 1),    // Fire splash
+      // 16 Champions — Nature jedro z VEČ udarne moči (manj golih 20-dmg teles)
+      ...rep("celtic-cernunnos", 3), // Nature body, 40/60 damage
+      ...rep("slavic-vesna", 2),     // Nature, heal (3->2)
+      ...rep("celtic-druid", 2),     // Nature draw (3->2)
+      ...rep("slavic-leshy", 2),     // Nature wall + freeze
+      ...rep("slavic-veles", 2),     // Underworld, 30/60 + curse (1->2)
+      ...rep("slavic-svarog", 1),    // Fire finisher 40/70
+      ...rep("slavic-morana", 1),    // Frost control + poison
       ...rep("celtic-brigid", 1),    // Fire/Nature heal
-      ...rep("slavic-babayaga", 1),  // Trickery/Nature
-      ...rep("celtic-morrigan", 1),  // Trickery
-      "slavic-veles",                // Underworld splash
-      // 14 Energy — Nature težišče + manjši splashi
+      ...rep("slavic-babayaga", 1),  // Trickery/Nature poison
+      ...rep("celtic-morrigan", 1),  // Trickery curse
+      // 14 Energy — Nature težišče + splashi za finisherje
       ...rep("energy-nature", 8), ...rep("energy-fire", 2),
-      ...rep("energy-frost", 2), ...rep("energy-trickery", 2),
+      ...rep("energy-underworld", 2), ...rep("energy-frost", 2),
       // 6 Oracle
       ...rep("oracle-tricksters-bargain", 2), // curse
-      ...rep("oracle-blessing-ancestors", 2), // heal reserve
-      "oracle-prophecy-war", "oracle-sandstorm-ra",
+      ...rep("oracle-blessing-ancestors", 1), // heal reserve (2->1)
+      ...rep("oracle-sandstorm-ra", 2),       // dmg30 (closing power!)
+      "oracle-prophecy-war",                  // blessing (+damage)
       // 3 Relic
-      "relic-veles-chain", ...rep("relic-druid-amulet", 2),
+      "relic-veles-chain", "relic-druid-amulet", "relic-spear-mars",
       // 1 Realm
       "realm-grove",
     ],
