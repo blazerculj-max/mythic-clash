@@ -902,9 +902,10 @@ function render() {
     // sredinski indeks; krajni listi rotirani navzven, sredina dvignjena (arc)
     const mid = (n - 1) / 2;
     const offset = i - mid;
-    const maxRot = Math.min(4, 16 / Math.max(1, n)); // manj rotacije pri več kartah
+    const maxRot = Math.min(3.5, 14 / Math.max(1, n)); // manj rotacije pri več kartah
     const rot = offset * maxRot;
-    const lift = -Math.pow(offset, 2) * (2.2 / Math.max(1, n)) * 4; // parabola: sredina višje
+    // arc: sredina rahlo nižja, robovi malo višji (naravna pahljača); blaga krivulja
+    const lift = Math.pow(offset, 2) * (1.6 / Math.max(1, n));
     node.style.setProperty("--fan-rot", rot.toFixed(2) + "deg");
     node.style.setProperty("--fan-lift", lift.toFixed(1) + "px");
     node.style.setProperty("--fan-i", i);
