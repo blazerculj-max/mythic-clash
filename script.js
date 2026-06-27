@@ -17,6 +17,43 @@ const el = (tag, cls, html) => {
   return e;
 };
 
+/* ---------------------- GSAP HELPERS ----------------------------- */
+// Vse animacije gredo skozi te ovojnice. Če GSAP ni naložen, igra deluje normalno.
+const hasGsap = () => typeof window.gsap !== "undefined";
+
+function fxScreenIn(node) {
+  if (!node) return;
+  if (!hasGsap()) return;
+  gsap.fromTo(node, { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power2.out" });
+}
+function fxDealHand(cards) {
+  if (!hasGsap() || !cards || !cards.length) return;
+  gsap.from(cards, {
+    y: 160, opacity: 0, rotateZ: 0, scale: 0.85,
+    duration: 0.45, ease: "back.out(1.4)", stagger: 0.05, clearProps: "opacity",
+  });
+}
+function fxChampEnter(node) {
+  if (!node || !hasGsap()) return;
+  gsap.fromTo(node, { scale: 0.7, opacity: 0, y: 14 },
+    { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: "back.out(1.6)" });
+}
+function fxLunge(attackerNode, dir) {
+  if (!attackerNode || !hasGsap()) return;
+  gsap.timeline()
+    .to(attackerNode, { y: dir * 22, scale: 1.06, duration: 0.12, ease: "power2.in" })
+    .to(attackerNode, { y: 0, scale: 1, duration: 0.28, ease: "elastic.out(1, 0.5)" });
+}
+function fxVictoryIn(node) {
+  if (!node || !hasGsap()) return;
+  const title = node.querySelector(".victory-title");
+  const rest = node.querySelectorAll(".victory-sub, .victory-stats, #play-again");
+  gsap.fromTo(node, { opacity: 0 }, { opacity: 1, duration: 0.4 });
+  if (title) gsap.fromTo(title, { scale: 0.5, opacity: 0, y: -20 },
+    { scale: 1, opacity: 1, y: 0, duration: 0.7, ease: "elastic.out(1, 0.55)", delay: 0.1 });
+  if (rest.length) gsap.from(rest, { y: 24, opacity: 0, duration: 0.5, stagger: 0.08, delay: 0.35, ease: "power2.out" });
+}
+
 /* ---------------------- START SCREEN ----------------------------- */
 let chosenDeck = null;
 
@@ -74,6 +111,8 @@ function startBattle() {
     $("#concede").classList.remove("hidden");
     $("#help-btn").classList.remove("hidden");
     render();
+    fxScreenIn($("#game-screen"));
+    fxDealHand(document.querySelectorAll("#hand .card"));
   });
 }
 
@@ -944,12 +983,16 @@ function playAttackFx() {
   const targetNode = document.querySelector(`${targetZone} .active-champ`);
   const attackerNode = document.querySelector(`${attackerZone} .active-champ`);
 
-  // lunge napadalca proti tarči
+  // lunge napadalca proti tarči (GSAP če na voljo, sicer CSS)
   if (attackerNode) {
     const dir = la.attackerOwnerIndex === 0 ? -1 : 1; // ti spodaj -> udari navzgor
-    attackerNode.style.setProperty("--lunge-y", `${dir * 14}px`);
-    attackerNode.classList.add("lunge");
-    setTimeout(() => attackerNode.classList.remove("lunge"), 360);
+    if (hasGsap()) {
+      fxLunge(attackerNode, dir);
+    } else {
+      attackerNode.style.setProperty("--lunge-y", `${dir * 14}px`);
+      attackerNode.classList.add("lunge");
+      setTimeout(() => attackerNode.classList.remove("lunge"), 360);
+    }
   }
 
   if (targetNode) {
@@ -1189,11 +1232,22 @@ function showVictory() {
   $("#victory-screen").classList.remove("hidden");
   $("#concede").classList.add("hidden");
   $("#help-btn").classList.add("hidden");
+  fxVictoryIn($("#victory-screen"));
 }
 
 /* ---------------------- WIRING ----------------------------------- */
 window.addEventListener("DOMContentLoaded", () => {
   buildStartScreen();
+  // animacija vstopa začetne strani
+  if (hasGsap()) {
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    tl.from(".title-block .eyebrow", { y: -16, opacity: 0, duration: 0.5 })
+      .from(".game-title", { y: 20, opacity: 0, scale: 0.92, duration: 0.7 }, "-=0.2")
+      .from(".tagline", { y: 14, opacity: 0, duration: 0.5 }, "-=0.4")
+      .from(".deck-select-block .eyebrow", { opacity: 0, duration: 0.4 }, "-=0.2")
+      .from(".deck-card", { y: 30, opacity: 0, duration: 0.5, stagger: 0.08 }, "-=0.2")
+      .from(".start-actions", { y: 16, opacity: 0, duration: 0.4 }, "-=0.2");
+  }
   $("#start-battle").addEventListener("click", startBattle);
   $("#start-battle").disabled = true;
   $("#rules-toggle").addEventListener("click", () => $("#rules-box").classList.toggle("hidden"));
