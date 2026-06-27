@@ -48,13 +48,90 @@ function startBattle() {
   // AI dobi naključen drug deck
   const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck);
   const aiDeck = others[Math.floor(Math.random() * others.length)];
-  window.startGame(chosenDeck, aiDeck);
-  $("#start-screen").classList.add("hidden");
-  $("#game-screen").classList.remove("hidden");
-  $("#victory-screen").classList.add("hidden");
-  $("#concede").classList.remove("hidden");
-  $("#help-btn").classList.remove("hidden");
-  render();
+
+  // zberi vse slike, ki jih bo bitka potrebovala (oba decka + statusi)
+  const ids = new Set();
+  [chosenDeck, aiDeck].forEach(dk => {
+    (STARTER_DECKS[dk].list || []).forEach(id => ids.add(id));
+  });
+  const urls = [...ids].map(id => `art/${id}.png`);
+  // energijske ikone (10) + statusi (7)
+  ["sky","war","wisdom","underworld","nature","trickery","fire","frost","sun","moon"]
+    .forEach(t => urls.push(`art/energy-${t}.png`));
+  ["burn","freeze","stun","curse","blessing","shield","poison"]
+    .forEach(s => urls.push(`art/status-${s}.png`));
+
+  showLoadingScreen();
+  preloadImages(urls, (done, total) => {
+    updateLoadingProgress(done, total);
+  }, () => {
+    // končano -> zaženi bitko
+    hideLoadingScreen();
+    window.startGame(chosenDeck, aiDeck);
+    $("#start-screen").classList.add("hidden");
+    $("#game-screen").classList.remove("hidden");
+    $("#victory-screen").classList.add("hidden");
+    $("#concede").classList.remove("hidden");
+    $("#help-btn").classList.remove("hidden");
+    render();
+  });
+}
+
+/* ---------------------- IMAGE PRELOADER -------------------------- */
+const _imgCache = {};
+function preloadImages(urls, onProgress, onDone) {
+  let done = 0;
+  const total = urls.length;
+  if (total === 0) { onDone(); return; }
+  let finished = false;
+  const finishOne = () => {
+    done++;
+    onProgress && onProgress(done, total);
+    if (done >= total && !finished) { finished = true; onDone(); }
+  };
+  // varovalo: ne čakaj večno (počasna povezava) — max 8s
+  const safety = setTimeout(() => { if (!finished) { finished = true; onDone(); } }, 8000);
+  urls.forEach(url => {
+    if (_imgCache[url]) { finishOne(); return; }
+    const img = new Image();
+    img.onload = () => { _imgCache[url] = true; finishOne(); };
+    img.onerror = () => { finishOne(); }; // manjkajoča slika ne blokira
+    img.src = url;
+  });
+  // počisti safety ko je done
+  const chk = setInterval(() => { if (finished) { clearTimeout(safety); clearInterval(chk); } }, 200);
+}
+
+function showLoadingScreen() {
+  let ls = document.getElementById("loading-screen");
+  if (!ls) {
+    ls = document.createElement("div");
+    ls.id = "loading-screen";
+    ls.innerHTML = `
+      <div class="ls-inner">
+        <div class="ls-symbols">⚡ ❄ 🦅 ☀ 🌲 🌙</div>
+        <div class="ls-title">MYTHIC CLASH</div>
+        <div class="ls-sub">Priklicujem bogove ...</div>
+        <div class="ls-bar"><div class="ls-fill" id="ls-fill"></div></div>
+        <div class="ls-pct" id="ls-pct">0%</div>
+      </div>`;
+    document.body.appendChild(ls);
+  }
+  ls.classList.remove("hidden");
+  requestAnimationFrame(() => ls.classList.add("visible"));
+}
+function updateLoadingProgress(done, total) {
+  const pct = Math.round(done / total * 100);
+  const fill = document.getElementById("ls-fill");
+  const lbl = document.getElementById("ls-pct");
+  if (fill) fill.style.width = pct + "%";
+  if (lbl) lbl.textContent = pct + "%";
+}
+function hideLoadingScreen() {
+  const ls = document.getElementById("loading-screen");
+  if (!ls) return;
+  ls.classList.remove("visible");
+  setTimeout(() => ls.classList.add("hidden"), 400);
 }
 
 /* ---------------------- ENERGY / cost render --------------------- */
@@ -310,7 +387,7 @@ function pantheonGlyph(d) {
    placeholder (gradient + simbol), ki je za njo. */
 function artImg(d, cls) {
   if (!d || !d.id) return "";
-  return `<img class="${cls}" src="art/${d.id}.png" alt="" loading="lazy"
+  return `<img class="${cls}" src="art/${d.id}.png" alt="" decoding="async"
     onerror="this.style.display='none'">`;
 }
 
@@ -816,10 +893,25 @@ function render() {
   // realm
   renderRealm();
 
-  // hand
+  // hand — pahljača (Balatro/Hearthstone stil)
   const handEl = $("#hand");
   handEl.innerHTML = "";
-  you.hand.forEach(inst => handEl.appendChild(renderHandCard(inst)));
+  const cards = you.hand.map(inst => renderHandCard(inst));
+  const n = cards.length;
+  cards.forEach((node, i) => {
+    // sredinski indeks; krajni listi rotirani navzven, sredina dvignjena (arc)
+    const mid = (n - 1) / 2;
+    const offset = i - mid;
+    const maxRot = Math.min(4, 16 / Math.max(1, n)); // manj rotacije pri več kartah
+    const rot = offset * maxRot;
+    const lift = -Math.pow(offset, 2) * (2.2 / Math.max(1, n)) * 4; // parabola: sredina višje
+    node.style.setProperty("--fan-rot", rot.toFixed(2) + "deg");
+    node.style.setProperty("--fan-lift", lift.toFixed(1) + "px");
+    node.style.setProperty("--fan-i", i);
+    node.style.zIndex = String(10 + i);
+    handEl.appendChild(node);
+  });
+  handEl.style.setProperty("--hand-n", String(n));
   $("#hand-count").textContent = you.hand.length;
 
   // actions
