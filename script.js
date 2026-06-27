@@ -1292,19 +1292,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (retreatMode) { retreatMode = false; render(); }
   });
 
-  // Pahljača: ko se dotakneš boarda, se roka umakne; ko greš nadnjo, se vrne.
-  const boardEl = () => document.querySelector(".board");
-  const oppZ = $("#opp-zone");
-  const youZ = $("#you-zone");
-  [oppZ, youZ].forEach(z => {
-    if (!z) return;
-    z.addEventListener("mouseenter", () => document.body.classList.add("board-focus"));
-  });
-  const handZone = $("#hand").closest(".hand-zone");
-  if (handZone) {
-    handZone.addEventListener("mouseenter", () => document.body.classList.remove("board-focus"));
-  }
-
   // drop v lastno cono = odigraj karto (champion v rezervo / oracle / realm / ascend)
   const youZone = $("#you-zone");
   youZone.addEventListener("dragover", (e) => {
