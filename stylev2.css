@@ -89,6 +89,18 @@
 .v2-cc { display: inline-flex; width: 14px; height: 14px; border-radius: 50%; align-items: center; justify-content: center; font-size: 9px; color: #06121f;
   background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--mc) 70%, white), var(--mc)); }
 
+/* vrstice napadov na championu/karti: [cena] [damage] */
+.v2-atks { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
+.v2-atk { display: flex; align-items: center; gap: 6px; padding: 2px 5px; border-radius: 6px;
+  background: rgba(255,255,255,0.04); font-size: 10px; opacity: 0.78; }
+.v2-atk.ok { opacity: 1; background: rgba(111,217,138,0.14); box-shadow: inset 0 0 0 1px rgba(111,217,138,0.3); }
+.v2-atk-cost { display: inline-flex; gap: 2px; }
+.v2-atk-dmg { margin-left: auto; font-family: "SF Mono", monospace; font-weight: 700; color: #ffb38a; }
+.v2-handcard .v2-atks { margin: 4px 6px 0; }
+.v2-handcard .v2-atk { font-size: 9px; }
+/* summon cena bolj izrazita */
+.v2-cost { font-weight: 800; box-shadow: 0 0 0 1px rgba(233,196,106,0.4); }
+
 /* panel reuse */
 .v2-panel .action-panel { flex: 0 0 auto; max-height: 55%; overflow-y: auto; }
 .v2-panel .log-panel { flex: 1; min-height: 0; }

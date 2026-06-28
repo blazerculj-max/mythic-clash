@@ -27,7 +27,25 @@
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function omenRoll() { return Math.random() < 0.5; }
   function def(inst) { return CARDS[inst.cardId]; }
-  function summonCostOf(d) { return Math.max(1, Math.round((d.hp || 60) / 35)); } // 70->2, 100->3, 140->4
+  // Summon cost (mana): balansiran po HP + najmočnejšem napadu + redkosti.
+  // Karta lahko ima ročni override d.summonCost.
+  const RARITY_FLOOR = { Common: 1, Uncommon: 1, Rare: 2, Epic: 3, Legendary: 4, Mythic: 5 };
+  function maxAtkDmg(d) { return Math.max(0, ...((d.attacks || []).map(a => a.damage || 0))); }
+  function summonCostOf(d) {
+    if (typeof d.summonCost === "number") return d.summonCost;
+    let cost = Math.round(((d.hp || 60) + maxAtkDmg(d) * 1.2) / 60);
+    if (d.stage === "ascended") cost += 1;
+    cost = Math.max(RARITY_FLOOR[d.rarity] || 1, cost);
+    return Math.max(1, Math.min(6, cost));
+  }
+  // Mana cost za ne-šampione (Oracle/Relic/Realm) — za ko pridejo v v2.
+  function manaCostOf(d) {
+    if (typeof d.manaCost === "number") return d.manaCost;
+    if (d.type === "Realm") return 3;
+    if (d.type === "Relic") return d.relicMode === "instant" ? 1 : 2;
+    if (d.type === "Oracle") return 2;
+    return 0; // Energy = ni cene (je resurs)
+  }
 
   const G = {
     players: [], turn: 0, turnCount: 1, log: [], over: false, winner: null,
@@ -509,7 +527,7 @@
   /* ---------------- exports ---------------- */
   const api = {
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
-    summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf,
+    summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf, manaCostOf,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
     BOARD_MAX, START_LIFE,
   };

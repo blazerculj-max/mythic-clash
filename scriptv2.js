@@ -125,10 +125,19 @@ function boardChamp(c, owner, isYou) {
     <div class="v2-champ-body">
       <div class="v2-champ-name">${d.name}</div>
       <div class="v2-hpbar"><div class="v2-hpfill ${pct <= 35 ? "low" : ""}" style="width:${pct}%"></div></div>
+      ${atkRowsHtml(d, isYou ? owner : null)}
       <div class="v2-status">${statusChips(c)}${kwMini(d)}</div>
     </div>`;
   node.addEventListener("click", () => onChampClick(c, owner, isYou));
   return node;
+}
+// vrstice napadov: cena (mana glyphi) + damage; označi plačljive (tvoja poteza)
+function atkRowsHtml(d, owner) {
+  if (!d.attacks || !d.attacks.length) return "";
+  return `<div class="v2-atks">` + d.attacks.map(a => {
+    const payable = owner && G.turn === 0 && !G.over && V2.canPay(owner, a.cost, d.id === "celtic-lugh");
+    return `<div class="v2-atk${payable ? " ok" : ""}"><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}</span></div>`;
+  }).join("") + `</div>`;
 }
 function statusChips(c) {
   const s = c.status || {}; const out = [];
@@ -159,7 +168,8 @@ function renderHand() {
     let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : "✦");
     node.innerHTML = `<div class="v2-hc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span>${cost}</div>
       <div class="v2-hc-body"><div class="v2-hc-name">${d.name}</div>
-      <div class="v2-hc-meta">${d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div></div>`;
+      <div class="v2-hc-meta">${d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
+      ${d.type === "Champion" ? atkRowsHtml(d, null) : ""}</div>`;
     node.addEventListener("click", () => onHandClick(inst));
     h.appendChild(node);
   });
