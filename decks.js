@@ -112,30 +112,89 @@ const STARTER_DECKS = {
     id: "spirits",
     name: "Forest of Spirits",
     pantheon: "Slavic",
-    blurb: "Slovansko-keltski deck narave in statusov. Nadzor tempa, zdravljenje in prekletstva okoli Nature jedra.",
+    blurb: "Slovanski deck narave in statusov. Nadzor tempa, zdravljenje, prekletstva in led okoli Nature jedra.",
     style: "Nature • Status • Control",
     list: [
-      // 16 Champions — Nature jedro z VEČ udarne moči (manj golih 20-dmg teles)
-      ...rep("celtic-cernunnos", 3), // Nature body, 40/60 damage
-      ...rep("slavic-vesna", 2),     // Nature, heal (3->2)
-      ...rep("celtic-druid", 2),     // Nature draw (3->2)
-      ...rep("slavic-leshy", 2),     // Nature wall + freeze
-      ...rep("slavic-veles", 2),     // Underworld, 30/60 + curse (1->2)
-      ...rep("slavic-svarog", 1),    // Fire finisher 40/70
-      ...rep("slavic-morana", 1),    // Frost control + poison
-      ...rep("celtic-brigid", 1),    // Fire/Nature heal
-      ...rep("slavic-babayaga", 1),  // Trickery/Nature poison
-      ...rep("celtic-morrigan", 1),  // Trickery curse
-      // 14 Energy — Nature težišče + splashi za finisherje
-      ...rep("energy-nature", 8), ...rep("energy-fire", 2),
-      ...rep("energy-underworld", 2), ...rep("energy-frost", 2),
+      // 16 Champions — Nature/Underworld/Fire jedro + več udarne moči
+      ...rep("slavic-svarog", 3),    // Fire finisher 40/70
+      ...rep("slavic-veles", 3),     // Underworld 30/60 + curse
+      ...rep("slavic-leshy", 2),     // Nature wall 30/50 + freeze
+      ...rep("slavic-perun", 2),     // 130HP Sky/War finisher 40/70
+      ...rep("slavic-morana", 2),    // Frost 30/60
+      ...rep("slavic-vesna", 2),     // Nature heal
+      ...rep("slavic-babayaga", 2),  // Trickery/Nature poison
+      // 14 Energy — Fire + Nature + Underworld + nekaj Sky (Perun)
+      ...rep("energy-fire", 4), ...rep("energy-nature", 4),
+      ...rep("energy-underworld", 3), ...rep("energy-sky", 2), ...rep("energy-frost", 1),
+      // 6 Oracle
+      ...rep("oracle-sandstorm-ra", 2),       // dmg30 (closing power)
+      ...rep("oracle-tricksters-bargain", 2), // curse
+      ...rep("oracle-prophecy-war", 2),       // blessing (+10 dmg)
+      // 3 Relic
+      ...rep("relic-veles-chain", 2), "relic-druid-amulet",
+      // 1 Realm
+      "realm-grove",
+    ],
+  },
+
+  /* ---------------------------------------------------------------- */
+  /* ROME — War/Wisdom legija. Disciplina, formacije,ščiti.            */
+  legion: {
+    id: "legion",
+    name: "Legion of Rome",
+    pantheon: "Roman",
+    blurb: "Rimski deck discipline. War napadi, formacije z rezervo, ščiti in Mars kot zaključek.",
+    style: "War • Formation • Shield",
+    list: [
+      // 16 Champions — War/Wisdom jedro
+      ...rep("roman-legionnaire", 3), // War, formacija (reserve reduce)
+      ...rep("roman-mars", 2),        // War finisher
+      ...rep("roman-minerva", 2),     // Wisdom
+      ...rep("roman-romulus", 2),     // War/Wisdom
+      ...rep("roman-vulcan", 2),      // Fire body
+      ...rep("roman-janus", 2),       // Wisdom utility
+      ...rep("roman-augur", 1),       // Wisdom draw
+      ...rep("roman-wolf", 2),        // Nature splash (Lupa)
+      // 14 Energy — War težišče + Wisdom + nekaj Fire
+      ...rep("energy-war", 7), ...rep("energy-wisdom", 4), ...rep("energy-fire", 3),
+      // 6 Oracle
+      ...rep("oracle-march-legion", 2),  // shieldAll
+      ...rep("oracle-prophecy-war", 2),  // blessing
+      ...rep("oracle-council-olympus", 2), // draw + attach
+      // 3 Relic
+      ...rep("relic-spear-mars", 2), "relic-shield-athena",
+      // 1 Realm
+      "realm-forum",
+    ],
+  },
+
+  /* ---------------------------------------------------------------- */
+  /* CELTIC — Nature/Sun/Trickery. Mistika, heal, raznolikost.         */
+  tirnanog: {
+    id: "tirnanog",
+    name: "Tir na nÓg",
+    pantheon: "Celtic",
+    blurb: "Keltski deck mistike. Nature in Sun moč, prekletstva, zdravljenje in junak Cúchulainn.",
+    style: "Nature • Sun • Mystic",
+    list: [
+      // 16 Champions — Nature/Sun jedro
+      ...rep("celtic-cernunnos", 3),  // Nature body 40/60
+      ...rep("celtic-druid", 2),      // Nature draw/heal
+      ...rep("celtic-cuchulainn", 2), // War finisher 80
+      ...rep("celtic-lugh", 2),       // Sun 40/60
+      ...rep("celtic-brigid", 2),     // Fire/Nature heal
+      ...rep("celtic-morrigan", 2),   // Trickery curse
+      ...rep("celtic-banshee", 1),    // Moon control
+      ...rep("celtic-faerie", 2),     // Trickery cheap
+      // 14 Energy — Nature težišče + Sun + Fire + Trickery
+      ...rep("energy-nature", 6), ...rep("energy-sun", 3),
+      ...rep("energy-fire", 2), ...rep("energy-trickery", 2), ...rep("energy-war", 1),
       // 6 Oracle
       ...rep("oracle-tricksters-bargain", 2), // curse
-      ...rep("oracle-blessing-ancestors", 1), // heal reserve (2->1)
-      ...rep("oracle-sandstorm-ra", 2),       // dmg30 (closing power!)
-      "oracle-prophecy-war",                  // blessing (+damage)
+      ...rep("oracle-blessing-ancestors", 2), // heal reserve
+      ...rep("oracle-ritual-rebirth", 2),     // heal active 60
       // 3 Relic
-      "relic-veles-chain", "relic-druid-amulet", "relic-spear-mars",
+      ...rep("relic-druid-amulet", 2), "relic-ankh",
       // 1 Realm
       "realm-grove",
     ],
