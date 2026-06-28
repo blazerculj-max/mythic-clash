@@ -510,6 +510,40 @@ function playSelectedCard() {
   return false;
 }
 
+/* ---- velika "spusti za igro" drop cona nad roko ---- */
+function ensurePlayDropZone() {
+  let z = document.getElementById("play-drop-zone");
+  if (z) return z;
+  z = document.createElement("div");
+  z.id = "play-drop-zone";
+  z.className = "play-drop-zone hidden";
+  z.innerHTML = `<div class="pdz-inner"><span class="pdz-icon">▾</span><span class="pdz-text">Spusti tukaj za igro karte</span></div>`;
+  z.addEventListener("dragover", (e) => {
+    if (!dragHandUid) return;
+    e.preventDefault();
+    z.classList.add("active");
+  });
+  z.addEventListener("dragleave", (e) => {
+    if (e.target === z) z.classList.remove("active");
+  });
+  z.addEventListener("drop", (e) => {
+    e.preventDefault();
+    z.classList.remove("active");
+    const sel = G.players[0] && G.players[0].hand.find(i => i.uid === dragHandUid);
+    hidePlayDropZone();
+    if (!sel) return;
+    selectedHandUid = sel.uid;
+    playSelectedCard();
+  });
+  document.body.appendChild(z);
+  return z;
+}
+function showPlayDropZone() { ensurePlayDropZone().classList.remove("hidden"); }
+function hidePlayDropZone() {
+  const z = document.getElementById("play-drop-zone");
+  if (z) { z.classList.add("hidden"); z.classList.remove("active"); }
+}
+
 function renderHandCard(inst) {
   const d = def(inst);
   const pan = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
@@ -580,11 +614,17 @@ function renderHandCard(inst) {
     e.dataTransfer.effectAllowed = "move";
     try { e.dataTransfer.setData("text/plain", inst.uid); } catch (_) {}
     document.body.classList.add("dragging-card");
+    // karte, ki se igrajo v lastno polje (ne energija/relic-attach), dobijo
+    // veliko drop cono čez ves prostor nad roko — že majhen dvig zadošča
+    const sd0 = def(inst);
+    const needsTarget = sd0.type === "Energy" || (sd0.type === "Relic" && sd0.relicMode === "attach");
+    if (!needsTarget) showPlayDropZone();
   });
   node.addEventListener("dragend", () => {
     dragHandUid = null;
     node.classList.remove("dragging");
     document.body.classList.remove("dragging-card");
+    hidePlayDropZone();
   });
 
   node.addEventListener("click", (e) => {
@@ -1209,6 +1249,9 @@ function openCardModal(d) {
   const mc = $("#modal-card");
   mc.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
   mc.style.setProperty("--c-accent", st.accent || "#888");
+  mc.style.setProperty("--rar-color", rar.color);
+  mc.style.setProperty("--rar-glow", rar.glow);
+  mc.dataset.rarity = d.rarity || "Common";
 
   let glyph = st.symbol;
   if (d.type === "Relic") glyph = "⚜";
@@ -1357,6 +1400,7 @@ function showVictory() {
   const winner = G.players[G.winner];
   const you = G.players[0];
   $("#victory-title").textContent = G.winner === 0 ? "ZMAGA" : "PORAZ";
+  $("#victory-screen").classList.toggle("defeat", G.winner !== 0);
   $("#victory-sub").textContent = G.winner === 0
     ? "Tvoj pantheon vlada areni." : `${winner.name} je zmagal. Pantheoni počakajo na maščevanje.`;
   $("#vstat-turns").textContent = G.turnCount;

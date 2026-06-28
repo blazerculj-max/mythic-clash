@@ -590,12 +590,7 @@ body.dragging-card .champ { transition: box-shadow 0.12s ease; }
   outline: 2px dashed var(--gold-bright); outline-offset: -4px;
   background: rgba(233,196,106,0.06);
 }
-/* namig pri vlečenju */
-body.dragging-card .zone-you::after {
-  content: "Spusti tukaj za igro karte";
-  position: absolute; top: 8px; right: 12px; font-size: 11px; color: var(--gold-bright);
-  font-family: "SF Mono", monospace; letter-spacing: 0.08em; pointer-events: none;
-}
+/* (stari namig odstranjen — nadomešča ga velika #play-drop-zone nad roko) */
 
 /* ---------------------- Champion drag & drop --------------------- */
 .champ[draggable="true"] { cursor: grab; }
@@ -956,3 +951,80 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
   color: rgba(154,150,168,0.35); font-style: normal; font-size: 18px;
   background: rgba(255,255,255,0.012);
 }
+
+/* ============================================================================
+   PLAY DROP ZONE (round 3) — velika lahko dosegljiva cona za igro kart
+============================================================================ */
+.play-drop-zone {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 158px; z-index: 120;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 26px;
+  border: 2px dashed transparent; border-radius: 20px;
+  background: linear-gradient(180deg, transparent 50%, rgba(233,196,106,0.05));
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.play-drop-zone.hidden { display: none; }
+.play-drop-zone.active {
+  border-color: rgba(255,217,122,0.7);
+  background: linear-gradient(180deg, rgba(233,196,106,0.04) 25%, rgba(233,196,106,0.16));
+}
+.pdz-inner {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(10,10,18,0.72); border: 1px solid var(--gold-dim); border-radius: 999px;
+  padding: 11px 24px; color: var(--gold-bright); font-family: "SF Mono", monospace;
+  font-size: 13px; letter-spacing: 0.06em; backdrop-filter: blur(6px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5); opacity: 0.82; transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+.play-drop-zone.active .pdz-inner { opacity: 1; box-shadow: 0 0 0 1px var(--gold-bright), 0 10px 36px rgba(233,196,106,0.4); }
+.pdz-icon { font-size: 17px; animation: pdzBounce 1.2s ease-in-out infinite; }
+@keyframes pdzBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+
+/* ============================================================================
+   ROUND 3 — card modal, victory/defeat, start screen polish
+============================================================================ */
+/* --- Card detail modal: rarity okvir + sij + vstop --- */
+.modal-card[data-rarity] { border-color: var(--rar-color); }
+.modal-card[data-rarity="Rare"],
+.modal-card[data-rarity="Epic"],
+.modal-card[data-rarity="Legendary"],
+.modal-card[data-rarity="Mythic"] {
+  box-shadow: 0 0 0 1px var(--rar-glow), 0 24px 70px rgba(0,0,0,0.65), 0 0 50px -12px var(--rar-glow);
+}
+.modal-card { animation: modalPop 0.22s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes modalPop { 0% { opacity: 0; transform: scale(0.92) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+.modal-card .m-art { height: 168px; }
+.modal-card .m-rarity {
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* --- Victory / Defeat zaslon --- */
+/* uskladi z dejanskimi razredi v index.html (.vstat-val / .vstat-label) */
+.vstat { display: flex; flex-direction: column-reverse; gap: 4px; }
+.vstat-val {
+  font-size: 34px; line-height: 1; color: var(--gold-bright); font-weight: 700;
+  font-family: Georgia, serif;
+}
+.vstat-label {
+  font-size: 11px; color: var(--ink-dim); font-family: "SF Mono", monospace;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.victory-title { text-shadow: 0 0 60px rgba(233,196,106,0.55), 0 4px 20px rgba(0,0,0,0.6); }
+.victory-stats .vstat { transition: transform 0.2s ease, border-color 0.2s ease; }
+.victory-stats .vstat:hover { transform: translateY(-3px); border-color: var(--gold-dim); }
+#play-again { margin-top: 4px; }
+/* poraz: rdeč ton namesto zlatega */
+#victory-screen.defeat {
+  background: radial-gradient(800px 500px at 50% 20%, rgba(255,80,70,0.14), transparent 60%), rgba(6,6,12,0.95);
+}
+#victory-screen.defeat .victory-title {
+  background: linear-gradient(180deg, #ffd9d2, #ff6b5e 55%, #7a241d);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 55px rgba(255,90,80,0.45), 0 4px 20px rgba(0,0,0,0.6);
+}
+#victory-screen.defeat .vstat-val { color: #ff8a7e; }
+
+/* --- Start screen: živ panteonski sij na deck karticah ob hoverju --- */
+.deck-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease; }
+.deck-card:hover .deck-symbol { transform: scale(1.12) translateY(-2px); transition: transform 0.25s cubic-bezier(.2,1.3,.4,1); }
+.deck-symbol { transition: transform 0.25s ease; will-change: transform; }
+.deck-card:hover { box-shadow: 0 16px 44px rgba(0,0,0,0.55), 0 0 26px -6px var(--gold-dim); }
