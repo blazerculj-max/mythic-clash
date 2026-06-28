@@ -433,7 +433,14 @@ function computeDamage(attacker, attackerOwner, defender, attack, options) {
   // Blessing
   if (attacker.status.blessing) dmg += 10;
   // Curse (na napadalcu) zmanjša
-  if (attacker.status.curse) dmg -= 10;
+  if (attacker.status.curse) {
+    dmg -= 10;
+    // Anubis, Lord of the Scales (asc): prekleti sovražniki dodatnih -10
+    const defenderOwner = ownerOf(defender);
+    if (defenderOwner && allChampions(defenderOwner).some(c => def(c).id === "egypt-anubis-asc")) {
+      dmg -= 10;
+    }
+  }
 
   // ability buffi po tipu energije
   if (atkType === "Sky" && ["greek-zeus", "slavic-perun"].includes(ad.id)) dmg += 10;
@@ -544,7 +551,9 @@ function computeEffectiveness(attacker, attackerOwner, defender, attack, atkType
 
   // 1) Type matchup
   if (atkType) {
-    if (dd.weakness === atkType) { mult *= 1.5; parts.push({ k: "WEAK", v: "×1.5", good: true }); }
+    // Loki Shapeshifter: nima weakness
+    const lokiNoWeak = dd.id === "norse-loki";
+    if (dd.weakness === atkType && !lokiNoWeak) { mult *= 1.5; parts.push({ k: "WEAK", v: "×1.5", good: true }); }
     else if (dd.resistance === atkType) { mult *= 0.6; parts.push({ k: "RESIST", v: "×0.6", good: false }); }
   }
 
@@ -647,6 +656,14 @@ function performAttack(attackIndex) {
 
   // efekt napada
   applyAttackEffect(attack, a, p, target, o);
+
+  // Medusa Stone Curse: ko je napadena, Omen Roll -> napadalec preklet
+  if (def(target).id === "greek-medusa" && target.damage < target.maxHp) {
+    if (omenRoll()) {
+      a.status.curse = true;
+      logMsg(def(a).name + " je okamnel pod Medusinim pogledom (Curse)!");
+    }
+  }
 
   // preveri poraz branilca
   resolveDefeatCheck(o);
@@ -935,6 +952,12 @@ function playOracle(player, inst) {
     default: break;
   }
   if (bonusDraw) { drawCard(player, bonusDraw); logMsg(player.name + ": dodatni vlek (Baba Yaga/Sphinx)."); }
+  // Minerva Strategist: 1×/turn dodaten vlek ob Oraclu
+  if (allChampions(player).some(c => def(c).id === "roman-minerva") && !player.drawnAbilityUsed.minerva) {
+    player.drawnAbilityUsed.minerva = true;
+    drawCard(player, 1);
+    logMsg(player.name + ": Minerva izkoristi Strategist in vleče karto.");
+  }
   player.discard.push(inst);
   return { ok: true };
 }
@@ -994,6 +1017,19 @@ function ascend(player, baseChamp) {
 }
 
 /* ---------------------- Retreat ---------------------------------- */
+// Odin All-Father: 1×/turn plačaj 10 HP (Odinu) -> vleči karto
+function odinDraw(player) {
+  const odin = allChampions(player).find(c => def(c).id === "norse-odin");
+  if (!odin) return { ok: false, msg: "Nimaš Odina." };
+  if (player.drawnAbilityUsed.odin) return { ok: false, msg: "Odin je to potezo že uporabil All-Father." };
+  if (odin.damage >= odin.maxHp - 10) return { ok: false, msg: "Odin nima dovolj HP." };
+  player.drawnAbilityUsed.odin = true;
+  odin.damage += 10;
+  drawCard(player, 1);
+  logMsg(player.name + ": Odin plača 10 HP (All-Father) in vleče karto.");
+  return { ok: true };
+}
+
 function retreat(player, reserveInst) {
   const a = player.active;
   if (!a) return { ok: false };
@@ -1152,7 +1188,7 @@ if (typeof window !== "undefined") {
     playRelic, playOracle, playRealm, ascend, retreat, freeSwap,
     chooseNewActive, aiTakeTurn, cur, opp, def, allChampions,
     findAscensionInHand, omenRoll, makeInstance, previewDamage,
-    playerMulligan, keepHand, putCardsToBottom, chooseStartingActive,
+    playerMulligan, keepHand, putCardsToBottom, chooseStartingActive, odinDraw,
     GLORY_TO_WIN, MAX_RESERVE,
     clearShake() { shakeTarget = null; },
     clearLastAttack() { lastAttack = null; },

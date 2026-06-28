@@ -842,6 +842,18 @@ function renderActions() {
     if (a.justPlayed) panel.appendChild(el("div", "hint", "Ta bojevnik je bil pravkar postavljen in ne more napasti to potezo."));
   }
 
+  // Odin All-Father: gumb za plačilo 10 HP -> vlek
+  const odin = [p.active].concat(p.reserve).find(c => c && def(c).id === "norse-odin");
+  if (odin && !p.drawnAbilityUsed.odin && odin.damage < odin.maxHp - 10) {
+    const odinBtn = el("button", "action-btn ability", `⚡ Odin: plačaj 10 HP → vleci karto`);
+    odinBtn.addEventListener("click", () => {
+      const r = window.odinDraw(p);
+      flash(r);
+      render();
+    });
+    panel.appendChild(odinBtn);
+  }
+
   // End turn
   const endBtn = el("button", "action-btn end-turn", "Končaj potezo");
   endBtn.addEventListener("click", () => {

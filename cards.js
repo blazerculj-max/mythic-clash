@@ -180,7 +180,7 @@ const CARDS = {
     id: "norse-thor-asc", name: "Thor, Storm Unleashed", type: "Champion",
     pantheon: "Norse", rarity: "Mythic", stage: "ascended", ascendsFrom: "norse-thor", hp: 200,
     attacks: [
-      { name: "Storm Crush", cost: ["Sky", "War"], damage: 80, effect: null, text: "The heavens roar." },
+      { name: "Storm Crush", cost: ["Sky", "War"], damage: 70, effect: null, text: "The heavens roar." },
       { name: "Ragnarok Strike", cost: ["Sky", "War", "War"], damage: 150, effect: "selfDamage30",
         text: "Deals 150 damage. This Champion takes 30 recoil damage." }
     ],
@@ -230,8 +230,8 @@ const CARDS = {
     pantheon: "Norse", rarity: "Epic", stage: "basic", hp: 120,
     attacks: [
       { name: "Savage Bite", cost: ["War"], damage: 40, effect: null, text: "The chains will not hold forever." },
-      { name: "Devour", cost: ["War", "War"], damage: 90, effect: "selfDamage20",
-        text: "Deals 90 damage. Fenrir takes 20 recoil damage." }
+      { name: "Devour", cost: ["War", "War"], damage: 80, effect: "selfDamage20",
+        text: "Deals 80 damage. Fenrir takes 20 recoil damage." }
     ],
     ability: { name: "Unleashed", text: "If Fenrir has 60 or less HP, its attacks deal +20 damage." },
     weakness: "Sky", resistance: "War", retreatCost: 3,
@@ -284,7 +284,7 @@ const CARDS = {
       { name: "Calculated Strike", cost: ["Wisdom"], damage: 30, effect: null, text: "Every move is planned." },
       { name: "Battle Doctrine", cost: ["Wisdom", "War"], damage: 50, effect: "draw1", text: "Draw a card." }
     ],
-    ability: { name: "Strategist", text: "Your Relic cards cost no Energy to use." },
+    ability: { name: "Strategist", text: "Once per turn, when you play an Oracle, draw a card." },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 1,
     flavorText: "Wisdom is the sharpest blade.",
     deckTags: ["Legion"]
