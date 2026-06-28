@@ -115,14 +115,17 @@ function startBattle() {
   // AI dobi naključen drug starter deck (nikoli "custom")
   const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck && k !== "custom");
   const aiDeck = others[Math.floor(Math.random() * others.length)];
+  campaignMode = false; // navadna bitka
+  launchBattle(chosenDeck, aiDeck, chosenDifficulty);
+}
 
-  // zberi vse slike, ki jih bo bitka potrebovala (oba decka + statusi)
+// Skupni zagon bitke (preload + startGame + prehod) — uporabljata navadna igra in campaign.
+function launchBattle(playerDeckId, aiDeckId, difficulty) {
   const ids = new Set();
-  [chosenDeck, aiDeck].forEach(dk => {
+  [playerDeckId, aiDeckId].forEach(dk => {
     (STARTER_DECKS[dk].list || []).forEach(id => ids.add(id));
   });
   const urls = [...ids].map(id => `art/${id}.png`);
-  // energijske ikone (10) + statusi (7)
   ["sky","war","wisdom","underworld","nature","trickery","fire","frost","sun","moon"]
     .forEach(t => urls.push(`art/energy-${t}.png`));
   ["burn","freeze","stun","curse","blessing","shield","poison"]
@@ -132,17 +135,17 @@ function startBattle() {
   preloadImages(urls, (done, total) => {
     updateLoadingProgress(done, total);
   }, () => {
-    // končano -> zaženi bitko
     hideLoadingScreen();
-    window.startGame(chosenDeck, aiDeck, chosenDifficulty);
+    window.startGame(playerDeckId, aiDeckId, difficulty);
     $("#start-screen").classList.add("hidden");
+    const cs = document.getElementById("campaign-screen"); if (cs) cs.classList.add("hidden");
+    const bs = document.getElementById("builder-screen"); if (bs) bs.classList.add("hidden");
     $("#game-screen").classList.remove("hidden");
     $("#victory-screen").classList.add("hidden");
     $("#concede").classList.remove("hidden");
     $("#help-btn").classList.remove("hidden");
     render();
     fxScreenIn($("#game-screen"));
-    // igra se začne v mulligan fazi -> pokaži mulligan UI
     if (G.mulliganPhase) {
       showMulligan();
     } else {
@@ -321,6 +324,123 @@ function startCustomGame() {
   chosenDeck = "custom";
   document.getElementById("builder-screen").classList.add("hidden");
   startBattle();
+}
+
+/* ============================================================================
+   CAMPAIGN — pohod skozi panteone (zaporedje nasprotnikov + napredek)
+============================================================================ */
+const CAMPAIGN_STAGES = [
+  { name: "Olympus Strike",    ai: "olympus",  difficulty: "easy",   flavor: "Grški bogovi te kličejo v areno." },
+  { name: "Forest of Spirits", ai: "spirits",  difficulty: "easy",   flavor: "Slovanski duhovi šepetajo iz gozda." },
+  { name: "Sands of Eternity", ai: "eternity", difficulty: "normal", flavor: "Egipčanski panteon vstaja iz peska." },
+  { name: "Tir na nÓg",        ai: "tirnanog", difficulty: "normal", flavor: "Keltska megla skriva starodavne junake." },
+  { name: "Legion of Rome",    ai: "legion",   difficulty: "hard",   flavor: "Rimske legije ne poznajo umika." },
+  { name: "Ragnarok Fury",     ai: "ragnarok", difficulty: "hard",   flavor: "Zadnji boj: nordijski konec sveta." },
+];
+const DIFF_LABEL = { easy: "Lahko", normal: "Normalno", hard: "Težko" };
+let campaignMode = false;
+let campaignStage = 0;
+let campaignDeck = null;
+const CAMPAIGN_KEY = "mythic-campaign-v1";
+
+function loadCampaign() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CAMPAIGN_KEY));
+    if (s && typeof s.stage === "number") { campaignStage = s.stage; campaignDeck = s.deck || null; }
+  } catch (_) {}
+}
+function saveCampaign() {
+  try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify({ stage: campaignStage, deck: campaignDeck })); } catch (_) {}
+}
+
+function ensureCampaignScreen() {
+  let scr = document.getElementById("campaign-screen");
+  if (scr) return scr;
+  scr = el("section", "screen hidden");
+  scr.id = "campaign-screen";
+  scr.innerHTML = `
+    <div class="camp-wrap">
+      <header class="camp-head">
+        <div><span class="eyebrow">Pohod skozi panteone</span><h2 class="camp-title">Campaign</h2></div>
+        <button id="camp-back" class="rules-toggle">← Nazaj</button>
+      </header>
+      <div class="camp-deck">
+        <span class="eyebrow">Tvoj deck za pohod</span>
+        <div id="camp-deckpick" class="camp-deckpick"></div>
+      </div>
+      <div id="camp-ladder" class="camp-ladder"></div>
+      <div class="camp-foot">
+        <button id="camp-reset" class="rules-toggle">Ponastavi napredek</button>
+        <button id="camp-start" class="btn-primary" disabled>Začni bitko</button>
+      </div>
+    </div>`;
+  document.body.appendChild(scr);
+  scr.querySelector("#camp-back").addEventListener("click", () => { scr.classList.add("hidden"); $("#start-screen").classList.remove("hidden"); });
+  scr.querySelector("#camp-start").addEventListener("click", startCampaignStage);
+  scr.querySelector("#camp-reset").addEventListener("click", () => { campaignStage = 0; saveCampaign(); renderCampaign(); });
+  return scr;
+}
+
+function openCampaign() {
+  ensureCampaignScreen();
+  loadCampaign();
+  if (!campaignDeck && chosenDeck && chosenDeck !== "custom") campaignDeck = chosenDeck;
+  $("#start-screen").classList.add("hidden");
+  const bs = document.getElementById("builder-screen"); if (bs) bs.classList.add("hidden");
+  $("#victory-screen").classList.add("hidden");
+  $("#game-screen").classList.add("hidden");
+  document.getElementById("campaign-screen").classList.remove("hidden");
+  renderCampaign();
+}
+
+function renderCampaign() {
+  ensureCampaignScreen();
+  // deck picker (6 starterjev + custom če obstaja)
+  const dp = $("#camp-deckpick"); dp.innerHTML = "";
+  const decks = Object.values(STARTER_DECKS);
+  decks.forEach(dk => {
+    const st = PANTHEON_STYLE[dk.pantheon] || { symbol: "✦" };
+    const b = el("button", "camp-deck-chip" + (campaignDeck === dk.id ? " sel" : ""));
+    b.innerHTML = `<span class="cdc-sym">${st.symbol}</span> ${dk.id === "custom" ? "Tvoj deck" : dk.name}`;
+    b.addEventListener("click", () => { campaignDeck = dk.id; saveCampaign(); renderCampaign(); });
+    dp.appendChild(b);
+  });
+  // ladder
+  const lad = $("#camp-ladder"); lad.innerHTML = "";
+  CAMPAIGN_STAGES.forEach((s, i) => {
+    const state = i < campaignStage ? "done" : (i === campaignStage ? "current" : "locked");
+    const st = PANTHEON_STYLE[(STARTER_DECKS[s.ai] || {}).pantheon] || { symbol: "✦" };
+    const row = el("div", "camp-stage " + state);
+    const mark = state === "done" ? "✓" : (state === "current" ? "▶" : "🔒");
+    row.innerHTML = `
+      <span class="camp-stnum">${i + 1}</span>
+      <span class="camp-stsym">${st.symbol}</span>
+      <div class="camp-stinfo">
+        <div class="camp-stname">${s.name} <span class="camp-stdiff">${DIFF_LABEL[s.difficulty]}</span></div>
+        <div class="camp-stflavor">${s.flavor}</div>
+      </div>
+      <span class="camp-stmark">${mark}</span>`;
+    lad.appendChild(row);
+  });
+  // start button / completion
+  const startBtn = $("#camp-start");
+  const done = campaignStage >= CAMPAIGN_STAGES.length;
+  if (done) {
+    startBtn.textContent = "🏆 Pohod dokončan!";
+    startBtn.disabled = true;
+  } else {
+    const s = CAMPAIGN_STAGES[campaignStage];
+    startBtn.textContent = `Začni bitko ${campaignStage + 1}/${CAMPAIGN_STAGES.length}: ${s.name}`;
+    startBtn.disabled = !campaignDeck;
+  }
+}
+
+function startCampaignStage() {
+  if (!campaignDeck) { toast("Izberi svoj deck za pohod."); return; }
+  if (campaignStage >= CAMPAIGN_STAGES.length) return;
+  const s = CAMPAIGN_STAGES[campaignStage];
+  campaignMode = true;
+  launchBattle(campaignDeck, s.ai, s.difficulty);
 }
 
 /* ---------------------- IMAGE PRELOADER -------------------------- */
@@ -1630,20 +1750,86 @@ function showVictory() {
   $("#vstat-glory").textContent = you.glory;
   $("#vstat-damage").textContent = you.stats.damageDealt;
   $("#vstat-cards").textContent = you.stats.cardsDrawn;
+  // Campaign: napredek + ustrezni gumbi (sicer navadni "Igraj znova")
+  setupVictoryButtons();
+
   $("#victory-screen").classList.remove("hidden");
   $("#concede").classList.add("hidden");
   $("#help-btn").classList.add("hidden");
   fxVictoryIn($("#victory-screen"));
 }
 
+// Pripravi gumbe na victory zaslonu glede na način (navadna igra vs campaign)
+function setupVictoryButtons() {
+  const inner = document.querySelector(".victory-inner");
+  const playAgain = $("#play-again");
+  let camp = document.getElementById("campaign-actions");
+  if (!camp) {
+    camp = el("div", "campaign-actions");
+    camp.id = "campaign-actions";
+    if (inner) inner.appendChild(camp);
+  }
+  camp.innerHTML = "";
+
+  if (!campaignMode) { playAgain.style.display = ""; camp.style.display = "none"; return; }
+
+  playAgain.style.display = "none";
+  camp.style.display = "flex";
+
+  const won = G.winner === 0;
+  if (won) {
+    campaignStage = Math.min(CAMPAIGN_STAGES.length, campaignStage + 1);
+    saveCampaign();
+  }
+  const completed = won && campaignStage >= CAMPAIGN_STAGES.length;
+
+  if (completed) {
+    const sub = $("#victory-sub");
+    sub.textContent = "🏆 Premagal si vse panteone! Pohod je dokončan.";
+    const back = el("button", "btn-primary", "🏆 Nazaj na pohod");
+    back.addEventListener("click", () => { exitToCampaign(); });
+    camp.appendChild(back);
+  } else if (won) {
+    const next = CAMPAIGN_STAGES[campaignStage];
+    const sub = $("#victory-sub");
+    sub.textContent = `Naslednji izziv: ${next.name} (${DIFF_LABEL[next.difficulty]}).`;
+    const nextBtn = el("button", "btn-primary", "Naprej ▶");
+    nextBtn.addEventListener("click", () => { exitToCampaign(); });
+    camp.appendChild(nextBtn);
+  } else {
+    const retry = el("button", "btn-primary", "Poskusi znova");
+    retry.addEventListener("click", () => { $("#victory-screen").classList.add("hidden"); startCampaignStage(); });
+    const mapBtn = el("button", "rules-toggle", "Nazaj na pohod");
+    mapBtn.addEventListener("click", () => { exitToCampaign(); });
+    camp.appendChild(retry);
+    camp.appendChild(mapBtn);
+  }
+}
+
+function exitToCampaign() {
+  $("#victory-screen").classList.add("hidden");
+  $("#game-screen").classList.add("hidden");
+  $("#concede").classList.add("hidden");
+  $("#help-btn").classList.add("hidden");
+  openCampaign();
+}
+
 /* ---------------------- WIRING ----------------------------------- */
 window.addEventListener("DOMContentLoaded", () => {
   buildStartScreen();
   buildDifficultySelector();
-  // gumb za Deck builder na start zaslonu
+  // gumba za Campaign in Deck builder na start zaslonu
   (function () {
     const actions = document.querySelector(".start-actions");
-    if (actions && !document.getElementById("open-builder")) {
+    if (!actions) return;
+    if (!document.getElementById("open-campaign")) {
+      const c = el("button", "rules-toggle");
+      c.id = "open-campaign";
+      c.textContent = "⚔ Campaign";
+      c.addEventListener("click", openCampaign);
+      actions.appendChild(c);
+    }
+    if (!document.getElementById("open-builder")) {
       const b = el("button", "rules-toggle");
       b.id = "open-builder";
       b.textContent = "🛠 Sestavi svoj deck";
@@ -1651,6 +1837,7 @@ window.addEventListener("DOMContentLoaded", () => {
       actions.appendChild(b);
     }
   })();
+  loadCampaign();
   // animacija vstopa začetne strani
   if (hasGsap()) {
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });

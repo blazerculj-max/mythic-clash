@@ -1180,3 +1180,50 @@ body.targeting-champ .zone-you .reserve-label::after {
   .bld-side { position: static; }
   .bld-pool { max-height: none; }
 }
+
+/* ============================================================================
+   CAMPAIGN (round 4 pt.4)
+============================================================================ */
+#campaign-screen { position: relative; min-height: 100vh; overflow-x: hidden; padding: 28px 22px 60px; }
+.camp-wrap { max-width: 760px; margin: 0 auto; }
+.camp-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+.camp-title { font-family: Georgia, serif; font-size: 30px;
+  background: linear-gradient(180deg, #fff7e0, var(--gold) 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.camp-deck { margin-bottom: 22px; }
+.camp-deck .eyebrow { display: block; margin-bottom: 10px; }
+.camp-deckpick { display: flex; flex-wrap: wrap; gap: 8px; }
+.camp-deck-chip {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-family: inherit; font-size: 13px;
+  padding: 8px 14px; border-radius: 999px; color: var(--ink);
+  border: 1px solid var(--panel-edge); background: rgba(14,14,26,0.6);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.camp-deck-chip:hover { border-color: var(--gold-dim); }
+.camp-deck-chip.sel { border-color: var(--gold-bright); background: rgba(233,196,106,0.1); color: var(--gold-bright); }
+.cdc-sym { font-size: 16px; }
+
+.camp-ladder { display: flex; flex-direction: column; gap: 10px; }
+.camp-stage {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.camp-stage.done { opacity: 0.78; border-color: rgba(111,217,138,0.35); }
+.camp-stage.current { border-color: var(--gold-bright); box-shadow: 0 0 0 1px var(--gold-dim), 0 0 22px rgba(233,196,106,0.18); }
+.camp-stage.locked { opacity: 0.5; }
+.camp-stnum { font-family: "SF Mono", monospace; font-size: 13px; color: var(--ink-dim); width: 20px; text-align: center; }
+.camp-stsym { font-size: 26px; width: 34px; text-align: center; }
+.camp-stinfo { flex: 1; min-width: 0; }
+.camp-stname { font-family: Georgia, serif; font-size: 17px; color: var(--ink); }
+.camp-stdiff { font-family: "SF Mono", monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gold); background: rgba(233,196,106,0.12); padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+.camp-stflavor { font-size: 12px; color: var(--ink-dim); font-style: italic; margin-top: 2px; }
+.camp-stmark { font-size: 18px; }
+.camp-stage.current .camp-stmark { color: var(--gold-bright); }
+.camp-stage.done .camp-stmark { color: var(--good); }
+
+.camp-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 24px; }
+.camp-foot .btn-primary { flex: 1; padding: 14px 20px; font-size: 16px; }
+
+/* victory: campaign gumbi */
+.campaign-actions { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
