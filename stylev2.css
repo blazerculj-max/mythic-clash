@@ -110,6 +110,25 @@
 .v2-block-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .v2-block-choices .action-btn { text-align: left; }
 
+/* first-champion pick: razširjene karte (napadi + energije + sposobnost) */
+#v2-pick .mull-cards { gap: 12px; max-height: 76vh; overflow-y: auto; align-items: flex-start; }
+.v2-pickcard { width: 200px; cursor: pointer; text-align: left; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm); overflow: hidden; background: rgba(8,8,16,0.7); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.v2-pickcard:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 2px var(--gold-bright); }
+.v2-pick-art { height: 118px; position: relative; background: var(--c-grad); display: flex; align-items: center; justify-content: center; font-size: 34px; overflow: hidden; }
+.v2-pickcard .v2-champ-hp { top: 6px; right: 8px; }
+.v2-pick-body { padding: 8px 10px 11px; }
+.v2-pick-name { font-size: 13px; font-weight: 700; line-height: 1.12; }
+.v2-pick-meta { font-size: 10px; color: var(--ink-dim); font-family: "SF Mono", monospace; margin: 2px 0 6px; }
+.v2-pick-ability { font-size: 10.5px; color: var(--ink-dim); line-height: 1.4; background: rgba(233,196,106,0.08); border-radius: 6px; padding: 5px 7px; margin-bottom: 4px; }
+.v2-pick-ability b { color: var(--gold-bright); }
+.v2-pick-sec { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); font-family: "SF Mono", monospace; margin: 7px 0 3px; }
+.v2-pick-enrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.v2-pick-en { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink); }
+.v2-pick-en.none { color: var(--ink-dim); font-style: italic; }
+.v2-pick-wr { display: flex; gap: 12px; margin-top: 8px; font-size: 10px; font-family: "SF Mono", monospace; }
+.v2-pick-wr .wk { color: #ff7a7a; } .v2-pick-wr .rs { color: #7ab8ff; }
+
 @media (max-width: 900px) {
   .v2-arena { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; }
   .v2-panel { grid-column: 1; grid-row: 5; flex-direction: row; max-height: 24vh; }

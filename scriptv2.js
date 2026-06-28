@@ -56,13 +56,32 @@ function showFirstPick() {
   });
   $("#v2-pick").classList.remove("hidden");
 }
+function energiesUsed(d) {
+  const set = [...new Set((d.attacks || []).flatMap(a => a.cost || []).filter(c => c !== "Any"))];
+  if (!set.length) return `<span class="v2-pick-en none">brez specifične</span>`;
+  return set.map(t => { const s = ENERGY_STYLE[t] || { color: "#888", glyph: "✦" };
+    return `<span class="v2-pick-en"><span class="v2-cc" style="--mc:${s.color}">${s.glyph}</span> ${t}</span>`; }).join("");
+}
 function champPreviewCard(d) {
   const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
-  const n = el("div", "mull-card card");
+  const n = el("div", "mull-card v2-pickcard");
   n.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
-  n.innerHTML = `<div class="card-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${st.symbol}</span></div>
-    <div class="card-body"><div class="card-name">${d.name}</div>
-    <div class="card-meta">❤ ${d.hp} · ${d.pantheon}</div></div>`;
+  const wr = [];
+  if (d.weakness) wr.push(`<span class="wk">⚠ ${d.weakness}</span>`);
+  if (d.resistance) wr.push(`<span class="rs">🛡 ${d.resistance}</span>`);
+  n.innerHTML = `
+    <div class="v2-pick-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${st.symbol}</span>
+      <span class="v2-champ-hp">❤ ${d.hp}</span></div>
+    <div class="v2-pick-body">
+      <div class="v2-pick-name">${d.name} ${kwMini(d)}</div>
+      <div class="v2-pick-meta">${d.pantheon} · ${d.rarity}</div>
+      ${d.ability ? `<div class="v2-pick-ability"><b>${d.ability.name}.</b> ${d.ability.text}</div>` : ""}
+      <div class="v2-pick-sec">Napadi</div>
+      ${atkRowsHtml(d, null)}
+      <div class="v2-pick-sec">Energije</div>
+      <div class="v2-pick-enrow">${energiesUsed(d)}</div>
+      ${wr.length ? `<div class="v2-pick-wr">${wr.join("")}</div>` : ""}
+    </div>`;
   return n;
 }
 
