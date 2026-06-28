@@ -134,6 +134,7 @@ const CARDS = {
       { name: "Hoof Storm", cost: ["Sky", "Any"], damage: 50, effect: null, text: "A flurry from above." }
     ],
     ability: { name: "Free Flight", text: "Pegasus has no retreat cost." },
+    charge: true,
     weakness: "Frost", resistance: "Sky", retreatCost: 0,
     flavorText: "Born of sea foam and lightning.",
     deckTags: ["Olympus"]
@@ -234,6 +235,7 @@ const CARDS = {
         text: "Deals 80 damage. Fenrir takes 20 recoil damage." }
     ],
     ability: { name: "Unleashed", text: "If Fenrir has 60 or less HP, its attacks deal +20 damage." },
+    overload: 1,
     weakness: "Sky", resistance: "War", retreatCost: 3,
     flavorText: "When the chains break, the world ends.",
     deckTags: ["Ragnarok"]
@@ -502,6 +504,7 @@ const CARDS = {
       { name: "Death's Winter", cost: ["Frost", "Underworld"], damage: 60, effect: "poison", text: "The Defender is Poisoned." }
     ],
     ability: { name: "Withering Cold", text: "Frozen enemies take 10 extra damage from Morana's attacks." },
+    onEnter: { kind: "freezeEnemy" },
     weakness: "Fire", resistance: "Frost", retreatCost: 1,
     flavorText: "Where she walks, the harvest dies.",
     deckTags: ["Spirits"]
@@ -625,6 +628,7 @@ const CARDS = {
         text: "Deals 80 damage. This Champion takes 20 recoil damage." }
     ],
     ability: { name: "Battle Fury", text: "If Cu Chulainn has 50 or less HP, its attacks deal +20 damage." },
+    onDefeat: { kind: "damageEnemy", value: 30 },
     weakness: "Trickery", resistance: "War", retreatCost: 2,
     flavorText: "In battle frenzy, friend and foe both fear him.",
     deckTags: ["Spirits"]
@@ -649,6 +653,7 @@ const CARDS = {
       { name: "Death Wail", cost: ["Moon", "Underworld"], damage: 50, effect: null, text: "Her scream foretells the grave." }
     ],
     ability: { name: "Harbinger", text: "Cursed enemies take 10 extra damage from the Banshee." },
+    lifesteal: true,
     weakness: "Sun", resistance: "Moon", retreatCost: 1,
     flavorText: "Hear her cry and someone will die tonight.",
     deckTags: ["Spirits"]

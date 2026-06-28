@@ -283,6 +283,16 @@ function beginTurn(isFirstEver) {
   if (p.active) p.active.justPlayed = false;
   for (const r of p.reserve) r.justPlayed = false;
 
+  // KEYWORD: Preobremenitev — porabi zaklenjeno energijo na začetku poteze
+  for (const c of (p.active ? [p.active, ...p.reserve] : p.reserve)) {
+    if (c._overloadLock > 0) {
+      const lose = Math.min(c._overloadLock, c.energy.length);
+      for (let i = 0; i < lose; i++) c.energy.pop();
+      c._overloadLock = 0;
+      if (lose > 0) logMsg(p.name + ": " + def(c).name + " izgubi " + lose + " energije (Preobremenitev).");
+    }
+  }
+
   // Draw 1 — prvi igralec NE vleče na prvi potezi (zmanjša first-player advantage)
   if (!isFirstEver) {
     drawCard(p, 1);
@@ -645,13 +655,37 @@ function healChampion(champ, amount) {
   champ.damage = Math.max(0, champ.damage - amount);
 }
 
+/* ---------------------- Keyword učinki (generični) --------------- */
+/* Uporablja se za onEnter ("Klic ob vstopu") in onDefeat ("Poslednji dih").
+   eff = { kind, value }. source = bojevnik, owner = njegov lastnik. */
+function applyKwEffect(eff, source, owner) {
+  if (!eff || !owner) return;
+  const oppP = G.players[1 - G.players.indexOf(owner)];
+  const enemy = oppP && oppP.active;
+  const v = eff.value || 0;
+  switch (eff.kind) {
+    case "damageEnemy":
+      if (enemy) { applyRawDamage(enemy, oppP, v, "keyword"); resolveDefeatCheck(oppP); }
+      break;
+    case "draw": drawCard(owner, v || 1); logMsg(owner.name + ": keyword — vleče " + (v || 1) + "."); break;
+    case "heal": if (source) { healChampion(source, v || 20); logMsg(def(source).name + ": keyword — pozdravi " + (v || 20) + " HP."); } break;
+    case "healReserve": owner.reserve.forEach(c => healChampion(c, v || 10)); logMsg(owner.name + ": keyword — rezerva +" + (v || 10) + " HP."); break;
+    case "burnEnemy": if (enemy) { enemy.status.burn = true; logMsg(def(enemy).name + ": keyword — Burn."); } break;
+    case "freezeEnemy": if (enemy) { enemy.status.freeze = true; logMsg(def(enemy).name + ": keyword — Freeze."); } break;
+    case "stunEnemy": if (enemy) { enemy.status.stun = (enemy.status.stun || 0) + 1; logMsg(def(enemy).name + ": keyword — Stun."); } break;
+    case "curseEnemy": if (enemy) { enemy.status.curse = true; logMsg(def(enemy).name + ": keyword — Curse."); } break;
+    case "shieldSelf": if (source) { source.status.shield = true; logMsg(def(source).name + ": keyword — Shield."); } break;
+    case "blessSelf": if (source) { source.status.blessing = Math.max(source.status.blessing || 0, 2); logMsg(def(source).name + ": keyword — Blessing."); } break;
+  }
+}
+
 /* ---------------------- Napad ------------------------------------ */
 function performAttack(attackIndex) {
   if (G.over) return { ok: false };
   const p = cur();
   const a = p.active;
   if (!a) return { ok: false, msg: "Nimaš aktivnega bojevnika." };
-  if (a.justPlayed) return { ok: false, msg: "Ta bojevnik je bil pravkar postavljen in ne more napasti." };
+  if (a.justPlayed && !def(a).charge) return { ok: false, msg: "Ta bojevnik je bil pravkar postavljen in ne more napasti." };
   if (a.status.stun) return { ok: false, msg: def(a).name + " je omamljen in ne more napasti." };
 
   const attack = def(a).attacks[attackIndex];
@@ -703,6 +737,17 @@ function performAttack(attackIndex) {
   }
   // porabi shield (enkratno)
   if (target.status.shield && dmg > 0) delete target.status.shield;
+
+  // KEYWORD: Krvoses (Lifesteal) — napadalec se pozdravi za zadano škodo
+  if (def(a).lifesteal && dmg > 0) {
+    healChampion(a, dmg);
+    logMsg(def(a).name + " (Krvoses) se pozdravi za " + dmg + " HP.");
+  }
+  // KEYWORD: Preobremenitev (Overload) — zakleni energijo za naslednjo potezo
+  if (def(a).overload) {
+    a._overloadLock = (a._overloadLock || 0) + def(a).overload;
+    logMsg(def(a).name + " (Preobremenitev): " + def(a).overload + " energije zaklenjene za naslednjo potezo.");
+  }
 
   let omenMsg = "";
   if (heavyAttack) omenMsg = omenResult ? " (Omen ✓)" : " (Omen ✗)";
@@ -861,6 +906,11 @@ function defeatChampion(owner, champ) {
   if (owner.active === champ) owner.active = null;
   const ri = owner.reserve.indexOf(champ);
   if (ri >= 0) owner.reserve.splice(ri, 1);
+  // KEYWORD: Poslednji dih (onDefeat) — sproži se ob porazu tega bojevnika
+  if (def(champ).onDefeat) {
+    logMsg(def(champ).name + " — Poslednji dih!");
+    applyKwEffect(def(champ).onDefeat, champ, owner);
+  }
 }
 
 function onDefeatTriggers(loserOwner, winnerOwner) {
@@ -911,6 +961,7 @@ function chooseNewActive(playerIndex, reserveInst) {
   p.active.justPlayed = false; // nadomestni lahko napade ob naslednji potezi normalno
   G.awaitingNewActive = null;
   logMsg(p.name + " postavi " + def(p.active).name + " kot novega aktivnega.");
+  onEnterActive(p, p.active);
   // če je bil to konec napada nasprotnika, mora zdaj teči endTurn napadalca:
   // a ker je napad nasprotnika že končal turn pred izbiro? Ne — performAttack ni klical endTurn ker je awaiting.
   // Po izbiri: če je trenutni igralec na potezi ravno napadel, končaj turn.
@@ -935,6 +986,7 @@ function aiChooseNewActive(owner) {
   owner.active = owner.reserve.shift();
   owner.active.justPlayed = false;
   logMsg(owner.name + " postavi " + def(owner.active).name + " kot novega aktivnega.");
+  onEnterActive(owner, owner.active);
 }
 
 /* ---------------------- Igranje kart iz roke --------------------- */
@@ -1154,6 +1206,11 @@ function freeSwap(player, reserveInst) {
 function onEnterActive(player, inst) {
   if (!inst) return;
   const d = def(inst);
+  // KEYWORD: Klic ob vstopu (onEnter) — sproži se, ko bojevnik postane aktivni
+  if (d.onEnter) {
+    logMsg(def(inst).name + " — Klic ob vstopu!");
+    applyKwEffect(d.onEnter, inst, player);
+  }
   // "Refreshing Switch": ob vstopu bojevnik očisti Burn in Poison (sveža menjava)
   let cleaned = false;
   if (inst.status.burn) { delete inst.status.burn; cleaned = true; }
@@ -1309,7 +1366,7 @@ function aiTakeTurn(onStep, onDone) {
   // 6) napadi — normal/hard izbereta najboljši napad (lethal-aware prek previewDamage),
   //    easy 40% izbere naključen napad (manj optimalno)
   steps.push(() => {
-    if (!p.active || p.active.status.stun || p.active.justPlayed) { endTurnIfStillAI(); return; }
+    if (!p.active || p.active.status.stun || (p.active.justPlayed && !def(p.active).charge)) { endTurnIfStillAI(); return; }
     const enemyActive = o.active;
     const payable = (def(p.active).attacks || [])
       .map((atk, i) => ({ atk, i }))

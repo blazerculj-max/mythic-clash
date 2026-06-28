@@ -1227,3 +1227,22 @@ body.targeting-champ .zone-you .reserve-label::after {
 
 /* victory: campaign gumbi */
 .campaign-actions { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+
+/* ============================================================================
+   KEYWORDS (round 4 pt.5) — chipi v modalu + mini ikone na bojevniku
+============================================================================ */
+.m-keywords { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.kw-chip {
+  font-family: "SF Mono", monospace; font-size: 10.5px; letter-spacing: 0.02em;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--panel-edge);
+  background: rgba(255,255,255,0.04); color: var(--ink); cursor: help;
+}
+.kw-chip.kw-charge    { color: #ffe49a; border-color: rgba(255,217,74,0.4); background: rgba(255,217,74,0.10); }
+.kw-chip.kw-lifesteal { color: #ff9bb0; border-color: rgba(255,90,120,0.4); background: rgba(255,90,120,0.10); }
+.kw-chip.kw-overload  { color: #c8b8ff; border-color: rgba(150,120,255,0.4); background: rgba(150,120,255,0.10); }
+.kw-chip.kw-enter     { color: #a7f0bd; border-color: rgba(111,217,138,0.4); background: rgba(111,217,138,0.10); }
+.kw-chip.kw-defeat    { color: #d2adff; border-color: rgba(176,107,255,0.4); background: rgba(176,107,255,0.10); }
+
+/* mini ikone keywordov na bojevniku v igri */
+.kw-mini { display: inline-flex; gap: 3px; margin-left: 5px; vertical-align: middle; }
+.kw-mini span { font-size: 10px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6)); }

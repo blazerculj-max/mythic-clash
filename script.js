@@ -651,7 +651,7 @@ function renderChampion(inst, opts = {}) {
     </div>
     <div class="champ-body">
       <div class="champ-name">${d.name}</div>
-      <div class="champ-tags">${d.pantheon} · ${d.rarity}${d.stage === "ascended" ? " · ASCENDED" : ""}</div>
+      <div class="champ-tags">${d.pantheon} · ${d.rarity}${d.stage === "ascended" ? " · ASCENDED" : ""}${keywordMini(d)}</div>
       <div class="hp-bar"><div class="hp-fill ${pct <= 35 ? "low" : ""}" style="width:${pct}%"></div></div>
       <div class="energy-dots">${energyDotsHtml(inst.energy)}</div>
       ${inst.relic ? `<span class="relic-chip">⚜ ${CARDS[inst.relic].name}</span>` : ""}
@@ -1069,7 +1069,7 @@ function doAttackGesture() {
   const a = p.active;
   if (G.turn !== 0 || G.over || !a) return;
   if (a.status.stun) { toast("Tvoj bojevnik je omamljen to potezo."); return; }
-  if (a.justPlayed) { toast("Pravkar postavljen bojevnik ne more napasti to potezo."); return; }
+  if (a.justPlayed && !dd.charge) { toast("Pravkar postavljen bojevnik ne more napasti to potezo."); return; }
   const dd = def(a);
   // izberi najmočnejši napad, ki ga lahko plačaš
   let best = -1, bestDmg = -1;
@@ -1193,7 +1193,7 @@ function renderActions() {
     const dd = def(a);
     const enemyActive = G.players[1] && G.players[1].active;
     dd.attacks.forEach((atk, i) => {
-      const can = canPayCost(a, atk.cost) && !a.status.stun && !a.justPlayed;
+      const can = canPayCost(a, atk.cost) && !a.status.stun && (!a.justPlayed || dd.charge);
       const btn = el("button", "action-btn attack");
       // predogled škode proti dejanskemu nasprotniku
       let dmgLabel = `${atk.damage} dmg`;
@@ -1221,7 +1221,7 @@ function renderActions() {
       panel.appendChild(btn);
     });
     if (a.status.stun) panel.appendChild(el("div", "hint", "Tvoj bojevnik je omamljen to potezo."));
-    if (a.justPlayed) panel.appendChild(el("div", "hint", "Ta bojevnik je bil pravkar postavljen in ne more napasti to potezo."));
+    if (a.justPlayed && !dd.charge) panel.appendChild(el("div", "hint", "Ta bojevnik je bil pravkar postavljen in ne more napasti to potezo."));
   }
 
   // Odin All-Father: gumb za plačilo 10 HP -> vlek
@@ -1584,6 +1584,43 @@ function gloryPips(n) {
   return s;
 }
 
+/* ---------------------- Keyword opisi (UI) ---------------------- */
+function kwEffectDesc(eff) {
+  if (!eff) return "";
+  const v = eff.value || 0;
+  switch (eff.kind) {
+    case "damageEnemy": return `${v} škode nasprotniku`;
+    case "draw": return `vleče ${v || 1} kart`;
+    case "heal": return `pozdravi ${v || 20} HP`;
+    case "healReserve": return `rezerva +${v || 10} HP`;
+    case "burnEnemy": return "nasprotnik Burn";
+    case "freezeEnemy": return "nasprotnik Freeze";
+    case "stunEnemy": return "nasprotnik Stun";
+    case "curseEnemy": return "nasprotnik Curse";
+    case "shieldSelf": return "Shield nase";
+    case "blessSelf": return "Blessing nase";
+    default: return "poseben učinek";
+  }
+}
+function keywordMini(d) {
+  const ic = [];
+  if (d.charge)    ic.push(`<span title="Naval">⚡</span>`);
+  if (d.lifesteal) ic.push(`<span title="Krvoses">🩸</span>`);
+  if (d.overload)  ic.push(`<span title="Preobremenitev">⛓</span>`);
+  if (d.onEnter)   ic.push(`<span title="Klic ob vstopu">➹</span>`);
+  if (d.onDefeat)  ic.push(`<span title="Poslednji dih">☠</span>`);
+  return ic.length ? `<span class="kw-mini">${ic.join("")}</span>` : "";
+}
+function keywordChips(d) {
+  const chips = [];
+  if (d.charge)    chips.push(`<span class="kw-chip kw-charge" title="Lahko napade isti turn">⚡ Naval</span>`);
+  if (d.lifesteal) chips.push(`<span class="kw-chip kw-lifesteal" title="Napad pozdravi napadalca">🩸 Krvoses</span>`);
+  if (d.overload)  chips.push(`<span class="kw-chip kw-overload" title="Zakleni ${d.overload} energije naslednji turn">⛓ Preobremenitev ${d.overload}</span>`);
+  if (d.onEnter)   chips.push(`<span class="kw-chip kw-enter" title="Ob vstopu v areno">➹ Klic ob vstopu: ${kwEffectDesc(d.onEnter)}</span>`);
+  if (d.onDefeat)  chips.push(`<span class="kw-chip kw-defeat" title="Ob porazu">☠ Poslednji dih: ${kwEffectDesc(d.onDefeat)}</span>`);
+  return chips.join("");
+}
+
 /* ---------------------- CARD MODAL ------------------------------- */
 function openCardModal(d) {
   const back = $("#modal-backdrop");
@@ -1606,6 +1643,8 @@ function openCardModal(d) {
   if (d.type === "Champion") {
     body += `<div class="m-sub">${d.pantheon} · ${d.rarity} · ${d.stage}${d.hp ? " · " + d.hp + " HP" : ""}</div>`;
     if (d.ability) body += `<div class="m-ability"><b>${d.ability.name}.</b> ${d.ability.text}</div>`;
+    const kw = keywordChips(d);
+    if (kw) body += `<div class="m-keywords">${kw}</div>`;
     (d.attacks || []).forEach(at => {
       body += `<div class="m-attack">
         <div class="at-head"><span class="at-name">${at.name}</span><span class="at-dmg">${at.damage}</span></div>
