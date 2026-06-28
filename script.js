@@ -205,13 +205,13 @@ function energyDotsHtml(energyArr) {
 
 /* Pojasnila statusov (točno kot deluje engine) */
 const STATUS_INFO = {
-  burn:     { name: "Burn",     icon: "burn",     short: "−10 HP na koncu vsake tvoje poteze." },
-  freeze:   { name: "Freeze",   icon: "freeze",   short: "Ne more retreatati. 50% možnost odtajanja na začetku poteze." },
-  stun:     { name: "Stun",     icon: "stun",     short: "Ne more napasti naslednjo potezo." },
-  curse:    { name: "Curse",    icon: "curse",    short: "Napadi tega bojevnika naredijo −10 škode." },
-  blessing: { name: "Blessing", icon: "blessing", short: "Napadi naredijo +10 škode (traja 2 potezi)." },
+  burn:     { name: "Burn",     icon: "burn",     short: "−15 HP na koncu poteze (−20 če je tudi Poison)." },
+  freeze:   { name: "Freeze",   icon: "freeze",   short: "Ne more retreatati; 50% odtajanje. Zamrznjena tarča prejme +20% škode." },
+  stun:     { name: "Stun",     icon: "stun",     short: "Ne more napasti naslednjo potezo. Tarča prejme +10% škode." },
+  curse:    { name: "Curse",    icon: "curse",    short: "Napadi tega bojevnika naredijo −15 škode." },
+  blessing: { name: "Blessing", icon: "blessing", short: "Napadi naredijo +15 škode (traja 2 potezi)." },
   shield:   { name: "Shield",   icon: "shield",   short: "Naslednji prejeti udarec je −20 škode (enkratno)." },
-  poison:   { name: "Poison",   icon: "poison",   short: "−10 HP na koncu poteze, vsako potezo +10 več." },
+  poison:   { name: "Poison",   icon: "poison",   short: "−15 HP na koncu poteze, vsako potezo +10 več." },
 };
 
 function statusIcon(name) {

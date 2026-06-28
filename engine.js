@@ -317,14 +317,17 @@ function endOfTurnEffects(p) {
   if (!p.active) return;
   const a = p.active;
 
-  // Burn
+  // Burn (15, prej 10)
   if (a.status.burn) {
-    applyRawDamage(a, p, 10, "Burn");
+    let burnDmg = 15;
+    // Searing: če je hkrati Burn IN Poison -> burn naredi +5 (sinergija)
+    if (a.status.poison) burnDmg += 5;
+    applyRawDamage(a, p, burnDmg, "Burn");
     if (resolveDefeatCheck(p)) return;
   }
-  // Poison (naraščajoč)
+  // Poison (naraščajoč: 15, 25, 35... prej 10,20,30)
   if (a.status.poison) {
-    const dmg = 10 * a.status.poison;
+    const dmg = 5 + 10 * a.status.poison;
     applyRawDamage(a, p, dmg, "Poison");
     a.status.poison++;
     if (resolveDefeatCheck(p)) return;
@@ -430,11 +433,11 @@ function computeDamage(attacker, attackerOwner, defender, attack, options) {
   const atkType = effectiveTypeOfAttack(attack);
 
   // --- napadalčevi modifikatorji (+) ---
-  // Blessing
-  if (attacker.status.blessing) dmg += 10;
-  // Curse (na napadalcu) zmanjša
+  // Blessing (+15, prej +10)
+  if (attacker.status.blessing) dmg += 15;
+  // Curse (na napadalcu) zmanjša (-15, prej -10)
   if (attacker.status.curse) {
-    dmg -= 10;
+    dmg -= 15;
     // Anubis, Lord of the Scales (asc): prekleti sovražniki dodatnih -10
     const defenderOwner = ownerOf(defender);
     if (defenderOwner && allChampions(defenderOwner).some(c => def(c).id === "egypt-anubis-asc")) {
@@ -448,6 +451,12 @@ function computeDamage(attacker, attackerOwner, defender, attack, options) {
   if (atkType === "Sun" && ad.id === "egypt-ra") dmg += 10;
   if (atkType === "Fire" && ad.id === "slavic-svarog") dmg += 10;
   if (atkType === "Nature" && ad.id === "celtic-cernunnos") dmg += 10;
+
+  // PANTHEON SINERGIJA: če imaš 3+ championov istega pantheona v igri -> +10 (mono nagrada)
+  if (ad.pantheon) {
+    const samePantheon = allChampions(attackerOwner).filter(c => def(c).pantheon === ad.pantheon).length;
+    if (samePantheon >= 3) dmg += 10;
+  }
 
   // Storm Authority (Zeus v igri): Sky napadi grških +10 — če je Zeus aktiven ali v rezervi
   if (atkType === "Sky" && ad.pantheon === "Greek" &&
@@ -561,6 +570,11 @@ function computeEffectiveness(attacker, attackerOwner, defender, attack, atkType
   const hpDiff = (attacker.maxHp || 0) - (defender.maxHp || 0);
   if (hpDiff >= 40) { mult *= 1.1; parts.push({ k: "PREVLADA", v: "×1.1", good: true }); }
   else if (hpDiff <= -40) { mult *= 0.92; parts.push({ k: "ŠIBKEJŠI", v: "×0.92", good: false }); }
+
+  // 2b) STATUS ranljivost: zamrznjena tarča je ranljiva (freeze = setup orodje)
+  if (defender.status && defender.status.freeze) { mult *= 1.2; parts.push({ k: "FROZEN", v: "×1.2", good: true }); }
+  // omamljena tarča (stun) prav tako rahlo ranljiva
+  if (defender.status && defender.status.stun) { mult *= 1.1; parts.push({ k: "STUN", v: "×1.1", good: true }); }
 
   // 3) Omen Roll na močnih napadih (3+ energije v ceni)
   const heavy = (attack.cost || []).length >= 3;
@@ -1051,6 +1065,7 @@ function retreat(player, reserveInst) {
   player.reserve.push(a);
   player.active = reserveInst;
   logMsg(player.name + " retreata. Nov aktivni: " + def(reserveInst).name + ".");
+  onEnterActive(player, reserveInst);
   return { ok: true };
 }
 
@@ -1065,7 +1080,30 @@ function freeSwap(player, reserveInst) {
   player.active = reserveInst;
   player._mayFreeSwap = false;
   logMsg(player.name + " zamenja aktivnega z " + def(reserveInst).name + ".");
+  onEnterActive(player, reserveInst);
   return { ok: true };
+}
+
+// Sproži se, ko bojevnik POSTANE aktivni (retreat/swap/nov aktivni) — daje benchu taktično vrednost.
+function onEnterActive(player, inst) {
+  if (!inst) return;
+  const d = def(inst);
+  // "Refreshing Switch": ob vstopu bojevnik očisti Burn in Poison (sveža menjava)
+  let cleaned = false;
+  if (inst.status.burn) { delete inst.status.burn; cleaned = true; }
+  if (inst.status.poison) { delete inst.status.poison; cleaned = true; }
+  if (cleaned) logMsg(def(inst).name + " se osveži ob vstopu (odstrani Burn/Poison).");
+
+  // Vesna / Brigid / Isis: ob vstopu zdravita 20 HP
+  if (["slavic-vesna", "celtic-brigid", "egypt-isis"].includes(d.id)) {
+    healChampion(inst, 20);
+    logMsg(def(inst).name + " ob vstopu zdravi 20 HP.");
+  }
+  // Romulus Rally: ob vstopu rezerva +10 HP vsak
+  if (d.id === "roman-romulus") {
+    for (const c of player.reserve) healChampion(c, 10);
+    logMsg("Romulus Rally: rezerva +10 HP.");
+  }
 }
 
 /* ---------------------- Konec igre ------------------------------- */
