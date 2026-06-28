@@ -90,6 +90,7 @@ function buildStartScreen() {
   const grid = $("#deck-grid");
   grid.innerHTML = "";
   for (const d of Object.values(STARTER_DECKS)) {
+    if (d.id === "custom") continue; // builderjev deck se ne pojavi med starterji
     const st = PANTHEON_STYLE[d.pantheon];
     const card = el("button", "deck-card");
     card.style.setProperty("--deck-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
@@ -111,8 +112,8 @@ function buildStartScreen() {
 
 function startBattle() {
   if (!chosenDeck) return;
-  // AI dobi naključen drug deck
-  const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck);
+  // AI dobi naključen drug starter deck (nikoli "custom")
+  const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck && k !== "custom");
   const aiDeck = others[Math.floor(Math.random() * others.length)];
 
   // zberi vse slike, ki jih bo bitka potrebovala (oba decka + statusi)
@@ -148,6 +149,178 @@ function startBattle() {
       fxDealHand(document.querySelectorAll("#hand .card"));
     }
   });
+}
+
+/* ============================================================================
+   DECK BUILDER — sestavi svoj 40-kartni deck iz celotnega bazena
+============================================================================ */
+const DECK_RULES = { Champion: 16, Energy: 14, Oracle: 6, Relic: 3, Realm: 1 };
+const CARD_CAP   = { Champion: 4,  Energy: 8,  Oracle: 3, Relic: 2, Realm: 1 };
+const TYPE_LABEL = { Champion: "Bojevniki", Energy: "Energije", Oracle: "Oracle", Relic: "Relikvije", Realm: "Realm" };
+const TYPE_ORDER = ["Champion", "Energy", "Oracle", "Relic", "Realm"];
+let builderDeck = {};          // cardId -> count
+let builderFilter = "Champion";
+
+function deckCounts() {
+  const c = { Champion: 0, Energy: 0, Oracle: 0, Relic: 0, Realm: 0, total: 0 };
+  for (const id in builderDeck) {
+    const d = CARDS[id]; if (!d) continue;
+    c[d.type] += builderDeck[id]; c.total += builderDeck[id];
+  }
+  return c;
+}
+function builderValid() {
+  const c = deckCounts();
+  return TYPE_ORDER.every(t => c[t] === DECK_RULES[t]);
+}
+function builderAdd(id) {
+  const d = CARDS[id]; if (!d) return;
+  const c = deckCounts();
+  if (c[d.type] >= DECK_RULES[d.type]) { toast(`${TYPE_LABEL[d.type]} so polni (${DECK_RULES[d.type]}).`); return; }
+  if ((builderDeck[id] || 0) >= (CARD_CAP[d.type] || 4)) { toast(`Največ ${CARD_CAP[d.type] || 4}× te karte.`); return; }
+  builderDeck[id] = (builderDeck[id] || 0) + 1;
+  renderBuilder();
+}
+function builderRemove(id) {
+  if (!builderDeck[id]) return;
+  builderDeck[id]--; if (builderDeck[id] <= 0) delete builderDeck[id];
+  renderBuilder();
+}
+function builderLoadStarter(deckId) {
+  const dk = STARTER_DECKS[deckId]; if (!dk) return;
+  builderDeck = {};
+  dk.list.forEach(id => { builderDeck[id] = (builderDeck[id] || 0) + 1; });
+  renderBuilder();
+}
+
+function ensureBuilderScreen() {
+  let scr = document.getElementById("builder-screen");
+  if (scr) return scr;
+  scr = el("section", "screen hidden");
+  scr.id = "builder-screen";
+  scr.innerHTML = `
+    <div class="bld-wrap">
+      <header class="bld-head">
+        <div><span class="eyebrow">Sestavi svoj deck</span><h2 class="bld-title">Kovačnica deckov</h2></div>
+        <button id="bld-back" class="rules-toggle">← Nazaj</button>
+      </header>
+      <div class="bld-body">
+        <div class="bld-pool-col">
+          <div id="bld-tabs" class="bld-tabs"></div>
+          <div id="bld-pool" class="bld-pool"></div>
+        </div>
+        <aside class="bld-side">
+          <div class="bld-prefill">
+            <span class="eyebrow">Začni s starterjem</span>
+            <div id="bld-starters" class="bld-starters"></div>
+          </div>
+          <div id="bld-summary" class="bld-summary"></div>
+          <div class="bld-actions">
+            <button id="bld-clear" class="rules-toggle">Počisti</button>
+            <button id="bld-play" class="btn-primary" disabled>Igraj s tem deckom</button>
+          </div>
+        </aside>
+      </div>
+    </div>`;
+  document.body.appendChild(scr);
+  scr.querySelector("#bld-back").addEventListener("click", closeBuilder);
+  scr.querySelector("#bld-clear").addEventListener("click", () => { builderDeck = {}; renderBuilder(); });
+  scr.querySelector("#bld-play").addEventListener("click", startCustomGame);
+  return scr;
+}
+
+function openBuilder() {
+  ensureBuilderScreen();
+  $("#start-screen").classList.add("hidden");
+  document.getElementById("builder-screen").classList.remove("hidden");
+  renderBuilder();
+}
+function closeBuilder() {
+  document.getElementById("builder-screen").classList.add("hidden");
+  $("#start-screen").classList.remove("hidden");
+}
+
+function builderPoolCard(d) {
+  const inDeck = builderDeck[d.id] || 0;
+  const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+  const rar = RARITY_STYLE[d.rarity] || RARITY_STYLE.Common;
+  const node = el("div", "bld-card" + (inDeck ? " in-deck" : ""));
+  node.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : energyGrad(d));
+  node.style.setProperty("--rar-color", rar.color);
+  node.dataset.rarity = d.rarity || "Common";
+  let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : "✦");
+  if (d.type === "Relic") glyph = "⚜"; if (d.type === "Oracle") glyph = "📜"; if (d.type === "Realm") glyph = "🏛";
+  node.innerHTML = `
+    <div class="bld-art">
+      ${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span>
+      <span class="rarity-bar"></span>
+      ${inDeck ? `<span class="bld-count">${inDeck}</span>` : ""}
+    </div>
+    <div class="bld-cn">${d.name}</div>
+    <div class="bld-cm">${d.type}${d.pantheon ? " · " + d.pantheon : ""}${d.rarity ? " · " + d.rarity : ""}</div>
+    <div class="bld-ctrls">
+      <button class="bld-minus" ${inDeck ? "" : "disabled"}>−</button>
+      <button class="bld-plus">+</button>
+    </div>`;
+  node.querySelector(".bld-plus").addEventListener("click", e => { e.stopPropagation(); builderAdd(d.id); });
+  node.querySelector(".bld-minus").addEventListener("click", e => { e.stopPropagation(); builderRemove(d.id); });
+  node.addEventListener("click", () => openCardModal(d));
+  return node;
+}
+
+function renderBuilder() {
+  ensureBuilderScreen();
+  // tabs
+  const tabs = $("#bld-tabs"); tabs.innerHTML = "";
+  const c = deckCounts();
+  TYPE_ORDER.forEach(t => {
+    const b = el("button", "bld-tab" + (builderFilter === t ? " sel" : ""));
+    b.innerHTML = `${TYPE_LABEL[t]} <span class="bld-tabn ${c[t] === DECK_RULES[t] ? "ok" : ""}">${c[t]}/${DECK_RULES[t]}</span>`;
+    b.addEventListener("click", () => { builderFilter = t; renderBuilder(); });
+    tabs.appendChild(b);
+  });
+  // pool
+  const pool = $("#bld-pool"); pool.innerHTML = "";
+  Object.values(CARDS)
+    .filter(d => d.type === builderFilter)
+    .sort((a, b) => (a.pantheon || "").localeCompare(b.pantheon || "") || (a.name || "").localeCompare(b.name || ""))
+    .forEach(d => pool.appendChild(builderPoolCard(d)));
+  // starters
+  const starters = $("#bld-starters"); starters.innerHTML = "";
+  Object.values(STARTER_DECKS).filter(d => d.id !== "custom").forEach(dk => {
+    const b = el("button", "bld-starter-btn", dk.name);
+    b.addEventListener("click", () => builderLoadStarter(dk.id));
+    starters.appendChild(b);
+  });
+  // summary
+  const sum = $("#bld-summary"); sum.innerHTML = "";
+  sum.appendChild(el("div", "bld-sum-title", `Deck: ${c.total}/40`));
+  TYPE_ORDER.forEach(t => {
+    const row = el("div", "bld-sum-row" + (c[t] === DECK_RULES[t] ? " ok" : (c[t] > DECK_RULES[t] ? " over" : "")));
+    row.innerHTML = `<span>${TYPE_LABEL[t]}</span><span>${c[t]} / ${DECK_RULES[t]}</span>`;
+    sum.appendChild(row);
+  });
+  const valid = builderValid();
+  $("#bld-play").disabled = !valid;
+  if (!valid) {
+    const need = TYPE_ORDER.filter(t => c[t] !== DECK_RULES[t]).map(t => TYPE_LABEL[t]).join(", ");
+    sum.appendChild(el("div", "bld-sum-hint", need ? "Uredi: " + need : ""));
+  } else {
+    sum.appendChild(el("div", "bld-sum-hint ok", "Deck je veljaven ✓"));
+  }
+}
+
+function startCustomGame() {
+  if (!builderValid()) { toast("Deck mora imeti točno 16 / 14 / 6 / 3 / 1 (skupaj 40)."); return; }
+  const list = [];
+  for (const id in builderDeck) for (let i = 0; i < builderDeck[id]; i++) list.push(id);
+  const pc = {};
+  list.forEach(id => { const d = CARDS[id]; if (d.type === "Champion" && d.pantheon) pc[d.pantheon] = (pc[d.pantheon] || 0) + 1; });
+  const pantheon = Object.keys(pc).sort((a, b) => pc[b] - pc[a])[0] || "Greek";
+  STARTER_DECKS.custom = { id: "custom", name: "Tvoj deck", pantheon, blurb: "Deck po meri.", style: "Custom", list };
+  chosenDeck = "custom";
+  document.getElementById("builder-screen").classList.add("hidden");
+  startBattle();
 }
 
 /* ---------------------- IMAGE PRELOADER -------------------------- */
@@ -648,12 +821,14 @@ function renderHandCard(inst) {
     const sd0 = def(inst);
     const needsTarget = sd0.type === "Energy" || (sd0.type === "Relic" && sd0.relicMode === "attach");
     if (!needsTarget) showPlayDropZone();
+    else document.body.classList.add("targeting-champ"); // poveča rezervo za lažji drop energije
   });
   node.addEventListener("dragend", () => {
     dragHandUid = null;
     node.classList.remove("dragging");
     document.body.classList.remove("dragging-card");
     hidePlayDropZone();
+    if (!selectedHandUid) document.body.classList.remove("targeting-champ");
   });
 
   node.addEventListener("click", (e) => {
@@ -1061,6 +1236,12 @@ function render() {
   // actions
   renderActions();
 
+  // ko izbereš energijo/relic-attach, označi bojevnike kot tarče (poveča rezervo za lažje pripenjanje)
+  const selT = selectedHandInst();
+  const targeting = !!(selT && G.turn === 0 && !G.over &&
+    (def(selT).type === "Energy" || (def(selT).type === "Relic" && def(selT).relicMode === "attach")));
+  document.body.classList.toggle("targeting-champ", targeting);
+
   // log
   const logList = $("#log-list");
   logList.innerHTML = "";
@@ -1459,6 +1640,17 @@ function showVictory() {
 window.addEventListener("DOMContentLoaded", () => {
   buildStartScreen();
   buildDifficultySelector();
+  // gumb za Deck builder na start zaslonu
+  (function () {
+    const actions = document.querySelector(".start-actions");
+    if (actions && !document.getElementById("open-builder")) {
+      const b = el("button", "rules-toggle");
+      b.id = "open-builder";
+      b.textContent = "🛠 Sestavi svoj deck";
+      b.addEventListener("click", openBuilder);
+      actions.appendChild(b);
+    }
+  })();
   // animacija vstopa začetne strani
   if (hasGsap()) {
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
