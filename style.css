@@ -206,7 +206,14 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.01em; line-height: 1.05; }
 
 .active-and-reserve { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; min-width: 0; }
 .active-slot { flex: 0 0 auto; position: relative; }
-.reserve-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 0; min-width: 0; }
+.reserve-row { display: flex; gap: 6px; flex-wrap: nowrap; flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; align-items: flex-start; }
+/* rezervni bojevniki so kompaktni (brez napad-info), da se vidijo VSI */
+.reserve-row .champ { width: 92px; flex: 0 0 92px; }
+.reserve-row .champ .champ-art { height: 72px; }
+.reserve-row .champ .champ-atk-list { display: none; }
+.reserve-row .champ .champ-name { font-size: 10px; }
+.reserve-row .champ .champ-tags { display: none; }
+.reserve-row .champ .relic-chip { font-size: 8px; }
 .reserve-label { font-size: 11px; color: var(--ink-dim); font-family: "SF Mono", monospace; letter-spacing: 0.12em; margin-bottom: 6px; }
 
 .realm-slot { display: flex; align-items: center; gap: 12px; }
