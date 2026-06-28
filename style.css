@@ -1045,3 +1045,35 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
 .diff-chip .diff-name { font-family: Georgia, serif; font-size: 15px; color: #fff; }
 .diff-chip.sel .diff-name { color: var(--gold-bright); }
 .diff-chip .diff-desc { font-size: 10px; color: var(--ink-dim); font-family: "SF Mono", monospace; letter-spacing: 0.03em; }
+
+/* ============================================================================
+   COMBAT DEPTH (round 4 pt.2) — Naklonjenost (Favor) + Combo
+============================================================================ */
+/* Favor toggle v akcijah */
+.action-btn.favor {
+  border-color: rgba(176,107,255,0.4);
+  background: rgba(176,107,255,0.08);
+  color: #d2adff;
+}
+.action-btn.favor:hover:not(:disabled) { background: rgba(176,107,255,0.16); border-color: #b06bff; }
+.action-btn.favor.armed {
+  border-color: #d2adff; color: #fff;
+  background: linear-gradient(180deg, rgba(176,107,255,0.3), rgba(176,107,255,0.12));
+  box-shadow: 0 0 0 1px #b06bff, 0 0 18px rgba(176,107,255,0.45);
+  animation: favorPulse 1.6s ease-in-out infinite;
+}
+@keyframes favorPulse { 0%,100% { box-shadow: 0 0 0 1px #b06bff, 0 0 12px rgba(176,107,255,0.35); } 50% { box-shadow: 0 0 0 1px #d2adff, 0 0 22px rgba(176,107,255,0.6); } }
+
+/* combo značka na napad gumbu */
+.combo-badge {
+  display: inline-block; font-family: "SF Mono", monospace; font-size: 9.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
+  color: #ffd9a8; background: rgba(255,138,61,0.18); box-shadow: inset 0 0 0 1px rgba(255,138,61,0.4);
+}
+/* zone-stats indikatorji */
+.zone-stats .favor-stat { color: #d2adff; }
+.zone-stats .favor-stat b { color: #e9d2ff; }
+.zone-stats .combo-stat {
+  color: #ffb07a; font-family: "SF Mono", monospace; font-size: 11px;
+  background: rgba(255,138,61,0.14); padding: 1px 7px; border-radius: 999px;
+}

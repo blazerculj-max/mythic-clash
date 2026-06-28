@@ -43,6 +43,8 @@ function makeInstance(cardId) {
     inst.status = {};           // { burn:true, freeze:true, stun:1, curse:true, blessing:2, shield:true, poison:1 }
     inst.justPlayed = true;     // ne sme ascendati / napasti turn ko je položen
     inst.osirisUsed = false;    // za Osiris rebirth
+    inst._comboType = null;     // combo (momentum) — zaporedni napadi istega tipa
+    inst._comboCount = 0;
   }
   return inst;
 }
@@ -65,6 +67,9 @@ function newPlayer(name, deckId, isAI) {
     // per-turn flags
     energyAttachedThisTurn: false,
     drawnAbilityUsed: {},  // za "once per turn" abilities npr. {athena:true}
+    // combat depth resursi
+    favor: 0,              // Naklonjenost: porabi za zagotovljen ×1.3 (Omen)
+    _favorArmed: false,    // ali je naslednji napad "naoružan" z Naklonjenostjo
     // stats
     stats: { damageDealt: 0, cardsDrawn: 0 },
   };
@@ -416,14 +421,27 @@ function canPayCost(champ, cost) {
 /* Predogled škode/učinkovitosti za UI (brez metanja Omena — pričakovana vrednost). */
 function previewDamage(attacker, attackerOwner, defender, attack) {
   if (!attacker || !defender || !attack) return null;
-  const res = computeDamage(attacker, attackerOwner, defender, attack, { wantBreakdown: true });
-  return { dmg: res.dmg, pct: res.eff.pct, parts: res.eff.parts };
+  const atkType = effectiveTypeOfAttack(attack);
+  const combo = comboInfoFor(attacker, atkType);
+  const forceOmenBonus = !!(attackerOwner && attackerOwner._favorArmed && attackerOwner.favor > 0);
+  const res = computeDamage(attacker, attackerOwner, defender, attack,
+    { wantBreakdown: true, comboBonus: combo.bonus, forceOmenBonus });
+  return { dmg: res.dmg, pct: res.eff.pct, parts: res.eff.parts, comboCount: combo.count };
 }
 
 function effectiveTypeOfAttack(attack) {
   // primarni tip napada = prvi ne-Any v costu (za weakness/resistance)
   const t = attack.cost.find(c => c !== "Any");
   return t || null;
+}
+
+// Combo (momentum): zaporedni napadi ISTEGA tipa z istim bojevnikom dajejo bonus.
+// Vrne {count, bonus} za stanje, KI BI nastalo, če ta bojevnik zdaj napade s tem tipom.
+function comboInfoFor(attacker, atkType) {
+  if (!attacker || !atkType) return { count: 0, bonus: 0 };
+  const count = (attacker._comboType === atkType) ? (attacker._comboCount + 1) : 1;
+  const bonus = count >= 2 ? Math.min((count - 1) * 10, 30) : 0; // +10 / +20 / +30 (cap)
+  return { count, bonus };
 }
 
 function computeDamage(attacker, attackerOwner, defender, attack, options) {
@@ -536,6 +554,13 @@ function computeDamage(attacker, attackerOwner, defender, attack, options) {
   const eff = computeEffectiveness(attacker, attackerOwner, defender, attack, atkType, options);
   dmg = Math.round((dmg * eff.mult) / 5) * 5; // zaokroži na 5
 
+  // Combo bonus (ploščato, po multiplikatorjih) — momentum istega tipa napadov
+  const comboBonus = options.comboBonus || 0;
+  if (comboBonus > 0 && dmg > 0) {
+    dmg += comboBonus;
+    eff.parts.push({ k: "COMBO", v: "+" + comboBonus, good: true });
+  }
+
   if (dmg < 0) dmg = 0;
   if (options && options.wantBreakdown) {
     return { dmg, eff };
@@ -577,9 +602,12 @@ function computeEffectiveness(attacker, attackerOwner, defender, attack, atkType
   // omamljena tarča (stun) prav tako rahlo ranljiva
   if (defender.status && defender.status.stun) { mult *= 1.1; parts.push({ k: "STUN", v: "×1.1", good: true }); }
 
-  // 3) Omen Roll na močnih napadih (3+ energije v ceni)
+  // 3) Naklonjenost (Favor) zagotovi ugoden Omen na KATERIKOLI napad
   const heavy = (attack.cost || []).length >= 3;
-  if (heavy) {
+  if (options.forceOmenBonus) {
+    mult *= 1.3; parts.push({ k: "NAKLONJENOST ✦", v: "×1.3", good: true });
+  } else if (heavy) {
+    // Omen Roll na močnih napadih (3+ energije v ceni)
     let favorable;
     if (typeof options.omen === "boolean") favorable = options.omen;
     else favorable = null; // prikaz: pričakovana vrednost
@@ -634,14 +662,39 @@ function performAttack(attackIndex) {
   const target = o.active;
   if (!target) return { ok: false, msg: "Nasprotnik nima aktivnega bojevnika." };
 
+  const atkType = effectiveTypeOfAttack(attack);
+
+  // Naklonjenost (Favor): če je naoružana in jo imaš, zagotovi ugoden Omen na ta napad
+  let forceOmenBonus = false;
+  if (p._favorArmed && p.favor > 0) {
+    forceOmenBonus = true;
+    p.favor -= 1;
+    p._favorArmed = false;
+    logMsg(p.name + " porabi Naklonjenost — zagotovljen ugoden Omen (×1.3).");
+  }
+
   // Omen Roll na močnih napadih (3+ energije) — vrže se enkrat tu
   const heavyAttack = (attack.cost || []).length >= 3;
-  const omenResult = heavyAttack ? omenRoll() : null;
+  const omenResult = forceOmenBonus ? true : (heavyAttack ? omenRoll() : null);
 
-  // izračun škode z dejanskim omenom
-  const dmgRes = computeDamage(a, p, target, attack, { omen: omenResult, wantBreakdown: true });
+  // Combo (momentum) bonus za TA napad
+  const combo = comboInfoFor(a, atkType);
+
+  // izračun škode z dejanskim omenom + combo
+  const dmgRes = computeDamage(a, p, target, attack,
+    { omen: omenResult, forceOmenBonus, comboBonus: combo.bonus, wantBreakdown: true });
   const dmg = dmgRes.dmg;
   const effInfo = dmgRes.eff;
+
+  // posodobi combo stanje napadalca
+  a._comboType = atkType;
+  a._comboCount = combo.count;
+
+  // Naklonjenost (pity): nesrečen Dark Omen na močnem napadu ti da +1 Naklonjenost
+  if (heavyAttack && !forceOmenBonus && omenResult === false) {
+    p.favor = Math.min(3, p.favor + 1);
+    logMsg(p.name + ": Dark Omen — pridobiš +1 Naklonjenost (zdaj " + p.favor + ").");
+  }
 
   // izvedi škodo
   if (dmg > 0) {
@@ -811,6 +864,11 @@ function defeatChampion(owner, champ) {
 }
 
 function onDefeatTriggers(loserOwner, winnerOwner) {
+  // Naklonjenost: ko premagaš nasprotnikovega bojevnika, dobiš +1
+  if (winnerOwner) {
+    winnerOwner.favor = Math.min(3, (winnerOwner.favor || 0) + 1);
+    logMsg(winnerOwner.name + " pridobi +1 Naklonjenost za premaganega bojevnika.");
+  }
   // Freyja Chooser of Slain: Norse defeated -> draw
   if (allChampions(loserOwner).concat(loserOwner.discard).some(c => def(c).id === "norse-freya")) {
     if (allChampions(loserOwner).some(c => def(c).id === "norse-freya")) {
@@ -1264,6 +1322,16 @@ function aiTakeTurn(onStep, onDone) {
     } else {
       const best = aiBestPayableAttack(p.active, p, enemyActive);
       chosen = best ? best.i : payable[0].i;
+    }
+    // AI uporabi Naklonjenost: če bi ×1.3 zagotovil KO (sicer ne), ali na hard za močne napade
+    if (diff !== "easy" && p.favor > 0 && enemyActive) {
+      const chosenAtk = def(p.active).attacks[chosen];
+      const prev = previewDamage(p.active, p, enemyActive, chosenAtk);
+      if (prev) {
+        const boosted = Math.round(prev.dmg * 1.3);
+        if (boosted >= aiHp(enemyActive) && prev.dmg < aiHp(enemyActive)) p._favorArmed = true;
+        else if (diff === "hard" && (chosenAtk.cost || []).length >= 3 && p.favor >= 2) p._favorArmed = true;
+      }
     }
     performAttack(chosen);
     // performAttack običajno kliče endTurn sam

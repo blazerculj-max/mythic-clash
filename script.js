@@ -883,6 +883,16 @@ function renderActions() {
     }, a.status.freeze || a.energy.length < rc);
   }
 
+  // Naklonjenost (Favor): naoružaj za zagotovljen ×1.3 na naslednji napad
+  if (a && (p.favor > 0 || p._favorArmed)) {
+    const armed = p._favorArmed && p.favor > 0;
+    const fb = el("button", "action-btn favor" + (armed ? " armed" : ""));
+    fb.innerHTML = `🔮 Naklonjenost: ${p.favor}/3 <span class="ab-cost">${armed ? "naoružana ✦" : "naoružaj"}</span>`;
+    fb.disabled = p.favor === 0;
+    fb.addEventListener("click", () => { p._favorArmed = !p._favorArmed; render(); });
+    panel.appendChild(fb);
+  }
+
   // Attacks
   if (a) {
     const dd = def(a);
@@ -892,7 +902,7 @@ function renderActions() {
       const btn = el("button", "action-btn attack");
       // predogled škode proti dejanskemu nasprotniku
       let dmgLabel = `${atk.damage} dmg`;
-      let effBadge = "";
+      let effBadge = "", comboTag = "";
       if (enemyActive) {
         const prev = previewDamage(a, G.players[0], enemyActive, atk);
         if (prev) {
@@ -901,9 +911,10 @@ function renderActions() {
             const cls = prev.pct > 100 ? "eff-good" : "eff-bad";
             effBadge = ` <span class="eff-badge ${cls}">${prev.pct}%</span>`;
           }
+          if (prev.comboCount >= 2) comboTag = ` <span class="combo-badge">COMBO ×${prev.comboCount}</span>`;
         }
       }
-      btn.innerHTML = `${atk.name} <span class="ab-cost">${dmgLabel} · ${costToHtml(atk.cost)}</span>${effBadge}`;
+      btn.innerHTML = `${atk.name} <span class="ab-cost">${dmgLabel} · ${costToHtml(atk.cost)}</span>${effBadge}${comboTag}`;
       btn.disabled = !can;
       btn.addEventListener("click", () => {
         const r = performAttack(i);
@@ -1203,6 +1214,8 @@ function renderZone(container, player, isYou) {
       <span class="who">${st.symbol} ${escapeHtml(player.name)} · ${STARTER_DECKS[player.deckId].name}</span>
       <div class="zone-stats">
         <span class="glory-track">${gloryPips(player.glory)}</span>
+        ${player.favor > 0 ? `<span class="stat favor-stat" title="Naklonjenost">🔮 <b>${player.favor}</b></span>` : ""}
+        ${player.active && player.active._comboCount >= 2 ? `<span class="stat combo-stat" title="Combo (momentum)">🔥 ×${player.active._comboCount} ${player.active._comboType}</span>` : ""}
         <span class="stat">Deck <b>${player.deck.length}</b></span>
         <span class="stat">Discard <b>${player.discard.length}</b></span>
       </div>
