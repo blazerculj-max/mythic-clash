@@ -4,167 +4,70 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mythic Clash: Wars of Pantheons</title>
-  <meta name="description" content="Mitološka card-battle igra — bogovi, heroji in pošasti šestih panteonov v areni. Originalna igra navdihnjena po javnih mitologijah." />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style-v2.css" />
 </head>
-<body>
+<body class="v2-body">
 
-  <!-- ============================ START SCREEN ============================ -->
-  <section id="start-screen" class="screen">
-    <div class="start-bg" aria-hidden="true"></div>
-    <div class="start-inner">
-      <header class="title-block">
-        <span class="eyebrow">Wars of Pantheons</span>
-        <h1 class="game-title">MYTHIC<br>CLASH</h1>
-        <p class="tagline">Šest mitologij. Ena arena.<br>Tri točke slave do zmage.</p>
-      </header>
-
-      <div class="deck-select-block">
-        <h2 class="deck-select-label"><span class="eyebrow">Izberi svoj deck</span></h2>
-        <div id="deck-grid" class="deck-grid"><!-- decki se generirajo iz decks.js --></div>
+  <!-- SETUP -->
+  <section id="v2-setup" class="screen">
+    <div class="v2-setup-inner">
+      <span class="eyebrow">Wars of Pantheons · Arena v2</span>
+      <h1 class="game-title" style="font-size:clamp(40px,9vw,84px)">MYTHIC<br>CLASH</h1>
+      <p class="tagline">MTG-style: mana, board treh, hibridni boj. Heroj 120 življenj.</p>
+      <h2 class="deck-select-label"><span class="eyebrow">Izberi svoj deck</span></h2>
+      <div id="v2-decks" class="v2-decks"></div>
+      <div class="difficulty-block"><span class="eyebrow">Težavnost</span>
+        <div id="v2-diff" class="diff-row"></div>
       </div>
-
-      <div class="start-actions">
-        <button id="start-battle" class="btn-primary" disabled>Začni bitko</button>
-        <button id="rules-toggle" class="rules-toggle">Pravila igre</button>
-      </div>
-
-      <div id="rules-box" class="rules-box hidden">
-        <h3>Kako se igra</h3>
-        <ul>
-          <li>Vsak igralec ima deck 40 kart in vleče 7 kart na začetku.</li>
-          <li>Imaš enega <strong>aktivnega bojevnika</strong> (Champion) in do 5 v rezervi.</li>
-          <li>Na svojem turnu lahko: postaviš bojevnika v rezervo, pripneš <strong>1 Divine Energy</strong>, igraš Relic in Oracle karte, izvedeš <strong>Ascension</strong>, retreataš ali napadeš.</li>
-          <li><strong>Napad konča tvoj turn.</strong></li>
-          <li>Ko bojevniku HP pade na 0, je premagan — nasprotnik dobi <strong>1 Glory</strong>, ti pa postaviš novega aktivnega iz rezerve.</li>
-          <li>Zmaga prvi do <strong>3 Glory</strong> — ali tisti, čigar nasprotnik ostane brez bojevnikov / kart v decku.</li>
-          <li><strong>Weakness</strong> = napad istega tipa naredi +20 škode. <strong>Resistance</strong> = −20 škode.</li>
-          <li><strong>Omen Roll</strong> je naključni 50/50 (Favorable / Dark Omen) za posebne učinke.</li>
-        </ul>
-        <h3 style="margin-top:18px;">Statusi</h3>
-        <ul class="status-glossary">
-          <li><strong>🔥 Burn</strong> — −10 HP na koncu vsake tvoje poteze.</li>
-          <li><strong>❄️ Freeze</strong> — ne more retreatati; 50% odtajanje na začetku poteze.</li>
-          <li><strong>💫 Stun</strong> — ne more napasti naslednjo potezo.</li>
-          <li><strong>💀 Curse</strong> — napadi naredijo −10 škode.</li>
-          <li><strong>✨ Blessing</strong> — napadi naredijo +10 škode (2 potezi).</li>
-          <li><strong>🛡️ Shield</strong> — naslednji udarec −20 (enkratno).</li>
-          <li><strong>☠️ Poison</strong> — −10 HP na koncu poteze, vsako potezo +10 več.</li>
-        </ul>
-        <h3 style="margin-top:18px;">Učinkovitost napada</h3>
-        <ul>
-          <li><strong>150%</strong> (zeleno) — napad zadene šibkost (weakness) tarče.</li>
-          <li><strong>60%</strong> (rdeče) — tarča je odporna (resistance).</li>
-          <li><strong>Omen ✓</strong> — močni napadi (3+ energije) imajo 50% za ×1.3 bonus.</li>
-        </ul>
-      </div>
-
-      <footer class="credits">
-        Inspired by public-domain world mythologies. No copyrighted trading card IP is used.
-      </footer>
+      <button id="v2-start" class="btn-primary" disabled>Začni bitko</button>
     </div>
   </section>
 
-  <!-- ============================ GAME SCREEN ============================ -->
-  <section id="game-screen" class="screen hidden">
-    <div class="board">
-
-      <!-- nasprotnikova cona -->
-      <div id="opp-zone" class="player-zone zone-opp"></div>
-
-      <!-- sredina: realm -->
-      <div class="zone-mid">
-        <div class="realm-block">
-          <div class="realm-label">REALM</div>
-          <div id="realm-slot" class="realm-slot"></div>
-          <div id="realm-text" class="realm-text"></div>
-        </div>
-        <div id="turn-indicator" class="turn-indicator"></div>
+  <!-- BOARD -->
+  <section id="v2-game" class="screen hidden">
+    <div class="v2-arena">
+      <div id="v2-opp" class="v2-side v2-opp"></div>
+      <div class="v2-mid">
+        <div id="v2-turn" class="v2-turn"></div>
+        <button id="v2-end" class="action-btn end-turn" style="max-width:200px">Končaj potezo</button>
       </div>
-
-      <!-- tvoja cona -->
-      <div id="you-zone" class="player-zone zone-you"></div>
-
-      <!-- stranska plošča: akcije + log -->
-      <aside class="side-panel">
-        <div class="action-panel">
-          <h4>Akcije</h4>
-          <div id="action-list" class="action-list"></div>
-        </div>
-        <div class="log-panel">
-          <h4>Dnevnik bitke</h4>
-          <div id="log-list" class="log-list"></div>
-        </div>
+      <div id="v2-you" class="v2-side v2-you"></div>
+      <div class="v2-hand-wrap">
+        <div id="v2-hand" class="v2-hand"></div>
+      </div>
+      <aside class="v2-panel">
+        <div class="action-panel"><h4>Akcije</h4><div id="v2-actions" class="action-list"></div></div>
+        <div class="log-panel"><h4>Dnevnik</h4><div id="v2-log" class="log-list"></div></div>
       </aside>
-
-      <!-- roka -->
-      <div class="hand-zone">
-        <div class="hand-head">
-          <span class="hand-label">Tvoja roka</span>
-          <span class="hand-count">Kart: <b id="hand-count">0</b></span>
-        </div>
-        <div id="hand" class="hand"></div>
-      </div>
-
     </div>
   </section>
 
-  <!-- ============================ VICTORY SCREEN ============================ -->
-  <section id="victory-screen" class="screen hidden">
-    <div class="victory-inner">
-      <h1 id="victory-title" class="victory-title">Zmaga!</h1>
-      <p id="victory-sub" class="victory-sub"></p>
-      <div class="victory-stats">
-        <div class="vstat"><span class="vstat-label">Turnov</span><span id="vstat-turns" class="vstat-val">0</span></div>
-        <div class="vstat"><span class="vstat-label">Glory</span><span id="vstat-glory" class="vstat-val">0</span></div>
-        <div class="vstat"><span class="vstat-label">Skupna škoda</span><span id="vstat-damage" class="vstat-val">0</span></div>
-        <div class="vstat"><span class="vstat-label">Potegnjene karte</span><span id="vstat-cards" class="vstat-val">0</span></div>
-      </div>
-      <button id="play-again" class="btn btn-primary">Igraj znova</button>
-    </div>
-  </section>
-
-  <!-- ============================ MODAL (card detail) ============================ -->
-  <div id="modal-backdrop" class="modal-backdrop hidden">
-    <div class="modal">
-      <button id="modal-close" class="modal-close" aria-label="Zapri">✕</button>
-      <div id="modal-card" class="modal-card"></div>
+  <!-- FIRST CHAMPION PICK -->
+  <div id="v2-pick" class="mulligan-backdrop hidden">
+    <div class="mulligan-inner">
+      <div class="mull-eyebrow">ZAČETEK</div>
+      <h2 class="mull-title">Izberi prvega šampiona (zastonj)</h2>
+      <p class="mull-sub">Vstopi v areno brez plačila mane.</p>
+      <div id="v2-pick-cards" class="mull-cards"></div>
     </div>
   </div>
 
-  <!-- ============================ TOAST ============================ -->
+  <!-- BLOCK MODAL -->
+  <div id="v2-block" class="modal-backdrop hidden">
+    <div class="modal glossary-modal">
+      <h3 class="glossary-title">Nasprotnik napada tvoj obraz!</h3>
+      <p class="mull-sub" id="v2-block-sub"></p>
+      <div id="v2-block-choices" class="v2-block-choices"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- ============================ IN-GAME CONCEDE ============================ -->
-  <button id="concede" class="concede-btn hidden">Predaja</button>
-  <button id="help-btn" class="help-btn hidden" title="Statusi in pravila">?</button>
-
-  <!-- glossar statusov (modal) -->
-  <!-- Mulligan faza -->
-  <div id="mulligan-backdrop" class="mulligan-backdrop hidden">
-    <div class="mulligan-inner">
-      <div class="mull-eyebrow">ZAČETNA ROKA</div>
-      <h2 class="mull-title" id="mull-title">Obdrži ali zamenjaj roko</h2>
-      <p class="mull-sub" id="mull-sub">Prvi mulligan je brezplačen. Izberi aktivnega Championa, ko si zadovoljen.</p>
-      <div id="mull-cards" class="mull-cards"></div>
-      <div id="mull-actions" class="mull-actions"></div>
-    </div>
-  </div>
-
-  <div id="glossary-backdrop" class="modal-backdrop hidden">
-    <div class="modal glossary-modal">
-      <button id="glossary-close" class="modal-close" aria-label="Zapri">✕</button>
-      <h3 class="glossary-title">Statusi</h3>
-      <div id="glossary-body" class="glossary-body"></div>
-    </div>
-  </div>
-
-  <!-- ============================ SCRIPTS (vrstni red je pomemben) ============================ -->
-  <!-- GSAP (filmske animacije) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="cards.js"></script>
   <script src="decks.js"></script>
-  <script src="engine.js"></script>
-  <script src="script.js"></script>
+  <script src="engine-v2.js"></script>
+  <script src="script-v2.js"></script>
 </body>
 </html>
