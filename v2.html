@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mythic Clash v2 — Arena (MTG-style)</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style-v2.css" />
+</head>
+<body class="v2-body">
+
+  <!-- SETUP -->
+  <section id="v2-setup" class="screen">
+    <div class="v2-setup-inner">
+      <span class="eyebrow">Wars of Pantheons · Arena v2</span>
+      <h1 class="game-title" style="font-size:clamp(40px,9vw,84px)">MYTHIC<br>CLASH</h1>
+      <p class="tagline">MTG-style: mana, board treh, hibridni boj. Heroj 120 življenj.</p>
+      <h2 class="deck-select-label"><span class="eyebrow">Izberi svoj deck</span></h2>
+      <div id="v2-decks" class="v2-decks"></div>
+      <div class="difficulty-block"><span class="eyebrow">Težavnost</span>
+        <div id="v2-diff" class="diff-row"></div>
+      </div>
+      <button id="v2-start" class="btn-primary" disabled>Začni bitko</button>
+    </div>
+  </section>
+
+  <!-- BOARD -->
+  <section id="v2-game" class="screen hidden">
+    <div class="v2-arena">
+      <div id="v2-opp" class="v2-side v2-opp"></div>
+      <div class="v2-mid">
+        <div id="v2-turn" class="v2-turn"></div>
+        <button id="v2-end" class="action-btn end-turn" style="max-width:200px">Končaj potezo</button>
+      </div>
+      <div id="v2-you" class="v2-side v2-you"></div>
+      <div class="v2-hand-wrap">
+        <div id="v2-hand" class="v2-hand"></div>
+      </div>
+      <aside class="v2-panel">
+        <div class="action-panel"><h4>Akcije</h4><div id="v2-actions" class="action-list"></div></div>
+        <div class="log-panel"><h4>Dnevnik</h4><div id="v2-log" class="log-list"></div></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- FIRST CHAMPION PICK -->
+  <div id="v2-pick" class="mulligan-backdrop hidden">
+    <div class="mulligan-inner">
+      <div class="mull-eyebrow">ZAČETEK</div>
+      <h2 class="mull-title">Izberi prvega šampiona (zastonj)</h2>
+      <p class="mull-sub">Vstopi v areno brez plačila mane.</p>
+      <div id="v2-pick-cards" class="mull-cards"></div>
+    </div>
+  </div>
+
+  <!-- BLOCK MODAL -->
+  <div id="v2-block" class="modal-backdrop hidden">
+    <div class="modal glossary-modal">
+      <h3 class="glossary-title">Nasprotnik napada tvoj obraz!</h3>
+      <p class="mull-sub" id="v2-block-sub"></p>
+      <div id="v2-block-choices" class="v2-block-choices"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="cards.js"></script>
+  <script src="decks.js"></script>
+  <script src="engine-v2.js"></script>
+  <script src="script-v2.js"></script>
+</body>
+</html>

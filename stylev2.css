@@ -1,0 +1,105 @@
+/* ============================================================================
+   MYTHIC CLASH v2 — style-v2.css  (nalaga se za style.css; uporablja iste spremenljivke)
+============================================================================ */
+
+/* ---- SETUP ---- */
+#v2-setup { min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; padding: 40px 22px 70px; text-align: center; }
+.v2-setup-inner { width: 100%; max-width: 1020px; display: flex; flex-direction: column; align-items: center; }
+.v2-decks { display: grid; gap: 14px; width: 100%; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 18px 0; }
+#v2-setup .deck-select-label { margin-top: 18px; }
+#v2-start { margin-top: 8px; }
+
+/* ---- ARENA ---- */
+#v2-game { height: 100vh; height: 100dvh; overflow: hidden; }
+.v2-arena {
+  height: 100%; display: grid;
+  grid-template-columns: minmax(0,1fr) 264px;
+  grid-template-rows: minmax(0,1fr) auto minmax(0,1fr) 172px;
+  gap: 8px; padding: 8px; max-width: 1240px; margin: 0 auto;
+}
+.v2-opp { grid-column: 1; grid-row: 1; }
+.v2-mid { grid-column: 1; grid-row: 2; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  border: 1px dashed var(--panel-edge); border-radius: var(--radius); padding: 6px 12px; }
+.v2-you { grid-column: 1; grid-row: 3; }
+.v2-hand-wrap { grid-column: 1; grid-row: 4; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
+.v2-panel { grid-column: 2; grid-row: 1 / span 4; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.v2-turn { font-size: 13px; color: var(--ink-dim); }
+.v2-turn b { color: var(--gold-bright); }
+
+.v2-side { border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 10px 12px; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.v2-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.v2-meta { font-size: 11px; color: var(--ink-dim); font-family: "SF Mono", monospace; }
+
+/* hero life */
+.v2-hero { display: flex; align-items: center; gap: 8px; min-width: 220px; }
+.v2-hero-name { font-family: "SF Mono", monospace; font-size: 12px; letter-spacing: 0.12em; color: var(--gold); white-space: nowrap; }
+.v2-hero-bar { position: relative; flex: 1; min-width: 130px; height: 16px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; border: 1px solid var(--panel-edge); }
+.v2-hero-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c 60%, #ff6b5e); transition: width 0.4s ease; }
+.v2-hero-fill.low { background: linear-gradient(90deg, #7a1d16, #ff5e4d); animation: heroLow 1.2s ease-in-out infinite; }
+@keyframes heroLow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+.v2-hero-life { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); font-family: "SF Mono", monospace; }
+
+/* mana row */
+.v2-mana-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.v2-mana-lab { font-size: 10px; color: var(--ink-dim); font-family: "SF Mono", monospace; letter-spacing: 0.08em; margin-right: 4px; }
+.v2-mana { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--mc) 70%, white), var(--mc)); color: #06121f; box-shadow: 0 0 8px -2px var(--mc); }
+.v2-mana.tapped { filter: grayscale(1) brightness(0.5); box-shadow: none; transform: rotate(90deg); }
+
+/* board */
+.v2-board-row { flex: 1; display: flex; gap: 10px; align-items: stretch; min-height: 0; }
+.v2-empty { flex: 1; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--panel-edge); border-radius: var(--radius-sm); color: var(--ink-dim); font-size: 12px; font-style: italic; }
+.v2-opp .v2-empty { border-color: rgba(255,107,94,0.4); color: #ff9b8a; }
+
+.v2-champ { width: 150px; flex: 0 0 150px; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-sm); overflow: hidden; background: rgba(8,8,16,0.6); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.2s ease; position: relative; }
+.v2-champ:hover { transform: translateY(-2px); }
+.v2-champ.tapped { opacity: 0.55; transform: rotate(3deg); }
+.v2-champ.sick .v2-champ-art { filter: saturate(0.7) brightness(0.85); }
+.v2-champ.ready { box-shadow: 0 0 0 1px var(--good), 0 0 14px rgba(111,217,138,0.3); border-color: var(--good); }
+.v2-champ.selected-att { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 20px rgba(233,196,106,0.5); border-color: var(--gold-bright); }
+.v2-champ.targetable { box-shadow: 0 0 0 2px var(--danger), 0 0 18px rgba(255,107,94,0.5); border-color: var(--danger); cursor: crosshair; }
+.v2-champ-art { height: 92px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 30px; background: var(--c-grad); overflow: hidden; }
+.v2-champ-sym { position: relative; z-index: 0; }
+.v2-champ-hp { position: absolute; top: 5px; right: 6px; z-index: 5; font-size: 12px; font-weight: 700; background: rgba(0,0,0,0.6); padding: 1px 7px; border-radius: 999px; font-family: "SF Mono", monospace; }
+.v2-tag { position: absolute; top: 5px; left: 6px; z-index: 5; font-size: 12px; }
+.v2-tag.tap { left: auto; right: 6px; top: 28px; }
+.v2-champ-body { padding: 6px 8px 8px; }
+.v2-champ-name { font-size: 12px; font-weight: 700; line-height: 1.1; }
+.v2-hpbar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 999px; margin-top: 5px; overflow: hidden; }
+.v2-hpfill { height: 100%; background: linear-gradient(90deg, var(--good), #aef0c0); }
+.v2-hpfill.low { background: linear-gradient(90deg, var(--danger), #ffb0a8); }
+.v2-status { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; min-height: 14px; font-size: 11px; }
+.v2-kw { margin-left: auto; opacity: 0.9; }
+
+/* hand */
+.v2-hand { display: flex; gap: 8px; align-items: flex-end; overflow-x: auto; padding: 6px 4px 12px; max-width: 100%; }
+.v2-hand.dim { opacity: 0.6; }
+.v2-handcard { width: 110px; flex: 0 0 110px; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-sm); overflow: hidden; background: rgba(8,8,16,0.7); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.15s ease; }
+.v2-handcard:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(0,0,0,0.6); }
+.v2-handcard.playable { box-shadow: 0 0 0 1px var(--gold-dim); }
+.v2-handcard.playable:hover { box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 0 1px var(--gold-bright); }
+.v2-hc-art { height: 78px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 24px; background: var(--c-grad); overflow: hidden; }
+.v2-cost { position: absolute; top: 5px; left: 6px; z-index: 5; font-size: 11px; font-weight: 700; background: rgba(0,0,0,0.6); color: var(--gold-bright); padding: 1px 7px; border-radius: 999px; font-family: "SF Mono", monospace; }
+.v2-cost.energy { color: #aef2ec; }
+.v2-hc-body { padding: 5px 7px 7px; }
+.v2-hc-name { font-size: 11px; font-weight: 700; line-height: 1.05; }
+.v2-hc-meta { font-size: 9px; color: var(--ink-dim); font-family: "SF Mono", monospace; margin-top: 2px; }
+
+/* attack cost glyphs */
+.v2-cc { display: inline-flex; width: 14px; height: 14px; border-radius: 50%; align-items: center; justify-content: center; font-size: 9px; color: #06121f;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--mc) 70%, white), var(--mc)); }
+
+/* panel reuse */
+.v2-panel .action-panel { flex: 0 0 auto; max-height: 55%; overflow-y: auto; }
+.v2-panel .log-panel { flex: 1; min-height: 0; }
+.action-btn.attack.sel { background: rgba(255,107,94,0.18); border-color: var(--danger); }
+
+/* block modal */
+.v2-block-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.v2-block-choices .action-btn { text-align: left; }
+
+@media (max-width: 900px) {
+  .v2-arena { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; }
+  .v2-panel { grid-column: 1; grid-row: 5; flex-direction: row; max-height: 24vh; }
+  .v2-champ { width: 120px; flex-basis: 120px; }
+}
