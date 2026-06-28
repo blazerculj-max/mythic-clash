@@ -29,8 +29,8 @@ function fxScreenIn(node) {
 function fxDealHand(cards) {
   if (!hasGsap() || !cards || !cards.length) return;
   gsap.from(cards, {
-    y: 160, opacity: 0, rotateZ: 0, scale: 0.85,
-    duration: 0.45, ease: "back.out(1.4)", stagger: 0.05, clearProps: "opacity",
+    y: 160, opacity: 0, scale: 0.85,
+    duration: 0.45, ease: "back.out(1.4)", stagger: 0.05, clearProps: "all",
   });
 }
 function fxChampEnter(node) {
@@ -112,7 +112,12 @@ function startBattle() {
     $("#help-btn").classList.remove("hidden");
     render();
     fxScreenIn($("#game-screen"));
-    fxDealHand(document.querySelectorAll("#hand .card"));
+    // igra se začne v mulligan fazi -> pokaži mulligan UI
+    if (G.mulliganPhase) {
+      showMulligan();
+    } else {
+      fxDealHand(document.querySelectorAll("#hand .card"));
+    }
   });
 }
 
@@ -1219,6 +1224,116 @@ function openCardModal(d) {
 function closeModal() { $("#modal-backdrop").classList.add("hidden"); }
 
 /* ---------------------- VICTORY ---------------------------------- */
+/* ---------------------- MULLIGAN UI ------------------------------ */
+let mullSelectedBottom = new Set();
+
+function showMulligan() {
+  const back = $("#mulligan-backdrop");
+  back.classList.remove("hidden");
+  renderMulligan();
+  if (hasGsap()) {
+    gsap.fromTo("#mulligan-backdrop .mulligan-inner",
+      { opacity: 0, y: 20, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" });
+  }
+}
+
+function renderMulligan() {
+  const you = G.players[0];
+  const cardsWrap = $("#mull-cards");
+  const actions = $("#mull-actions");
+  const title = $("#mull-title");
+  const sub = $("#mull-sub");
+  cardsWrap.innerHTML = "";
+  actions.innerHTML = "";
+
+  // narisi karte (velike)
+  you.hand.forEach(inst => {
+    const node = renderHandCard(inst);
+    node.classList.add("mull-card");
+    node.classList.remove("playable", "selected-hand");
+    const d = def(inst);
+    const isBasicChamp = d.type === "Champion" && d.stage === "basic";
+
+    if (G.mulliganStage === "pickActive") {
+      // klikni championa za aktivnega
+      if (isBasicChamp) {
+        node.classList.add("pickable");
+        node.addEventListener("click", () => {
+          const r = window.chooseStartingActive(inst.uid);
+          if (r.ok) endMulligan();
+        });
+      } else {
+        node.classList.add("dimmed");
+      }
+    } else if (G.mulliganStage === "bottom") {
+      // izberi karte za na dno
+      node.addEventListener("click", () => {
+        if (mullSelectedBottom.has(inst.uid)) mullSelectedBottom.delete(inst.uid);
+        else if (mullSelectedBottom.size < G.mulliganBottomN) mullSelectedBottom.add(inst.uid);
+        renderMulligan();
+      });
+      if (mullSelectedBottom.has(inst.uid)) node.classList.add("to-bottom");
+    }
+    cardsWrap.appendChild(node);
+  });
+
+  // gumbi glede na stage
+  if (G.mulliganStage === "decide") {
+    title.textContent = G.mulliganCount === 0 ? "Obdrži ali zamenjaj roko" : "Mulligan #" + G.mulliganCount;
+    const keepInfo = G.mulliganCount >= 1
+      ? `Obdrži (vrneš ${HAND_START - G.mulliganKeepN} na dno)` : "Obdrži roko";
+    sub.innerHTML = G.mulliganCount === 0
+      ? "Prvi mulligan je <b>brezplačen</b>. Vsak naslednji: obdržiš 1 karto manj."
+      : `Naslednji mulligan: obdržiš <b>${Math.max(1, G.mulliganKeepN - 1)}</b> kart.`;
+
+    const keepBtn = el("button", "mull-btn keep", keepInfo);
+    keepBtn.addEventListener("click", () => {
+      const r = window.keepHand();
+      if (r.ok) {
+        if (r.needBottom) { mullSelectedBottom = new Set(); renderMulligan(); }
+        else renderMulligan();
+      }
+    });
+    const mullBtn = el("button", "mull-btn mull",
+      G.mulliganCount === 0 ? "Mulligan (brezplačen)" : "Mulligan (−1 karta)");
+    mullBtn.addEventListener("click", () => {
+      const r = window.playerMulligan();
+      if (r.ok) {
+        renderMulligan();
+        if (hasGsap()) gsap.from("#mull-cards .mull-card", { y: 40, opacity: 0, scale: 0.9, duration: 0.35, stagger: 0.04, ease: "back.out(1.4)" });
+      }
+    });
+    actions.appendChild(keepBtn);
+    actions.appendChild(mullBtn);
+  } else if (G.mulliganStage === "bottom") {
+    title.textContent = "Vrni karte na dno";
+    sub.innerHTML = `Izberi <b>${G.mulliganBottomN}</b> kart, ki gredo na dno decka (London mulligan).`;
+    const confirmBtn = el("button", "mull-btn keep",
+      `Potrdi (${mullSelectedBottom.size}/${G.mulliganBottomN})`);
+    confirmBtn.disabled = mullSelectedBottom.size !== G.mulliganBottomN;
+    confirmBtn.addEventListener("click", () => {
+      const r = window.putCardsToBottom([...mullSelectedBottom]);
+      if (r.ok) renderMulligan();
+    });
+    actions.appendChild(confirmBtn);
+  } else if (G.mulliganStage === "pickActive") {
+    title.textContent = "Izberi aktivnega Championa";
+    sub.innerHTML = "Klikni <b>basic Championa</b>, ki stopi v areno. Ostane ti 6 kart.";
+  }
+}
+
+function endMulligan() {
+  const back = $("#mulligan-backdrop");
+  const finish = () => {
+    back.classList.add("hidden");
+    render();
+    fxDealHand(document.querySelectorAll("#hand .card"));
+  };
+  if (hasGsap()) {
+    gsap.to("#mulligan-backdrop .mulligan-inner", { opacity: 0, y: -16, duration: 0.3, ease: "power2.in", onComplete: finish });
+  } else finish();
+}
+
 function showVictory() {
   const winner = G.players[G.winner];
   const you = G.players[0];

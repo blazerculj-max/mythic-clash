@@ -85,7 +85,7 @@ function dealOpeningHand(player) {
     });
     if (hasBasic) break;
   }
-  player.stats.cardsDrawn += HAND_START;
+  // (statistika cardsDrawn se prišteje pri AI takoj, pri človeku ob koncu mulligana)
 }
 
 /* ---------------------- Globalno stanje -------------------------- */
@@ -102,6 +102,11 @@ const G = {
   selectedHandUid: null,
   awaitingNewActive: null, // playerIndex ki mora izbrati novega aktivnega
   pendingDamageStats: 0,
+  // Mulligan faza (samo človek)
+  mulliganPhase: false,    // true = čakamo na človekovo odločitev (keep/mulligan/izbira aktivnega)
+  mulliganStage: null,     // "decide" (keep/mull) ali "pickActive" (izberi aktivnega)
+  mulliganCount: 0,        // koliko mulliganov je bilo narejenih
+  mulliganKeepN: HAND_START, // koliko kart sme obdržati (London: -1 na mulligan)
 };
 
 function logMsg(msg) {
@@ -124,16 +129,114 @@ function startGame(playerDeckId, aiDeckId) {
   G.winner = null;
   G.selectedHandUid = null;
   G.awaitingNewActive = null;
+  G.mulliganCount = 0;
+  G.mulliganKeepN = HAND_START;
 
-  for (const p of G.players) dealOpeningHand(p);
+  // AI: samodejna začetna roka + aktivni
+  const ai = G.players[1];
+  dealOpeningHand(ai);
+  ai.stats.cardsDrawn += HAND_START;
+  autoPlaceActive(ai);
 
-  // Avtomatsko postavi prvega basic Championa kot aktivnega za oba (poenostavitev prototipa).
-  for (const p of G.players) autoPlaceActive(p);
+  // Človek: razdeli 7 (z garantijo championa), nato vstopi v mulligan fazo
+  const you = G.players[0];
+  dealOpeningHand(you); // zagotovi vsaj 1 championa (auto-mulligan brez kazni)
+  G.mulliganPhase = true;
+  G.mulliganStage = "decide";
 
   logMsg("Bitka se začenja! " + G.players[0].name + " vs " + G.players[1].name + ".");
+  logMsg("Mulligan: obdrži roko ali zamenjaj. Prvi mulligan je brezplačen.");
+  // beginTurn se NE kliče tu — počaka na konec mulligana (finishMulligan)
+}
+
+/* ---------------------- MULLIGAN (samo človek) ------------------- */
+// Igralec zavrne roko: London mulligan — vrni vse, premešaj, potegni 7.
+// Vsak mulligan po prvem zmanjša koliko kart sme obdržati (keepN).
+function playerMulligan() {
+  if (!G.mulliganPhase || G.mulliganStage !== "decide") return { ok: false };
+  const you = G.players[0];
+  // vrni roko v deck, premešaj
+  you.deck = shuffle(you.deck.concat(you.hand));
+  you.hand = [];
+  // potegni 7 z garantijo championa (auto-mulligan če ni)
+  let attempts = 0;
+  do {
+    attempts++;
+    you.deck = shuffle(you.deck.concat(you.hand));
+    you.hand = [];
+    for (let i = 0; i < HAND_START; i++) you.hand.push(you.deck.pop());
+  } while (attempts < 50 && !you.hand.some(inst => {
+    const d = CARDS[inst.cardId];
+    return d.type === "Champion" && d.stage === "basic";
+  }));
+
+  G.mulliganCount++;
+  // prvi mulligan free; vsak naslednji -1 keep
+  G.mulliganKeepN = Math.max(1, HAND_START - Math.max(0, G.mulliganCount - 1));
+  if (G.mulliganCount === 1) {
+    logMsg("Mulligan #1 (brezplačen). Nova roka 7 kart.");
+  } else {
+    logMsg("Mulligan #" + G.mulliganCount + ". Obdržiš " + G.mulliganKeepN + " kart (preostale na dno).");
+  }
+  return { ok: true };
+}
+
+// Igralec obdrži roko: če mora vrniti odvečne (keepN < 7), gre v "bottom" fazo;
+// sicer takoj v izbiro aktivnega.
+function keepHand() {
+  if (!G.mulliganPhase || G.mulliganStage !== "decide") return { ok: false };
+  const you = G.players[0];
+  const toBottom = you.hand.length - G.mulliganKeepN;
+  if (toBottom > 0) {
+    // mora vrniti 'toBottom' kart na dno — to uredi UI (chooseBottomCards),
+    // za enostavnost: če UI ne izbere, samodejno vrni ne-champion/energije presežek kasneje.
+    G.mulliganStage = "bottom";
+    G.mulliganBottomN = toBottom;
+    logMsg("Vrni " + toBottom + " kart na dno decka (London mulligan).");
+    return { ok: true, needBottom: toBottom };
+  }
+  G.mulliganStage = "pickActive";
+  logMsg("Roka obdržana. Izberi aktivnega Championa.");
+  return { ok: true };
+}
+
+// UI pokliče: igralec izbere katere karte gredo na dno (London penalty)
+function putCardsToBottom(uids) {
+  if (!G.mulliganPhase || G.mulliganStage !== "bottom") return { ok: false };
+  const you = G.players[0];
+  (uids || []).forEach(uid => {
+    const idx = you.hand.findIndex(c => c.uid === uid);
+    if (idx >= 0) {
+      const inst = you.hand.splice(idx, 1)[0];
+      you.deck.unshift(inst); // na dno
+    }
+  });
+  G.mulliganStage = "pickActive";
+  logMsg("Karte vrnjene na dno. Izberi aktivnega Championa.");
+  return { ok: true };
+}
+
+// Igralec izbere aktivnega Championa (basic) iz roke -> konec mulligana, začetek bitke
+function chooseStartingActive(uid) {
+  if (!G.mulliganPhase || G.mulliganStage !== "pickActive") return { ok: false };
+  const you = G.players[0];
+  const idx = you.hand.findIndex(c => {
+    const d = CARDS[c.cardId];
+    return c.uid === uid && d.type === "Champion" && d.stage === "basic";
+  });
+  if (idx < 0) return { ok: false, reason: "Ni veljaven basic Champion." };
+  const inst = you.hand.splice(idx, 1)[0];
+  inst.justPlayed = false;
+  you.active = inst;
+  you.stats.cardsDrawn += HAND_START;
+
+  // konec mulligana
+  G.mulliganPhase = false;
+  G.mulliganStage = null;
+  logMsg(def(you.active).name + " stopi v areno kot aktivni Champion.");
   logMsg("Na potezi: " + cur().name + ".");
-  // začetni draw za prvega igralca se NE izvede (kot pri klasiki prvi turn brez draw-a — a tu zaradi enostavnosti damo draw v beginTurn)
   beginTurn(true);
+  return { ok: true };
 }
 
 function autoPlaceActive(p) {
@@ -1049,6 +1152,7 @@ if (typeof window !== "undefined") {
     playRelic, playOracle, playRealm, ascend, retreat, freeSwap,
     chooseNewActive, aiTakeTurn, cur, opp, def, allChampions,
     findAscensionInHand, omenRoll, makeInstance, previewDamage,
+    playerMulligan, keepHand, putCardsToBottom, chooseStartingActive,
     GLORY_TO_WIN, MAX_RESERVE,
     clearShake() { shakeTarget = null; },
     clearLastAttack() { lastAttack = null; },
