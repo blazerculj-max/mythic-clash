@@ -283,6 +283,10 @@ function renderChampion(inst, opts = {}) {
   const pct = Math.max(0, Math.round((hp / inst.maxHp) * 100));
   const node = el("div", "champ" + (opts.active ? " active-champ" : ""));
   node.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
+  const rar = RARITY_STYLE[d.rarity] || RARITY_STYLE.Common;
+  node.style.setProperty("--rar-color", rar.color);
+  node.style.setProperty("--rar-glow", rar.glow);
+  node.dataset.rarity = d.rarity || "Common";
   if (opts.isTurnActive) node.classList.add("is-active-turn");
   if (opts.targetable) node.classList.add("targetable");
 
@@ -514,6 +518,9 @@ function renderHandCard(inst) {
   const rar = RARITY_STYLE[d.rarity] || RARITY_STYLE.Common;
   const node = el("div", "card");
   node.style.setProperty("--c-grad", grad);
+  node.style.setProperty("--rar-color", rar.color);
+  node.style.setProperty("--rar-glow", rar.glow);
+  node.dataset.rarity = d.rarity || "Common";
   if (selectedHandUid === inst.uid) node.classList.add("selected-hand");
   if (isHandCardPlayable(inst)) node.classList.add("playable");
 

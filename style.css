@@ -886,3 +886,73 @@ body.dragging-active .zone-opp .active-slot { animation: enemyPulse 1s ease-in-o
   .mull-cards .mull-card .card-art { height: 108px; }
   .mull-title { font-size: 22px; }
 }
+
+/* ============================================================================
+   RARITY FRAMES (round 2) — okvirji in sij glede na redkost karte
+   --rar-color / --rar-glow se nastavita v JS (renderHandCard / renderChampion)
+============================================================================ */
+/* --- karte v roki / male karte: obarvan rob po redkosti --- */
+.card[data-rarity="Uncommon"] { border-color: color-mix(in srgb, var(--rar-color) 40%, rgba(255,255,255,0.10)); }
+.card[data-rarity="Rare"]     { border-color: color-mix(in srgb, var(--rar-color) 55%, rgba(255,255,255,0.10)); }
+.card[data-rarity="Epic"],
+.card[data-rarity="Legendary"],
+.card[data-rarity="Mythic"]   { border-color: var(--rar-color); }
+
+/* rarity trak postane prelivajoč in bolj izrazit */
+.card .rarity-bar {
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--rar-color) 18%, var(--rar-color) 82%, transparent) !important;
+}
+/* Legendary & Mythic: animiran sij čez rarity trak */
+.card[data-rarity="Legendary"] .rarity-bar,
+.card[data-rarity="Mythic"] .rarity-bar { position: relative; overflow: hidden; }
+.card[data-rarity="Legendary"] .rarity-bar::after,
+.card[data-rarity="Mythic"] .rarity-bar::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  transform: translateX(-120%); animation: rarSheen 3s ease-in-out infinite;
+}
+@keyframes rarSheen { 0% { transform: translateX(-120%); } 55%,100% { transform: translateX(260%); } }
+
+/* --- championi: rarity sij prek filtra (ne prepiše gameplay box-shadow stanj) --- */
+.champ[data-rarity="Epic"]      { filter: drop-shadow(0 0 6px var(--rar-glow)); }
+.champ[data-rarity="Legendary"] { filter: drop-shadow(0 0 8px var(--rar-glow)); }
+.champ[data-rarity="Mythic"]    { filter: drop-shadow(0 0 9px var(--rar-glow)); }
+/* aktivni champion ima izrazitejši okvir v barvi redkosti (rob je varen,
+   ker is-active-turn/targetable nastavljata predvsem box-shadow) */
+.champ.active-champ[data-rarity="Epic"]:not(.is-active-turn):not(.targetable),
+.champ.active-champ[data-rarity="Legendary"]:not(.is-active-turn):not(.targetable),
+.champ.active-champ[data-rarity="Mythic"]:not(.is-active-turn):not(.targetable) { border-color: var(--rar-color); }
+
+/* ============================================================================
+   ARENA ATMOSPHERE (round 2)
+============================================================================ */
+/* sredinski žar bojnega polja */
+#game-screen {
+  background:
+    radial-gradient(70% 45% at 50% 50%, rgba(233,196,106,0.06), transparent 70%),
+    radial-gradient(50% 40% at 50% 8%, rgba(127,179,255,0.05), transparent 70%),
+    radial-gradient(50% 40% at 50% 92%, rgba(200,155,255,0.05), transparent 70%);
+}
+/* REALM pas: nežna zlata ločilna linija namesto plehke črtkane */
+.zone-mid {
+  border: none !important;
+  background:
+    linear-gradient(90deg, transparent, rgba(233,196,106,0.10) 50%, transparent),
+    linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
+  position: relative;
+}
+.zone-mid::before, .zone-mid::after {
+  content: ""; position: absolute; left: 6%; right: 6%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); opacity: 0.5;
+}
+.zone-mid::before { top: 0; }
+.zone-mid::after { bottom: 0; }
+
+/* prazne rezervne reže kot nežni "ghost" sloti */
+.reserve-row .realm-empty {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 92px; height: 92px; border: 1px dashed var(--panel-edge); border-radius: var(--radius-sm);
+  color: rgba(154,150,168,0.35); font-style: normal; font-size: 18px;
+  background: rgba(255,255,255,0.012);
+}
