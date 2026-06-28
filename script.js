@@ -56,6 +56,35 @@ function fxVictoryIn(node) {
 
 /* ---------------------- START SCREEN ----------------------------- */
 let chosenDeck = null;
+let chosenDifficulty = "normal";
+
+const DIFFICULTY_OPTS = [
+  { id: "easy",   label: "Lahko",    desc: "Pasiven nasprotnik" },
+  { id: "normal", label: "Normalno", desc: "Solidna taktika" },
+  { id: "hard",   label: "Težko",    desc: "Umiki, izkorišča šibkosti" },
+];
+
+function buildDifficultySelector() {
+  if (document.querySelector(".difficulty-block")) return;
+  const actions = document.querySelector(".start-actions");
+  if (!actions) return;
+  const block = el("div", "difficulty-block");
+  block.innerHTML = `<span class="eyebrow">Težavnost</span>`;
+  const row = el("div", "diff-row");
+  DIFFICULTY_OPTS.forEach(opt => {
+    const b = el("button", "diff-chip" + (opt.id === chosenDifficulty ? " sel" : ""));
+    b.dataset.diff = opt.id;
+    b.innerHTML = `<span class="diff-name">${opt.label}</span><span class="diff-desc">${opt.desc}</span>`;
+    b.addEventListener("click", () => {
+      chosenDifficulty = opt.id;
+      row.querySelectorAll(".diff-chip").forEach(c => c.classList.remove("sel"));
+      b.classList.add("sel");
+    });
+    row.appendChild(b);
+  });
+  block.appendChild(row);
+  actions.parentNode.insertBefore(block, actions);
+}
 
 function buildStartScreen() {
   const grid = $("#deck-grid");
@@ -104,7 +133,7 @@ function startBattle() {
   }, () => {
     // končano -> zaženi bitko
     hideLoadingScreen();
-    window.startGame(chosenDeck, aiDeck);
+    window.startGame(chosenDeck, aiDeck, chosenDifficulty);
     $("#start-screen").classList.add("hidden");
     $("#game-screen").classList.remove("hidden");
     $("#victory-screen").classList.add("hidden");
@@ -1416,6 +1445,7 @@ function showVictory() {
 /* ---------------------- WIRING ----------------------------------- */
 window.addEventListener("DOMContentLoaded", () => {
   buildStartScreen();
+  buildDifficultySelector();
   // animacija vstopa začetne strani
   if (hasGsap()) {
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });

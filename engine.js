@@ -114,8 +114,9 @@ function logMsg(msg) {
   if (G.log.length > 60) G.log.shift();
 }
 
-function startGame(playerDeckId, aiDeckId) {
+function startGame(playerDeckId, aiDeckId, difficulty) {
   UID = 1;
+  G.difficulty = difficulty || "normal";  // "easy" | "normal" | "hard"
   G.players = [
     newPlayer("Ti", playerDeckId, false),
     newPlayer("Nasprotnik", aiDeckId, true),
@@ -860,8 +861,15 @@ function chooseNewActive(playerIndex, reserveInst) {
 
 function aiChooseNewActive(owner) {
   if (owner.reserve.length === 0) return;
-  // izberi z največ HP, nato z največ energije
+  const diff = G.difficulty || "normal";
+  const enemyActive = G.players[1 - G.players.indexOf(owner)].active;
+  // hard: najprej po matchupu proti nasprotnikovemu aktivnemu, nato HP/energija
   owner.reserve.sort((x, y) => {
+    if (diff === "hard" && enemyActive) {
+      const sx = aiPotentialBest(x, owner, enemyActive);
+      const sy = aiPotentialBest(y, owner, enemyActive);
+      if (sy !== sx) return sy - sx;
+    }
     const hx = x.maxHp - x.damage, hy = y.maxHp - y.damage;
     if (hy !== hx) return hy - hx;
     return y.energy.length - x.energy.length;
@@ -1116,23 +1124,86 @@ function endGame(winnerIdx, msg) {
 /* ============================================================================
    AI — preprost a igralen nasprotnik
 ============================================================================ */
+/* --- AI pomožne ocene --------------------------------------------- */
+function aiHp(champ) { return champ ? champ.maxHp - champ.damage : 0; }
+
+// najboljši PLAČLJIV napad zdaj proti tarči: vrne {atk,i,dmg} ali null
+function aiBestPayableAttack(champ, owner, target) {
+  const atks = def(champ).attacks || [];
+  let best = null;
+  atks.forEach((atk, i) => {
+    if (!canPayCost(champ, atk.cost)) return;
+    const prev = target ? previewDamage(champ, owner, target, atk) : null;
+    const dmg = prev ? prev.dmg : (atk.damage || 0);
+    if (!best || dmg > best.dmg) best = { atk, i, dmg };
+  });
+  return best;
+}
+
+// največja škoda, ki bi jo champ LAHKO naredil tarči (ne glede na trenutno energijo) — za oceno matchupa
+function aiPotentialBest(champ, owner, target) {
+  const atks = def(champ).attacks || [];
+  let best = 0;
+  atks.forEach(atk => {
+    const prev = target ? previewDamage(champ, owner, target, atk) : null;
+    const dmg = prev ? prev.dmg : (atk.damage || 0);
+    if (dmg > best) best = dmg;
+  });
+  return best;
+}
+
+// ali lahko nasprotnikov aktivni zdaj ubije našega aktivnega s plačljivim napadom?
+function aiEnemyCanKO(myActive, enemyActive, enemyOwner) {
+  if (!myActive || !enemyActive) return false;
+  const best = aiBestPayableAttack(enemyActive, enemyOwner, myActive);
+  return !!(best && best.dmg >= aiHp(myActive));
+}
+
 function aiTakeTurn(onStep, onDone) {
   const p = cur();
   if (!p.isAI || G.over) { onDone && onDone(); return; }
+  const diff = G.difficulty || "normal";
+  const o = opp();
 
   const steps = [];
 
-  // 1) postavi basic Champion v rezervo če je prostor
+  // 1) razvoj rezerve — normal/hard postavita do 2 championa, easy 1
   steps.push(() => {
-    const basic = p.hand.find(inst => {
-      const d = CARDS[inst.cardId];
-      return d.type === "Champion" && d.stage === "basic";
-    });
-    if (basic && p.reserve.length < MAX_RESERVE) playReserveChampion(p, basic);
+    const maxPlay = diff === "easy" ? 1 : 2;
+    let played = 0;
+    while (played < maxPlay && p.reserve.length < MAX_RESERVE) {
+      const basic = p.hand.find(inst => {
+        const d = CARDS[inst.cardId];
+        return d.type === "Champion" && d.stage === "basic";
+      });
+      if (!basic) break;
+      playReserveChampion(p, basic);
+      played++;
+    }
   });
 
   // če nima aktivnega (npr. začetek): postavi
   steps.push(() => { if (!p.active) autoPlaceActive(p); });
+
+  // 1b) HARD: taktična menjava — zamenjaj aktivnega za bistveno boljši matchup,
+  //     ali se umakni, če je aktivni v smrtni nevarnosti in nizek na HP
+  if (diff === "hard") {
+    steps.push(() => {
+      if (!p.active || !o.active || p.reserve.length === 0) return;
+      const curBest = aiPotentialBest(p.active, p, o.active);
+      let target = null, bestScore = curBest + 15; // zahtevaj OPAZNO boljši matchup
+      for (const r of p.reserve) {
+        if (aiHp(r) <= 30) continue;
+        const sc = aiPotentialBest(r, p, o.active);
+        if (sc > bestScore) { bestScore = sc; target = r; }
+      }
+      const inDanger = aiEnemyCanKO(p.active, o.active, o) && aiHp(p.active) <= p.active.maxHp * 0.4;
+      if (!target && inDanger) {
+        target = p.reserve.slice().sort((a, b) => aiHp(b) - aiHp(a))[0];
+      }
+      if (target) retreat(p, target); // če premalo energije, retreat tiho spodleti
+    });
+  }
 
   // 2) ascend če lahko
   steps.push(() => {
@@ -1141,7 +1212,7 @@ function aiTakeTurn(onStep, onDone) {
     }
   });
 
-  // 3) pripni energijo najboljšemu (aktivnemu, ki ima napad ki ga skoraj plača)
+  // 3) pripni energijo aktivnemu
   steps.push(() => {
     const energyInst = p.hand.find(inst => CARDS[inst.cardId].type === "Energy");
     if (energyInst && p.active && !p.energyAttachedThisTurn) {
@@ -1149,47 +1220,52 @@ function aiTakeTurn(onStep, onDone) {
     }
   });
 
-  // 4) odigraj realm če ga ima in ni aktiven istega
+  // 4) odigraj realm (easy ga ignorira)
   steps.push(() => {
+    if (diff === "easy") return;
     const realmInst = p.hand.find(inst => CARDS[inst.cardId].type === "Realm");
     if (realmInst && G.realm !== realmInst.cardId) playRealm(p, realmInst);
   });
 
   // 5) odigraj eno smiselno Oracle/Relic
   steps.push(() => {
-    // healing oracle če je aktivni poškodovan
-    const hpPct = p.active ? (p.active.maxHp - p.active.damage) / p.active.maxHp : 1;
+    const hpPct = p.active ? aiHp(p.active) / p.active.maxHp : 1;
     const oracle = p.hand.find(inst => {
       const d = CARDS[inst.cardId];
       if (d.type !== "Oracle") return false;
-      if (["healActive60", "healReserve30"].includes(d.effect)) return hpPct < 0.5;
-      return true;
+      if (["healActive60", "healActive40", "healReserve30"].includes(d.effect)) return hpPct < 0.55;
+      return diff !== "easy"; // easy igra le nujne (healing) oracle
     });
     if (oracle) playOracle(p, oracle);
 
-    const relic = p.hand.find(inst => CARDS[inst.cardId].type === "Relic");
-    if (relic) {
-      const d = CARDS[relic.cardId];
-      if (d.relicMode === "attach" && p.active && !p.active.relic) playRelic(p, relic, p.active);
-      else if (d.relicMode === "instant") playRelic(p, relic, p.active);
+    if (diff !== "easy") {
+      const relic = p.hand.find(inst => CARDS[inst.cardId].type === "Relic");
+      if (relic) {
+        const d = CARDS[relic.cardId];
+        if (d.relicMode === "attach" && p.active && !p.active.relic) playRelic(p, relic, p.active);
+        else if (d.relicMode === "instant") playRelic(p, relic, p.active);
+      }
     }
   });
 
-  // 6) napadi z najboljšim možnim napadom
+  // 6) napadi — normal/hard izbereta najboljši napad (lethal-aware prek previewDamage),
+  //    easy 40% izbere naključen napad (manj optimalno)
   steps.push(() => {
     if (!p.active || p.active.status.stun || p.active.justPlayed) { endTurnIfStillAI(); return; }
-    const atks = def(p.active).attacks
+    const enemyActive = o.active;
+    const payable = (def(p.active).attacks || [])
       .map((atk, i) => ({ atk, i }))
       .filter(x => canPayCost(p.active, x.atk.cost));
-    if (atks.length === 0) { endTurnIfStillAI(); return; }
-    // izberi po DEJANSKI pričakovani škodi proti nasprotnikovem aktivnem
-    const enemyActive = opp().active;
-    atks.forEach(x => {
-      const prev = enemyActive ? previewDamage(p.active, p, enemyActive, x.atk) : null;
-      x.eff = prev ? prev.dmg : (x.atk.damage || 0);
-    });
-    atks.sort((a, b) => b.eff - a.eff);
-    performAttack(atks[0].i);
+    if (payable.length === 0) { endTurnIfStillAI(); return; }
+
+    let chosen;
+    if (diff === "easy" && payable.length > 1 && Math.random() < 0.4) {
+      chosen = payable[Math.floor(Math.random() * payable.length)].i;
+    } else {
+      const best = aiBestPayableAttack(p.active, p, enemyActive);
+      chosen = best ? best.i : payable[0].i;
+    }
+    performAttack(chosen);
     // performAttack običajno kliče endTurn sam
   });
 
