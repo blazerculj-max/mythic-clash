@@ -110,7 +110,7 @@
     G.difficulty = difficulty || "normal";
     G.players = [newPlayer("Ti", playerDeckId, false), newPlayer("Nasprotnik", aiDeckId, true)];
     G.turn = 0; G.turnCount = 1; G.over = false; G.winner = null; G.log = [];
-    G.pendingBlock = null; G.startingActiveChosen = false;
+    G.pendingBlock = null; G.startingActiveChosen = false; G.noDeckout = false;
     for (const p of G.players) {
       dealOpening(p);
       p.stats.cardsDrawn += HAND_START;
@@ -175,7 +175,10 @@
   }
   function draw(p, n) {
     for (let i = 0; i < n; i++) {
-      if (!p.deck.length) { endGame(1 - G.players.indexOf(p), p.name + " ne more vleči in izgubi!"); return; }
+      if (!p.deck.length) {
+        if (G.noDeckout) { logMsg(p.name + " nima več kart za vleko (brez kazni v Pohodu)."); return; }
+        endGame(1 - G.players.indexOf(p), p.name + " ne more vleči in izgubi!"); return;
+      }
       p.hand.push(p.deck.pop()); p.stats.cardsDrawn++;
     }
   }

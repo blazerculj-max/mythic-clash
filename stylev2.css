@@ -277,3 +277,13 @@
 }
 .v2-equip.weapon { background: rgba(255,120,90,0.18); border-color: rgba(255,120,90,0.45); }
 .v2-equip.armor  { background: rgba(120,170,255,0.18); border-color: rgba(120,170,255,0.45); }
+
+/* ---------------- Pohod: prikaz afinitete (panteoni/energije) ---------------- */
+.run-affinity { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; font-size: 12px; }
+.aff-lab { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim, #9aa0a6); margin-left: 6px; }
+.aff-lab:first-child { margin-left: 0; }
+.run-affinity .aff-chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--panel-edge, rgba(255,255,255,0.14));
+  font-family: "SF Mono", monospace; cursor: help;
+}
