@@ -75,7 +75,7 @@
     return {
       name, isAI: !!isAI, deckId, pantheon: dk.pantheon,
       deck: shuffle(dk.list.map(makeInstance)),
-      hand: [], discard: [], board: [], mana: [], life: START_LIFE,
+      hand: [], discard: [], board: [], mana: [], life: START_LIFE, maxLife: START_LIFE,
       favor: 0, _favorArmed: false, kills: 0,
       playedEnergyThisTurn: false,
       stats: { damageDealt: 0, cardsDrawn: 0, kills: 0 },

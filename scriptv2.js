@@ -115,6 +115,15 @@ function buildSetup() {
     dr.appendChild(b);
   });
   $("#v2-start").addEventListener("click", startV2);
+  // gumb za Roguelike pohod
+  if (!document.getElementById("v2-run-btn")) {
+    const rb = el("button", "rules-toggle"); rb.id = "v2-run-btn";
+    rb.style.marginTop = "10px";
+    loadRun();
+    rb.textContent = RUN ? "⚔ Nadaljuj pohod" : "⚔ Pohod (Roguelike)";
+    rb.addEventListener("click", openRunStart);
+    $("#v2-start").parentNode.appendChild(rb);
+  }
 }
 function startV2() {
   if (!chosenDeck) return;
@@ -124,6 +133,198 @@ function startV2() {
   $("#v2-setup").classList.add("hidden");
   $("#v2-game").classList.remove("hidden");
   showFirstPick();
+}
+
+/* ============================================================================
+   ROGUELIKE POHOD (run): zaporedje bitk + nagrade, deck/heroj rasteta
+============================================================================ */
+const RUN_KEY = "mythic-run-v2";
+const RUN_STAGES = [
+  { ai: "olympus", diff: "easy", name: "Olympus Strike" },
+  { ai: "spirits", diff: "easy", name: "Forest of Spirits" },
+  { ai: "eternity", diff: "normal", name: "Sands of Eternity" },
+  { ai: "tirnanog", diff: "normal", name: "Tir na nÓg" },
+  { ai: "legion", diff: "hard", name: "Legion of Rome" },
+  { ai: "ragnarok", diff: "hard", name: "Ragnarok Fury" },
+];
+let RUN = null;
+let runActive = false;
+function loadRun() { try { const s = JSON.parse(localStorage.getItem(RUN_KEY)); if (s && Array.isArray(s.deck)) RUN = s; } catch (_) {} }
+function saveRun() { try { localStorage.setItem(RUN_KEY, JSON.stringify(RUN)); } catch (_) {} }
+function clearRun() { RUN = null; try { localStorage.removeItem(RUN_KEY); } catch (_) {} }
+function deckPantheon(list) {
+  const c = {}; list.forEach(id => { const d = CARDS[id]; if (d && d.type === "Champion" && d.pantheon) c[d.pantheon] = (c[d.pantheon] || 0) + 1; });
+  return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || "Greek";
+}
+function ensureRunScreen() {
+  let s = document.getElementById("v2-run");
+  if (!s) { s = el("section", "screen hidden"); s.id = "v2-run"; document.body.appendChild(s); }
+  return s;
+}
+function hideRun() { const s = document.getElementById("v2-run"); if (s) s.classList.add("hidden"); }
+function showRunScreen(html) {
+  const s = ensureRunScreen();
+  s.innerHTML = `<div class="run-wrap">${html}</div>`;
+  ["v2-setup", "v2-game"].forEach(id => $("#" + id) && $("#" + id).classList.add("hidden"));
+  s.classList.remove("hidden");
+  return s;
+}
+
+// začetek pohoda: izbira starting deck-a (če run obstaja -> map)
+function openRunStart() {
+  loadRun();
+  if (RUN) return showRunMap();
+  const decks = Object.values(STARTER_DECKS).filter(d => d.id !== "custom" && d.id !== "run");
+  const cards = decks.map(d => {
+    const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
+    return `<button class="deck-card run-pick" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
+      <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
+      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div></button>`;
+  }).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Roguelike pohod</span><h2 class="run-title">Izberi začetni deck</h2></div>
+      <button class="rules-toggle" id="run-back">← Nazaj</button></header>
+    <p class="run-sub">Premagaj 6 panteonov. Po vsaki zmagi izbereš nagrado — deck in heroj rasteta. Poraz konča pohod.</p>
+    <div class="deck-grid run-decks">${cards}</div>`);
+  s.querySelector("#run-back").addEventListener("click", () => { hideRun(); $("#v2-setup").classList.remove("hidden"); });
+  s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startRun(b.dataset.deck)));
+}
+function startRun(deckId) {
+  RUN = { deckId, deck: STARTER_DECKS[deckId].list.slice(), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0 };
+  saveRun(); showRunMap();
+}
+
+function showRunMap() {
+  const done = RUN.stage >= RUN_STAGES.length;
+  const ladder = RUN_STAGES.map((st, i) => {
+    const stt = i < RUN.stage ? "done" : (i === RUN.stage ? "current" : "locked");
+    const sym = (PANTHEON_STYLE[(STARTER_DECKS[st.ai] || {}).pantheon] || { symbol: "✦" }).symbol;
+    const mark = stt === "done" ? "✓" : stt === "current" ? "▶" : "🔒";
+    return `<div class="run-stage ${stt}"><span class="rs-n">${i + 1}</span><span class="rs-sym">${sym}</span>
+      <div class="rs-info"><b>${st.name}</b> <span class="rs-diff">${({ easy: "Lahko", normal: "Normalno", hard: "Težko" })[st.diff]}</span></div><span class="rs-mark">${mark}</span></div>`;
+  }).join("");
+  const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Pohod · ${RUN.stage}/${RUN_STAGES.length} zmag</span><h2 class="run-title">${done ? "🏆 Pohod dokončan!" : "Karta pohoda"}</h2></div>
+      <button class="rules-toggle" id="run-quit">Opusti pohod</button></header>
+    <div class="run-statline">
+      ❤ Heroj: <b>${RUN.heroLife}</b> · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)
+      ${RUN.champHpBonus ? ` · 🛡 Šampioni +${RUN.champHpBonus} HP` : ""}${RUN.handBonus ? ` · ✋ +${RUN.handBonus} karta` : ""}${RUN.favorStart ? ` · 🔮 +${RUN.favorStart} Naklonjenost` : ""}
+    </div>
+    <div class="run-ladder">${ladder}</div>
+    <div class="run-foot">
+      <button class="rules-toggle" id="run-deckbtn">Poglej deck</button>
+      ${done ? `<button class="btn-primary" id="run-finish">Zaključi (nov pohod)</button>` : `<button class="btn-primary" id="run-fight">Začni bitko ${RUN.stage + 1}: ${RUN_STAGES[RUN.stage].name}</button>`}
+    </div>`);
+  s.querySelector("#run-quit").addEventListener("click", () => { if (confirm("Opustiš pohod?")) { clearRun(); hideRun(); $("#v2-setup").classList.remove("hidden"); } });
+  s.querySelector("#run-deckbtn").addEventListener("click", () => showRunDeck());
+  if (done) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); hideRun(); $("#v2-setup").classList.remove("hidden"); });
+  else s.querySelector("#run-fight").addEventListener("click", runLaunch);
+}
+function showRunDeck(removeMode) {
+  const counts = {}; RUN.deck.forEach(id => counts[id] = (counts[id] || 0) + 1);
+  const cards = Object.keys(counts).sort().map(id => {
+    const d = CARDS[id]; const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+    const glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : "🏛"));
+    const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : d.type === "Energy" ? "+mana" : `⬡${V2.manaCostOf(d)}`;
+    return `<button class="run-deckcard ${removeMode ? "removable" : ""}" data-id="${id}" style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
+      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">×${counts[id]}</span></div>
+      <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.type} · ${cost}</div></button>`;
+  }).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">${removeMode ? "Odstrani karto" : "Tvoj deck"}</span><h2 class="run-title">${RUN.deck.length} kart</h2></div>
+      <button class="rules-toggle" id="run-deckback">← Nazaj</button></header>
+    ${removeMode ? `<p class="run-sub">Klikni karto, ki jo odstraniš iz decka.</p>` : ""}
+    <div class="run-deckgrid">${cards}</div>`);
+  s.querySelector("#run-deckback").addEventListener("click", () => removeMode ? showReward(RUN._pendingRewards) : showRunMap());
+  if (removeMode) s.querySelectorAll(".run-deckcard").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.id; const i = RUN.deck.indexOf(id); if (i >= 0) RUN.deck.splice(i, 1);
+    RUN._pendingRewards = null; saveRun(); showRunMap();
+  }));
+}
+
+// nagrade po zmagi
+function randomCardPool() {
+  // zanimive karte (ne preveč energij)
+  return Object.values(CARDS).filter(d => d.type !== "Energy").map(d => d.id);
+}
+function genRewards() {
+  const pool = randomCardPool();
+  const pick = () => pool[(Math.random() * pool.length) | 0];
+  const upgrades = [
+    { t: "life", label: "❤ Heroj +25 življenja", desc: "Trajno višja meja življenj." },
+    { t: "champhp", label: "🛡 Blagoslov: šampioni +10 HP", desc: "Vsi tvoji šampioni dobijo +10 HP." },
+    { t: "hand", label: "✋ +1 karta v začetni roki", desc: "Vsako bitko začneš z eno karto več." },
+    { t: "favor", label: "🔮 +1 Naklonjenost na začetku", desc: "Vsako bitko začneš z dodatno Naklonjenostjo." },
+    { t: "remove", label: "✂ Odstrani karto", desc: "Stanjšaj deck — odstrani 1 karto." },
+  ];
+  const c1 = pick(); let c2 = pick(); let g = 0; while (c2 === c1 && g++ < 5) c2 = pick();
+  const up = upgrades[(Math.random() * upgrades.length) | 0];
+  return [{ t: "card", id: c1 }, { t: "card", id: c2 }, up];
+}
+function showReward(rewards) {
+  rewards = rewards || genRewards();
+  RUN._pendingRewards = rewards;
+  const cardHtml = r => {
+    if (r.t === "card") {
+      const d = CARDS[r.id]; const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+      const glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : "🏛"));
+      const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : `⬡${V2.manaCostOf(d)}`;
+      const atks = d.type === "Champion" ? atkRowsHtml(d, null) : `<div class="rdc-m">${d.text || d.effect || ""}</div>`;
+      return `<button class="reward-card" data-r="card" style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
+        <div class="rw-tag">Dodaj karto</div>
+        <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">${cost}</span></div>
+        <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.type}${d.type === "Champion" ? " · ❤" + d.hp : ""}</div>${atks}</button>`;
+    }
+    return `<button class="reward-card upgrade" data-r="${r.t}">
+      <div class="rw-tag">Nadgradnja</div>
+      <div class="rw-up-label">${r.label}</div><div class="rw-up-desc">${r.desc}</div></button>`;
+  };
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Zmaga! Bitka ${RUN.stage}/${RUN_STAGES.length}</span><h2 class="run-title">Izberi nagrado</h2></div></header>
+    <div class="reward-grid">${rewards.map(cardHtml).join("")}</div>`);
+  const btns = s.querySelectorAll(".reward-card");
+  rewards.forEach((r, i) => btns[i].addEventListener("click", () => applyReward(r)));
+}
+function applyReward(r) {
+  if (r.t === "card") { RUN.deck.push(r.id); saveRun(); toast("Dodano: " + CARDS[r.id].name); showRunMap(); return; }
+  if (r.t === "life") { RUN.heroLife += 25; saveRun(); showRunMap(); return; }
+  if (r.t === "champhp") { RUN.champHpBonus += 10; saveRun(); showRunMap(); return; }
+  if (r.t === "hand") { RUN.handBonus += 1; saveRun(); showRunMap(); return; }
+  if (r.t === "favor") { RUN.favorStart += 1; saveRun(); showRunMap(); return; }
+  if (r.t === "remove") { showRunDeck(true); return; }
+}
+
+function runLaunch() {
+  const stage = RUN_STAGES[RUN.stage];
+  STARTER_DECKS.run = { id: "run", name: "Tvoj pohod", pantheon: deckPantheon(RUN.deck), blurb: "", style: "Run", list: RUN.deck.slice() };
+  V2.startGame("run", stage.ai, stage.diff);
+  const you = G.players[0];
+  you.maxLife = RUN.heroLife; you.life = RUN.heroLife;
+  you.favor = Math.min(3, RUN.favorStart || 0);
+  if (RUN.champHpBonus) [...you.deck, ...you.hand].forEach(i => { if (def(i).type === "Champion") i.maxHp += RUN.champHpBonus; });
+  for (let k = 0; k < (RUN.handBonus || 0); k++) { if (you.deck.length) you.hand.push(you.deck.pop()); }
+  runActive = true;
+  hideRun(); $("#v2-setup").classList.add("hidden"); $("#v2-game").classList.remove("hidden");
+  showFirstPick();
+}
+function onRunBattleEnd(won) {
+  $("#v2-game").classList.add("hidden");
+  if (won) {
+    RUN.stage++; saveRun();
+    if (RUN.stage >= RUN_STAGES.length) runGameOver(true);
+    else showReward();
+  } else { runGameOver(false); }
+}
+function runGameOver(won) {
+  const s = showRunScreen(`
+    <div class="run-over">
+      <h1 class="victory-title" style="${won ? "" : "background:linear-gradient(180deg,#ffd9d2,#ff6b5e 55%,#7a241d);-webkit-background-clip:text;background-clip:text;color:transparent;"}">${won ? "ZMAGA POHODA 🏆" : "POHOD KONČAN"}</h1>
+      <p class="run-sub">${won ? "Premagal si vseh 6 panteonov!" : `Padel si v bitki ${RUN.stage + 1}. Deck je dosegel ${RUN.deck.length} kart.`}</p>
+      <button class="btn-primary" id="run-new">Nov pohod</button>
+    </div>`);
+  clearRun();
+  s.querySelector("#run-new").addEventListener("click", () => { hideRun(); $("#v2-setup").classList.remove("hidden"); openRunStart(); });
 }
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
@@ -218,7 +419,7 @@ function render() {
 }
 
 function heroBar(p) {
-  const pct = Math.max(0, Math.round(p.life / V2.START_LIFE * 100));
+  const pct = Math.max(0, Math.round(p.life / (p.maxLife || V2.START_LIFE) * 100));
   return `<div class="v2-hero">
     <span class="v2-hero-name">${p.name}</span>
     <div class="v2-hero-bar"><div class="v2-hero-fill ${p.life <= 40 ? "low" : ""}" style="width:${pct}%"></div>
@@ -656,6 +857,12 @@ function showBlock(onDone) {
 function checkOver() {
   if (!G.over) return;
   render();
+  if (runActive) {
+    runActive = false;
+    const won = G.winner === 0;
+    setTimeout(() => onRunBattleEnd(won), 1100);
+    return;
+  }
   setTimeout(() => toast(G.winner === 0 ? "🏆 ZMAGA!" : "Poraz — heroj je padel."), 200);
 }
 
@@ -669,3 +876,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (arrowActive()) updateArrow();
   });
 });
+
+// debug/test hook
+window.__run = { end: (won) => { runActive = false; onRunBattleEnd(won); }, get state() { return RUN; } };
