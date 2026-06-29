@@ -54,8 +54,13 @@
     if (d.type === "Realm") return 3;
     if (d.type === "Relic") return d.relicMode === "instant" ? 1 : 2;
     if (d.type === "Oracle") return 2;
+    if (d.type === "Equipment") return 2; // orožje/oklep: privzeto 2 (sicer d.manaCost)
     return 0; // Energy = ni cene (je resurs)
   }
+  // Oprema (orožje/oklep) pritrjena na šampiona
+  function weaponOf(c) { return c && c.weapon ? CARDS[c.weapon] : null; }
+  function armorOf(c)  { return c && c.armor  ? CARDS[c.armor]  : null; }
+  function equipGrants(c, kw) { const w = weaponOf(c), a = armorOf(c); return (!!w && w.grant === kw) || (!!a && a.grant === kw); }
 
   const G = {
     players: [], turn: 0, turnCount: 1, log: [], over: false, winner: null,
@@ -74,6 +79,7 @@
       inst.maxHp = d.hp; inst.damage = 0; inst.status = {};
       inst.tapped = false; inst.sick = true;
       inst.relic = null; inst.relicEffect = null;
+      inst.weapon = null; inst.armor = null;
       inst._comboType = null; inst._comboCount = 0;
       inst.osirisUsed = false;
     }
@@ -265,6 +271,7 @@
     const ALLY = ["healActive60", "healActive40", "blessActive"];
     const e = d.effect;
     if (d.type === "Relic" && d.relicMode === "attach") return "ally";
+    if (d.type === "Equipment") return "ally";
     if (ENEMY.includes(e)) return "enemy";
     if (ALLY.includes(e)) return "ally";
     return null; // board-wide / draw
@@ -383,7 +390,7 @@
   function playCard(p, inst, opts) {
     opts = opts || {};
     const d = def(inst);
-    if (!["Oracle", "Relic", "Realm"].includes(d.type)) return { ok: false };
+    if (!["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) return { ok: false };
     const cost = manaCostArr(manaCostOf(d));
     if (!canPay(p, cost)) return { ok: false, msg: "Premalo mane (" + cost.length + ")." };
     const i = p.hand.indexOf(inst); if (i < 0) return { ok: false };
@@ -402,6 +409,23 @@
       tgt.relic = d.id; tgt.relicEffect = d.effect;
       p.discard.push(inst);
       logMsg(p.name + ": " + def(tgt).name + " dobi " + d.name + ".");
+      return { ok: true };
+    }
+    if (d.type === "Equipment") {
+      const tgt = p.board.find(c => c.uid === opts.targetUid) || p.board[0];
+      if (!tgt) { return { ok: false, msg: "Ni šampiona za opremo." }; }
+      const slot = d.slot === "armor" ? "armor" : "weapon";
+      const oldId = tgt[slot];
+      if (oldId) { // zamenjaj staro opremo (gre v odlagališče)
+        const old = CARDS[oldId];
+        if (slot === "armor" && old.hpBonus) { tgt.maxHp -= old.hpBonus; if (tgt.damage > tgt.maxHp) tgt.damage = tgt.maxHp; }
+        p.discard.push(makeInstance(oldId));
+      }
+      tgt[slot] = d.id;
+      if (slot === "armor" && d.hpBonus) tgt.maxHp += d.hpBonus; // oklep dvigne mejo HP
+      if (d.grant === "shield") tgt.status.shield = true;
+      p.discard.push(inst);
+      logMsg(p.name + ": " + def(tgt).name + " opremi " + d.name + ".");
       return { ok: true };
     }
     // Oracle ali instant Relic
@@ -423,6 +447,11 @@
     // Relikvije na napadalcu / branilcu
     if (attacker.relicEffect === "dmgPlus20") dmg += 20;
     if (defender.relicEffect === "dmgReduce20") dmg -= 20;
+    // Oprema: orožje (+napad), oklep (−prejeta škoda); Prebod ignorira Shield
+    const wpn = weaponOf(attacker), arm = armorOf(defender);
+    if (wpn && wpn.atkBonus) dmg += wpn.atkBonus;
+    if (arm && arm.dmgReduce) dmg -= arm.dmgReduce;
+    const pierce = !!(wpn && wpn.grant === "pierce");
     // Realm bonusi (napadalec)
     const ad = def(attacker);
     if (G.realm === "realm-olympus" && atkType0 === "Sky" && ad.pantheon === "Greek") dmg += 10;
@@ -430,7 +459,7 @@
     if (G.realm === "realm-duat" && (atkType0 === "Underworld" || atkType0 === "Sun")) dmg += 10;
     // Realm: Forum -10 če ima branilčev lastnik 2+ šampione
     if (G.realm === "realm-forum") { const dOwn = ownerOfChamp(defender); if (dOwn && dOwn.board.length >= 2) dmg -= 10; }
-    if (defender.status.shield) dmg -= 20;
+    if (defender.status.shield && !pierce) dmg -= 20;
     if (dmg < 0) dmg = 0;
     const atkType = atkType0;
     let mult = 1; const parts = [];
@@ -543,8 +572,14 @@
       return { ok: true, dmg: 0, dodged: true };
     }
     if (r.dmg > 0) { defn.damage += r.dmg; p.stats.damageDealt += r.dmg; }
-    if (defn.status.shield && r.dmg > 0) delete defn.status.shield;
-    if (def(att).lifesteal && r.dmg > 0) { defn0heal(att, r.dmg); }
+    if (defn.status.shield && r.dmg > 0 && !(weaponOf(att) && weaponOf(att).grant === "pierce")) delete defn.status.shield;
+    if ((def(att).lifesteal || equipGrants(att, "lifesteal")) && r.dmg > 0) { defn0heal(att, r.dmg); }
+    // Trni (oklep): branilec vrne škodo napadalcu
+    const dArm = armorOf(defn);
+    if (dArm && dArm.thorns && r.dmg > 0) {
+      att.damage += dArm.thorns;
+      logMsg(def(att).name + " utrpi " + dArm.thorns + " od Trnov (" + dArm.name + ").");
+    }
     if (def(att).overload) att._overloadLock = (att._overloadLock || 0) + def(att).overload;
     logMsg(p.name + ": " + def(att).name + " → " + def(defn).name + " za " + r.dmg + (r.parts.length ? " [" + r.parts.join(",") + "]" : "") + ".");
     applyAtkEffect(atk, att, p, defn, opp);

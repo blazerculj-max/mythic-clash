@@ -825,6 +825,53 @@ const CARDS = {
     text: "Non-Norse Champions have +1 retreat cost.",
     flavorText: "A wasteland of ice and frozen blood."
   },
+
+  /* ====================== EQUIPMENT (orožja / oklepi) ======================
+     Pritrdiš jih na svojega šampiona. Vsak šampion ima 2 reži: orožje + oklep.
+     Nova oprema v isti reži zamenja staro. Ostane, dokler je šampion živ.
+  ------------------------------------------------------------------------- */
+  "equip-spear-olympus": {
+    id: "equip-spear-olympus", name: "Spear of Olympus", type: "Equipment", slot: "weapon",
+    pantheon: "Greek", rarity: "Uncommon", manaCost: 2, atkBonus: 15,
+    text: "Orožje. Opremljeni šampion zada +15 škode z vsemi napadi.",
+    flavorText: "Ukovano iz neviht samega Olimpa."
+  },
+  "equip-wolf-blade": {
+    id: "equip-wolf-blade", name: "Wolffang Blade", type: "Equipment", slot: "weapon",
+    pantheon: "Norse", rarity: "Rare", manaCost: 2, atkBonus: 10, grant: "lifesteal",
+    text: "Orožje. +10 škode in Krvoses (šampion se pozdravi za zadano škodo).",
+    flavorText: "Reže globlje kot zob velikega volka."
+  },
+  "equip-khopesh-ra": {
+    id: "equip-khopesh-ra", name: "Khopesh of Ra", type: "Equipment", slot: "weapon",
+    pantheon: "Egyptian", rarity: "Rare", manaCost: 2, atkBonus: 12, grant: "pierce",
+    text: "Orožje. +12 škode in Prebod (napadi ignorirajo Shield branilca).",
+    flavorText: "Sončna rezila ne pozna ovir."
+  },
+  "equip-gaebolg": {
+    id: "equip-gaebolg", name: "Gáe Bolg Splinter", type: "Equipment", slot: "weapon",
+    pantheon: "Celtic", rarity: "Epic", manaCost: 3, atkBonus: 25,
+    text: "Orožje. Opremljeni šampion zada +25 škode z vsemi napadi.",
+    flavorText: "Kopje, ki se ob udarcu razcveti v trideset trnov."
+  },
+  "equip-legion-aegis": {
+    id: "equip-legion-aegis", name: "Legion Aegis", type: "Equipment", slot: "armor",
+    pantheon: "Roman", rarity: "Uncommon", manaCost: 2, hpBonus: 30,
+    text: "Oklep. Opremljeni šampion dobi +30 najvišjega HP.",
+    flavorText: "Stena ščitov, ki ni nikoli popustila."
+  },
+  "equip-jotun-hide": {
+    id: "equip-jotun-hide", name: "Jötun Hide", type: "Equipment", slot: "armor",
+    pantheon: "Norse", rarity: "Rare", manaCost: 2, hpBonus: 20, dmgReduce: 8,
+    text: "Oklep. +20 HP in −8 prejete škode od vsakega napada.",
+    flavorText: "Koža mrazne velikanke, debela kot led."
+  },
+  "equip-bark-carapace": {
+    id: "equip-bark-carapace", name: "Bark Carapace", type: "Equipment", slot: "armor",
+    pantheon: "Slavic", rarity: "Epic", manaCost: 3, hpBonus: 25, thorns: 10,
+    text: "Oklep. +25 HP in Trni: napadalec utrpi 10 škode ob vsakem udarcu nanj.",
+    flavorText: "Skorja prastarih gozdov se brani sama."
+  },
 };
 
 /* expose */

@@ -40,6 +40,8 @@ const STARTER_DECKS = {
       "relic-thunderbolt", "relic-shield-athena", "relic-ankh",
       // 1 Realm
       "realm-olympus",
+      // Oprema (orožje/oklep)
+      "equip-spear-olympus", "equip-legion-aegis",
     ],
   },
 
@@ -71,6 +73,8 @@ const STARTER_DECKS = {
       ...rep("relic-runestone", 2), "relic-spear-mars",
       // 1 Realm
       "realm-asgard",
+      // Oprema (orožje/oklep)
+      "equip-wolf-blade", "equip-jotun-hide",
     ],
   },
 
@@ -103,6 +107,8 @@ const STARTER_DECKS = {
       "relic-eye-of-ra", ...rep("relic-ankh", 2),
       // 1 Realm
       "realm-duat",
+      // Oprema (orožje/oklep)
+      "equip-khopesh-ra", "equip-legion-aegis",
     ],
   },
 
@@ -134,6 +140,8 @@ const STARTER_DECKS = {
       ...rep("relic-veles-chain", 2), "relic-druid-amulet",
       // 1 Realm
       "realm-grove",
+      // Oprema (orožje/oklep)
+      "equip-bark-carapace", "equip-jotun-hide",
     ],
   },
 
@@ -165,6 +173,8 @@ const STARTER_DECKS = {
       ...rep("relic-spear-mars", 2), "relic-shield-athena",
       // 1 Realm
       "realm-forum",
+      // Oprema (orožje/oklep)
+      "equip-legion-aegis", "equip-spear-olympus",
     ],
   },
 
@@ -197,6 +207,8 @@ const STARTER_DECKS = {
       ...rep("relic-druid-amulet", 2), "relic-ankh",
       // 1 Realm
       "realm-grove",
+      // Oprema (orožje/oklep)
+      "equip-gaebolg", "equip-bark-carapace",
     ],
   },
 };

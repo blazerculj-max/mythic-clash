@@ -249,3 +249,31 @@
   .v2-panel { grid-column: 1; grid-row: 5; flex-direction: row; max-height: 24vh; }
   .v2-champ { width: 120px; flex-basis: 120px; }
 }
+
+/* ---------------- Tooltips (hover + dvoklik pin) ---------------- */
+#v2-tip {
+  position: fixed; z-index: 9999; max-width: 280px; pointer-events: none;
+  background: linear-gradient(160deg, #14141f, #1d1d2c); color: #e9e9f2;
+  border: 1px solid var(--panel-edge, rgba(255,255,255,0.15)); border-radius: 10px;
+  padding: 9px 11px; box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+  font-size: 12px; line-height: 1.45; transition: opacity .12s;
+}
+#v2-tip.hidden { display: none; }
+.v2-tip-title { font-weight: 700; color: var(--gold, #ffd97a); margin-bottom: 4px; letter-spacing: 0.02em; }
+.v2-tip-body { color: #c8c8d6; }
+
+/* elementi z razlago dobijo "help" namig */
+.v2-atk, .v2-st, .v2-kwi, .v2-equip, .v2-champ-name { cursor: help; }
+
+/* keyword ikone + statusi */
+.v2-kw { display: inline-flex; gap: 2px; }
+.v2-kwi { display: inline-block; }
+
+/* oprema (orožje/oklep) chip-i na šampionu */
+.v2-equip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; margin-left: 2px; border-radius: 5px;
+  font-size: 11px; border: 1px solid rgba(255,255,255,0.2);
+}
+.v2-equip.weapon { background: rgba(255,120,90,0.18); border-color: rgba(255,120,90,0.45); }
+.v2-equip.armor  { background: rgba(120,170,255,0.18); border-color: rgba(120,170,255,0.45); }

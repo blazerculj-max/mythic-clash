@@ -10,6 +10,114 @@ function artImg(d, cls) { return d && d.id ? `<img class="${cls}" src="art/${d.i
 let toastTimer;
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.remove("hidden"); t.style.opacity = "1"; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.opacity = "0"; }, 1800); }
 
+/* ---------------- TOOLTIPS (hover + dvoklik za pin) ----------------
+   Vsak element z atributoma data-tip (besedilo) in po želji data-tip-title
+   dobi razlago. Hover prikaže, dvoklik "pripne" (za touch/branje). */
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+let tipPinned = false;
+function ensureTip() {
+  let t = document.getElementById("v2-tip");
+  if (!t) { t = el("div", "v2-tip hidden"); t.id = "v2-tip"; document.body.appendChild(t); }
+  return t;
+}
+function showTip(target, x, y) {
+  const t = ensureTip();
+  const title = target.getAttribute("data-tip-title");
+  const body = target.getAttribute("data-tip");
+  if (!body && !title) return;
+  t.innerHTML = (title ? `<div class="v2-tip-title">${esc(title)}</div>` : "") +
+    `<div class="v2-tip-body">${esc(body).replace(/\n/g, "<br>")}</div>`;
+  t.classList.remove("hidden");
+  const r = t.getBoundingClientRect();
+  let px = x + 14, py = y + 16;
+  if (px + r.width > window.innerWidth - 8) px = x - r.width - 14;
+  if (py + r.height > window.innerHeight - 8) py = y - r.height - 16;
+  t.style.left = Math.max(6, px) + "px";
+  t.style.top = Math.max(6, py) + "px";
+}
+function hideTip(force) { if (tipPinned && !force) return; const t = document.getElementById("v2-tip"); if (t) t.classList.add("hidden"); }
+function initTooltips() {
+  document.addEventListener("mouseover", e => {
+    const tgt = e.target.closest("[data-tip],[data-tip-title]"); if (!tgt) return;
+    if (tipPinned) return; showTip(tgt, e.clientX, e.clientY);
+  });
+  document.addEventListener("mousemove", e => {
+    if (tipPinned) return;
+    const tgt = e.target.closest("[data-tip],[data-tip-title]");
+    if (tgt) showTip(tgt, e.clientX, e.clientY); else hideTip();
+  });
+  document.addEventListener("mouseout", e => {
+    const tgt = e.target.closest("[data-tip],[data-tip-title]"); if (tgt && !tipPinned) hideTip();
+  });
+  // dvoklik = pripni razlago (uporabno na dotik/za branje)
+  document.addEventListener("dblclick", e => {
+    const tgt = e.target.closest("[data-tip],[data-tip-title]");
+    if (tgt) { e.preventDefault(); tipPinned = true; showTip(tgt, e.clientX, e.clientY); }
+    else { tipPinned = false; hideTip(true); }
+  });
+  document.addEventListener("click", e => { if (tipPinned && !e.target.closest("#v2-tip")) { tipPinned = false; hideTip(true); } });
+}
+
+/* Razlage učinkov / statusov / ključnih besed (za tooltipe) */
+const STATUS_TEXT = {
+  burn: ["🔥 Ožig", "Šampion gori — prejema dodatno škodo skozi čas."],
+  freeze: ["❄️ Zmrznjen", "Prejema +20% škode."],
+  stun: ["💫 Omamljen", "Prejema +10% škode; lahko izpusti napad."],
+  curse: ["💀 Prekletstvo", "Njegovi napadi zadajo −15 škode."],
+  blessing: ["✨ Blagoslov", "Njegovi napadi zadajo +15 škode (nekaj potez)."],
+  shield: ["🛡️ Shield", "Naslednji prejeti udarec −20 škode (nato izgine)."],
+  poison: ["☠️ Strup", "Prejema škodo skozi čas."],
+  guard: ["⛨ Obrambna drža", "Prejema −50% škode do naslednje poteze."],
+};
+const KEYWORD_TEXT = {
+  charge: ["⚡ Naval", "Lahko napade že v isti potezi, ko je priklican."],
+  lifesteal: ["🩸 Krvoses", "Ko zada škodo, se za toliko pozdravi."],
+  overload: ["⛓ Preobremenitev", "Po močnem napadu ostane tapnjen dlje."],
+  onEnter: ["➹ Ob prihodu", "Sproži učinek, ko pride na bojišče."],
+  onDefeat: ["☠ Ob porazu", "Sproži učinek, ko je premagan."],
+  dodge: ["💨 Umik", "Ima možnost, da se popolnoma izogne napadu."],
+  pierce: ["🗡️ Prebod", "Napadi ignorirajo Shield branilca."],
+  thorns: ["🌵 Trni", "Napadalec ob udarcu nanj utrpi škodo."],
+};
+const EFFECT_TEXT = {
+  stunOmen: "Omen met: ob ugodnem znamenju je branilec omamljen.",
+  selfShield: "Ta šampion dobi Shield.",
+  selfDamage20: "Zada polno škodo, a šampion utrpi 20 povratne škode.",
+  draw3: "Potegneš 3 karte.", draw2: "Potegneš 2 karti.", draw2attach: "Potegneš 2 karti.",
+  healActive60: "Izbrani šampion +60 HP.", healActive40: "Izbrani šampion +40 HP.",
+  healReserve30: "Vsi tvoji šampioni +30 HP.", blessActive: "Izbrani šampion dobi Blagoslov.",
+  shieldAll: "Vsi tvoji šampioni dobijo Shield.", curseEnemy: "Nasprotnikov šampion je preklet (−15 škode).",
+  burnEnemy: "Nasprotnikov šampion gori.", freezeEnemy: "Nasprotnikov šampion zamrzne (+20% škode).",
+  dmgEnemy30: "Zada 30 škode nasprotnikovemu šampionu.",
+  healSelf30: "Ta šampion +30 HP.", healBoard20: "Vsi tvoji šampioni +20 HP.",
+  shieldSelf: "Ta šampion dobi Shield (−20 naslednji udarec).",
+  guard: "Obrambna drža: −50% prejete škode do naslednje poteze.",
+  blessSelf: "Ta šampion dobi Blagoslov.",
+  dmgPlus20: "Pritrjeni šampion zada +20 škode.", dmgReduce20: "Pritrjeni šampion prejme −20 škode.",
+  healEndTurn10: "Pritrjeni šampion se ob koncu poteze pozdravi 10 HP.",
+};
+function atkTipText(atk) {
+  let s = `${atk.damage} škode · cena ${(atk.cost || []).length} mane`;
+  if (atk.text) s += "\n" + atk.text;
+  if (atk.effect && EFFECT_TEXT[atk.effect]) s += "\nUčinek: " + EFFECT_TEXT[atk.effect];
+  return s;
+}
+function cardTipText(d) {
+  const lines = [];
+  if (d.type === "Champion") {
+    lines.push(`Šampion · ${d.pantheon} · ❤${d.hp}`);
+    (d.attacks || []).forEach(a => lines.push(`• ${a.name}: ${a.damage} dmg (${(a.cost || []).length} mane)`));
+    if (d.ability) lines.push(`Sposobnost — ${d.ability.name}: ${d.ability.text}`);
+    if (d.activated) lines.push(`⚡ ${d.activated.name}: ${d.activated.text}`);
+    if (d.weakness) lines.push(`Šibkost: ${d.weakness}  ·  Odpornost: ${d.resistance || "—"}`);
+  } else {
+    lines.push(`${d.type}${d.pantheon ? " · " + d.pantheon : ""}`);
+    if (d.text) lines.push(d.text);
+  }
+  return lines.join("\n");
+}
+function tipAttr(title, body) { return `data-tip-title="${esc(title)}" data-tip="${esc(body)}"`; }
+
 /* ---------------- FX (puščica, animacije, reveal) ---------------- */
 function ensureFx() {
   if (!document.getElementById("v2-fx")) { const f = el("div", "v2-fx"); f.id = "v2-fx"; document.body.appendChild(f); }
@@ -483,10 +591,10 @@ function boardChamp(c, owner, isYou) {
       <span class="v2-champ-hp">${life}</span>
       ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}</div>
     <div class="v2-champ-body">
-      <div class="v2-champ-name">${d.name}</div>
+      <div class="v2-champ-name" ${tipAttr(d.name, cardTipText(d))}>${d.name}</div>
       <div class="v2-hpbar"><div class="v2-hpfill ${pct <= 35 ? "low" : ""}" style="width:${pct}%"></div></div>
       ${atkRowsHtml(d, isYou ? owner : null)}
-      <div class="v2-status">${statusChips(c)}${kwMini(d)}</div>
+      <div class="v2-status">${statusChips(c)}${kwMini(d)}${equipChips(c)}</div>
     </div>`;
   node.addEventListener("click", () => onChampClick(c, owner, isYou));
   return node;
@@ -496,21 +604,31 @@ function atkRowsHtml(d, owner) {
   if (!d.attacks || !d.attacks.length) return "";
   return `<div class="v2-atks">` + d.attacks.map(a => {
     const payable = owner && G.turn === 0 && !G.over && V2.canPay(owner, a.cost, d.id === "celtic-lugh");
-    return `<div class="v2-atk${payable ? " ok" : ""}"><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}</span></div>`;
+    return `<div class="v2-atk${payable ? " ok" : ""}" ${tipAttr(a.name, atkTipText(a))}><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}</span></div>`;
   }).join("") + `</div>`;
 }
 function statusChips(c) {
   const s = c.status || {}; const out = [];
   const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
-  for (const k in map) if (s[k]) out.push(`<span class="v2-st">${map[k]}${typeof s[k] === "number" && s[k] > 1 ? s[k] : ""}</span>`);
+  for (const k in map) if (s[k]) { const t = STATUS_TEXT[k] || [k, ""]; out.push(`<span class="v2-st" ${tipAttr(t[0], t[1])}>${map[k]}${typeof s[k] === "number" && s[k] > 1 ? s[k] : ""}</span>`); }
   return out.join("");
 }
+function kwIcon(kw, glyph) { const t = KEYWORD_TEXT[kw] || [kw, ""]; return `<span class="v2-kwi" ${tipAttr(t[0], t[1])}>${glyph}</span>`; }
 function kwMini(d) {
   const ic = [];
-  if (d.charge) ic.push("⚡"); if (d.lifesteal) ic.push("🩸"); if (d.overload) ic.push("⛓");
-  if (d.onEnter) ic.push("➹"); if (d.onDefeat) ic.push("☠");
-  if (d.activated) ic.push("✦"); if (d.dodge) ic.push("💨");
+  if (d.charge) ic.push(kwIcon("charge", "⚡")); if (d.lifesteal) ic.push(kwIcon("lifesteal", "🩸")); if (d.overload) ic.push(kwIcon("overload", "⛓"));
+  if (d.onEnter) ic.push(kwIcon("onEnter", "➹")); if (d.onDefeat) ic.push(kwIcon("onDefeat", "☠"));
+  if (d.activated) ic.push(`<span class="v2-kwi" ${tipAttr("⚡ " + d.activated.name, d.activated.text)}>✦</span>`); if (d.dodge) ic.push(kwIcon("dodge", "💨"));
   return ic.length ? `<span class="v2-kw">${ic.join("")}</span>` : "";
+}
+// chip-i pritrjene opreme (orožje/oklep) + razlaga; kw doda granted keywords
+function equipChips(c) {
+  const out = [];
+  [["weapon", c.weapon, "🗡️"], ["armor", c.armor, "🛡️"]].forEach(([slot, id, gl]) => {
+    if (!id) return; const e = CARDS[id];
+    out.push(`<span class="v2-equip ${slot}" ${tipAttr(gl + " " + e.name, e.text)}>${gl}</span>`);
+  });
+  return out.join("");
 }
 
 function renderHand() {
@@ -520,17 +638,18 @@ function renderHand() {
     const d = def(inst);
     const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
     const node = el("div", "v2-handcard");
+    node.setAttribute("data-tip-title", d.name); node.setAttribute("data-tip", cardTipText(d));
     node.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#2a2a3a,#444)");
     let cost = "";
     if (d.type === "Champion") cost = `<span class="v2-cost">⬡ ${V2.summonCostOf(d)}</span>`;
     else if (d.type === "Energy") cost = `<span class="v2-cost energy">+mana</span>`;
-    else if (["Oracle", "Relic", "Realm"].includes(d.type)) cost = `<span class="v2-cost">⬡ ${V2.manaCostOf(d)}</span>`;
+    else if (["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) cost = `<span class="v2-cost">⬡ ${V2.manaCostOf(d)}</span>`;
     const playable = isPlayable(inst);
     if (playable) node.classList.add("playable");
     let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : "✦");
     node.innerHTML = `<div class="v2-hc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span>${cost}</div>
       <div class="v2-hc-body"><div class="v2-hc-name">${d.name}</div>
-      <div class="v2-hc-meta">${d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
+      <div class="v2-hc-meta">${d.type === "Equipment" ? (d.slot === "armor" ? "Oklep" : "Orožje") : d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
       ${d.type === "Champion" ? atkRowsHtml(d, null) : ""}</div>`;
     node.addEventListener("click", () => onHandClick(inst));
     h.appendChild(node);
@@ -542,7 +661,7 @@ function isPlayable(inst) {
   if (G.turn !== 0 || G.over || G.pendingBlock || manaPick) return false;
   if (d.type === "Energy") return !you.playedEnergyThisTurn;
   if (d.type === "Champion") return d.stage === "basic" && you.board.length < V2.BOARD_MAX && V2.canPay(you, Array.from({ length: V2.summonCostOf(d) }, () => "Any"));
-  if (["Oracle", "Relic", "Realm"].includes(d.type)) {
+  if (["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) {
     if (!V2.canPay(you, Array.from({ length: V2.manaCostOf(d) }, () => "Any"))) return false;
     const need = V2.cardNeedsTarget(d);
     if (need === "ally" && !you.board.length) return false;
@@ -604,6 +723,7 @@ function renderActions() {
         const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : ""));
         b.innerHTML = `${atk.name} <span class="ab-cost">${atk.damage} dmg · ${costHtml(atk.cost)}</span>`;
         b.disabled = !can;
+        b.setAttribute("data-tip-title", atk.name); b.setAttribute("data-tip", atkTipText(atk));
         b.addEventListener("click", () => { selAtkIndex = i; toast("Klikni nasprotnikovega šampiona ali NJEGOV OBRAZ."); render(); });
         panel.appendChild(b);
       });
@@ -615,6 +735,7 @@ function renderActions() {
         ab.innerHTML = `⚡ ${a.name} <span class="ab-cost">${costHtml(a.cost)}</span>`;
         ab.disabled = !canAct;
         ab.title = a.text;
+        ab.setAttribute("data-tip-title", "⚡ " + a.name); ab.setAttribute("data-tip", (EFFECT_TEXT[a.effect] || a.text));
         ab.addEventListener("click", () => doActivate());
         panel.appendChild(ab);
       }
@@ -637,6 +758,7 @@ function renderActions() {
       const b = el("button", "action-btn hero-power" + (you.heroPowerUsed ? " used" : ""));
       b.innerHTML = `★ ${hpw.name} <span class="ab-cost">⬡${hpw.cost}</span>`;
       b.title = hpw.text;
+      b.setAttribute("data-tip-title", "★ " + hpw.name); b.setAttribute("data-tip", hpw.text + "\n(1× na potezo)");
       b.disabled = !canHP;
       b.addEventListener("click", doHeroPower);
       panel.appendChild(b);
@@ -702,12 +824,13 @@ function onHandClick(inst) {
     payThen(cost, false, idx => { const r = V2.summon(you, inst, idx); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
     return;
   }
-  if (["Oracle", "Relic", "Realm"].includes(d.type)) {
+  if (["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) {
     const need = V2.cardNeedsTarget(d);
     if (need) {
+      if (need === "ally" && !you.board.length) { toast("Nimaš šampiona za opremo."); return; }
       pendingPlay = { inst, need };
       selAttacker = null; selAtkIndex = null;
-      toast(need === "enemy" ? "Izberi nasprotnikovega šampiona." : "Izberi svojega šampiona.");
+      toast(need === "enemy" ? "Izberi nasprotnikovega šampiona." : (d.type === "Equipment" ? "Izberi šampiona za opremo." : "Izberi svojega šampiona."));
       render();
       return;
     }
@@ -804,7 +927,7 @@ function aiSpells() {
   const ai = G.players[1], you = G.players[0];
   // odigraj en smiseln Oracle/Relic/Realm, če je mana in tarča
   const inst = ai.hand.find(i => {
-    const d = def(i); if (!["Oracle", "Relic", "Realm"].includes(d.type)) return false;
+    const d = def(i); if (!["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) return false;
     if (!V2.canPay(ai, Array.from({ length: V2.manaCostOf(d) }, () => "Any"))) return false;
     const need = V2.cardNeedsTarget(d);
     if (need === "ally" && !ai.board.length) return false;
@@ -914,6 +1037,7 @@ function checkOver() {
 /* ---------------- BOOT ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
   ensureFx();
+  initTooltips();
   buildSetup();
   $("#v2-end").addEventListener("click", endHumanTurn);
   document.addEventListener("mousemove", (e) => {
