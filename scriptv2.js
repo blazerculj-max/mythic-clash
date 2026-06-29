@@ -50,13 +50,48 @@ function startV2() {
 function showFirstPick() {
   const you = G.players[0];
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
-  you.hand.filter(i => def(i).type === "Champion" && def(i).stage === "basic").forEach(inst => {
-    const node = champPreviewCard(def(inst));
-    node.classList.add("pickable");
-    node.addEventListener("click", () => { V2.chooseFirstChampion(inst.uid); $("#v2-pick").classList.add("hidden"); render(); });
-    wrap.appendChild(node);
+  // prikaži CELO roko: basic championi so izberljivi (bogata kartica), ostalo je info
+  you.hand.forEach(inst => {
+    const d = def(inst);
+    if (d.type === "Champion" && d.stage === "basic") {
+      const node = champPreviewCard(d);
+      node.classList.add("pickable");
+      node.addEventListener("click", () => { V2.chooseFirstChampion(inst.uid); $("#v2-pick").classList.add("hidden"); render(); });
+      wrap.appendChild(node);
+    } else {
+      wrap.appendChild(handInfoCard(d));
+    }
   });
+  // gumb za mulligan
+  let actions = document.getElementById("v2-pick-actions");
+  if (!actions) {
+    actions = el("div", "mull-actions"); actions.id = "v2-pick-actions";
+    $("#v2-pick .mulligan-inner").appendChild(actions);
+  }
+  actions.innerHTML = "";
+  const mull = el("button", "mull-btn mull", "🔄 Zamešaj roko (mulligan)");
+  mull.addEventListener("click", () => { V2.mulliganHand(); showFirstPick(); });
+  actions.appendChild(mull);
   $("#v2-pick").classList.remove("hidden");
+}
+// info kartica za ne-šampione (energija/oracle/relic/realm) v izbiri
+function handInfoCard(d) {
+  const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+  const n = el("div", "mull-card v2-infocard");
+  n.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#23233a,#3a3a52)");
+  let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : d.type === "Realm" ? "🏛" : "✦"));
+  let costTag = "";
+  if (d.type === "Energy") costTag = `<span class="v2-cost energy">+mana</span>`;
+  else if (["Oracle", "Relic", "Realm"].includes(d.type)) costTag = `<span class="v2-cost">⬡ ${V2.manaCostOf(d)}</span>`;
+  const desc = d.type === "Energy" ? `${d.energyType} mana` : (d.text || (d.effect || ""));
+  n.innerHTML = `
+    <div class="v2-pick-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span>${costTag}</div>
+    <div class="v2-pick-body">
+      <div class="v2-pick-name">${d.name}</div>
+      <div class="v2-pick-meta">${d.type}${d.pantheon ? " · " + d.pantheon : ""}</div>
+      <div class="v2-info-desc">${desc}</div>
+    </div>`;
+  return n;
 }
 function energiesUsed(d) {
   const set = [...new Set((d.attacks || []).flatMap(a => a.cost || []).filter(c => c !== "Any"))];
@@ -78,6 +113,8 @@ function champPreviewCard(d) {
       <div class="v2-pick-name">${d.name} ${kwMini(d)}</div>
       <div class="v2-pick-meta">${d.pantheon} · ${d.rarity}</div>
       ${d.ability ? `<div class="v2-pick-ability"><b>${d.ability.name}.</b> ${d.ability.text}</div>` : ""}
+      ${d.activated ? `<div class="v2-pick-ability act"><b>⚡ ${d.activated.name}</b> (${costHtml(d.activated.cost)}). ${d.activated.text}</div>` : ""}
+      ${d.dodge ? `<div class="v2-pick-ability act">💨 <b>Umik ${Math.round(d.dodge * 100)}%</b> — možnost izogiba napadu.</div>` : ""}
       <div class="v2-pick-sec">Napadi</div>
       ${atkRowsHtml(d, null)}
       <div class="v2-pick-sec">Energije</div>
@@ -164,7 +201,7 @@ function atkRowsHtml(d, owner) {
 }
 function statusChips(c) {
   const s = c.status || {}; const out = [];
-  const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️" };
+  const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
   for (const k in map) if (s[k]) out.push(`<span class="v2-st">${map[k]}${typeof s[k] === "number" && s[k] > 1 ? s[k] : ""}</span>`);
   return out.join("");
 }
@@ -172,6 +209,7 @@ function kwMini(d) {
   const ic = [];
   if (d.charge) ic.push("⚡"); if (d.lifesteal) ic.push("🩸"); if (d.overload) ic.push("⛓");
   if (d.onEnter) ic.push("➹"); if (d.onDefeat) ic.push("☠");
+  if (d.activated) ic.push("✦"); if (d.dodge) ic.push("💨");
   return ic.length ? `<span class="v2-kw">${ic.join("")}</span>` : "";
 }
 
@@ -269,6 +307,17 @@ function renderActions() {
         b.addEventListener("click", () => { selAtkIndex = i; toast("Klikni nasprotnikovega šampiona ali NJEGOV OBRAZ."); render(); });
         panel.appendChild(b);
       });
+      // aktivirana (obrambna/utility) sposobnost — namesto napada
+      if (d.activated) {
+        const a = d.activated;
+        const canAct = V2.canPay(you, a.cost, d.id === "celtic-lugh");
+        const ab = el("button", "action-btn ability");
+        ab.innerHTML = `⚡ ${a.name} <span class="ab-cost">${costHtml(a.cost)}</span>`;
+        ab.disabled = !canAct;
+        ab.title = a.text;
+        ab.addEventListener("click", () => doActivate());
+        panel.appendChild(ab);
+      }
       const cancel = el("button", "action-btn", "Prekliči");
       cancel.addEventListener("click", () => { selAttacker = null; selAtkIndex = null; render(); });
       panel.appendChild(cancel);
@@ -373,6 +422,16 @@ function onChampClick(c, owner, isYou) {
   }
 }
 
+function doActivate() {
+  const you = G.players[0];
+  const c = you.board.find(x => x.uid === selAttacker); if (!c || !def(c).activated) return;
+  payThen(def(c).activated.cost, def(c).id === "celtic-lugh", idx => {
+    const r = V2.activateAbility(you, selAttacker, idx);
+    if (!r.ok) toast(r.msg || "Ni mogoče.");
+    selAttacker = null; selAtkIndex = null; manaPick = null;
+    render();
+  });
+}
 function doAttack(target) {
   const you = G.players[0];
   const c = you.board.find(x => x.uid === selAttacker); if (!c) return;
@@ -433,7 +492,17 @@ function aiSpells() {
     render();
     setTimeout(aiSpells, 550); return; // morda še en
   }
-  setTimeout(() => aiAttack(ai.board.filter(c => V2.canAttack(ai, c))), 550);
+  setTimeout(aiAbilities, 400);
+}
+function aiAbilities() {
+  if (G.over) { aiBusy = false; checkOver(); return; }
+  const ai = G.players[1];
+  // aktiviraj obrambno/heal sposobnost na poškodovanem šampionu (HP < 55%)
+  const c = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) &&
+    (x.maxHp - x.damage) / x.maxHp < 0.55 &&
+    ["healSelf30", "guard", "shieldSelf", "healBoard20"].includes(def(x).activated.effect));
+  if (c) { V2.activateAbility(ai, c.uid); render(); setTimeout(aiAbilities, 500); return; }
+  setTimeout(() => aiAttack(ai.board.filter(x => V2.canAttack(ai, x))), 450);
 }
 function aiAttack(queue) {
   if (G.over) { aiBusy = false; checkOver(); return; }

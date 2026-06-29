@@ -149,6 +149,8 @@
       }
       // freeze 50% odprave
       if (c.status.freeze && omenRoll()) { delete c.status.freeze; logMsg(def(c).name + " ni več zamrznjen."); }
+      // Guard drža poteče na začetku tvoje poteze
+      if (c.status.guard) delete c.status.guard;
     }
     if (!first) draw(p, 1);
     else logMsg(p.name + " začenja (brez vleke na prvi potezi).");
@@ -273,6 +275,44 @@
     return { ok: true };
   }
 
+  /* ---------------- Aktivirane sposobnosti ---------------- */
+  // Champion lahko ima d.activated = { name, cost:[...], effect, text }.
+  // Aktivacija plača cost + TAPNE championa (namesto napada).
+  function canActivate(p, c) {
+    const d = def(c);
+    return d.activated && !c.tapped && !c.sick && !c.status.stun && canPay(p, d.activated.cost, d.id === "celtic-lugh");
+  }
+  function activateAbility(p, champUid, manaIdx) {
+    const c = p.board.find(x => x.uid === champUid);
+    if (!c) return { ok: false };
+    const d = def(c);
+    if (!d.activated) return { ok: false, msg: "Ta šampion nima aktivne sposobnosti." };
+    if (c.tapped || c.sick || c.status.stun) return { ok: false, msg: "Ne more aktivirati (tapnjen/sick/stun)." };
+    const lugh = d.id === "celtic-lugh";
+    if (!canPay(p, d.activated.cost, lugh)) return { ok: false, msg: "Premalo mane." };
+    if (!payCost(p, d.activated.cost, lugh, manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
+    c.tapped = true;
+    const e = d.activated.effect;
+    switch (e) {
+      case "healSelf30": c.damage = Math.max(0, c.damage - 30); logMsg(def(c).name + " se pozdravi 30 HP."); break;
+      case "healBoard20": p.board.forEach(x => x.damage = Math.max(0, x.damage - 20)); logMsg(p.name + ": vsi šampioni +20 HP."); break;
+      case "shieldSelf": c.status.shield = true; logMsg(def(c).name + " dvigne Shield."); break;
+      case "guard": c.status.guard = true; logMsg(def(c).name + " zavzame obrambno držo (−50% škode)."); break;
+      case "blessSelf": c.status.blessing = Math.max(c.status.blessing || 0, 2); logMsg(def(c).name + " dobi Blessing."); break;
+      default: logMsg("(sposobnost " + e + " še ni v v2)"); break;
+    }
+    return { ok: true };
+  }
+
+  /* ---------------- Mulligan (samo začetek, samo človek) ---------------- */
+  function mulliganHand() {
+    const you = G.players[0];
+    if (!G.mulliganPhase) return { ok: false };
+    dealOpening(you); // zameša in potegne 7 (zagotovi vsaj 1 basic championa)
+    logMsg(you.name + " zameša roko (mulligan).");
+    return { ok: true };
+  }
+
   /* ---------------- Oracle / Relic / Realm ---------------- */
   function spellEffect(key, p, targetUid) {
     const opp = oppOf(p);
@@ -355,6 +395,7 @@
     }
     if (defender.status.freeze) mult *= 1.2;
     if (defender.status.stun) mult *= 1.1;
+    if (defender.status.guard) { mult *= 0.5; parts.push("GUARD"); } // obrambna drža −50%
     if (opts.forceOmenBonus) { mult *= 1.3; parts.push("FAVOR"); }
     else if ((atk.cost || []).length >= 3) {
       if (opts.omen === true) { mult *= 1.3; parts.push("OMEN+"); }
@@ -448,6 +489,13 @@
     const r = computeDamage(att, p, defn, atk, { omen, forceOmenBonus: forceOmen, comboBonus: cb.bonus });
     att._comboType = atkType; att._comboCount = cb.count;
     if (heavy && !forceOmen && omen === false) { p.favor = Math.min(3, p.favor + 1); }
+    // Umik (dodge): pasivna možnost izogiba napadu
+    if (def(defn).dodge && Math.random() < def(defn).dodge) {
+      logMsg(def(defn).name + " se izogne napadu (Umik)!");
+      att._comboType = atkType; att._comboCount = cb.count;
+      afterAction(p);
+      return { ok: true, dmg: 0, dodged: true };
+    }
     if (r.dmg > 0) { defn.damage += r.dmg; p.stats.damageDealt += r.dmg; }
     if (defn.status.shield && r.dmg > 0) delete defn.status.shield;
     if (def(att).lifesteal && r.dmg > 0) { defn0heal(att, r.dmg); }
@@ -632,7 +680,7 @@
   const api = {
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
     summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf, manaCostOf,
-    playCard, cardNeedsTarget,
+    playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
     BOARD_MAX, START_LIFE,
   };

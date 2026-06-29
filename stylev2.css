@@ -121,6 +121,18 @@
 /* ally target (urok/relic na svojega) */
 .v2-champ.target-ally { box-shadow: 0 0 0 2px var(--good), 0 0 18px rgba(111,217,138,0.5); border-color: var(--good); cursor: crosshair; }
 
+/* aktivirana sposobnost (pick prikaz + gumb) */
+.v2-pick-ability.act { background: rgba(127,179,255,0.10); }
+.v2-pick-ability.act b { color: #a8ceff; }
+.action-btn.ability { border-color: rgba(127,179,255,0.4); background: rgba(127,179,255,0.08); color: #bcd6ff; }
+.action-btn.ability:hover:not(:disabled) { background: rgba(127,179,255,0.16); border-color: #7fb3ff; }
+
+/* info kartica (ne-šampion) v izbiri prvega */
+.v2-infocard { width: 150px; cursor: default; opacity: 0.92; }
+.v2-infocard .v2-pick-art { height: 92px; }
+.v2-info-desc { font-size: 10.5px; color: var(--ink-dim); line-height: 1.4; margin-top: 5px; }
+#v2-pick-actions { margin-top: 18px; }
+
 /* first-champion pick: razširjene karte (napadi + energije + sposobnost) */
 #v2-pick .mull-cards { gap: 12px; max-height: 76vh; overflow-y: auto; align-items: flex-start; }
 .v2-pickcard { width: 200px; cursor: pointer; text-align: left; border: 1px solid rgba(255,255,255,0.12);

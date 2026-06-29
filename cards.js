@@ -84,6 +84,7 @@ const CARDS = {
         text: "This Champion gains Shield." }
     ],
     ability: { name: "Strategic Mind", text: "When you attach Energy to Athena, draw a card (once per turn)." },
+    activated: { name: "Aegis Stance", cost: ["Any"], effect: "shieldSelf", text: "Tapni + 1 mana: Athena dvigne Shield (−20 naslednji udarec)." },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 1,
     flavorText: "Victory favors the prepared mind.",
     deckTags: ["Olympus"]
@@ -96,6 +97,7 @@ const CARDS = {
       { name: "Lion's Grip", cost: ["War", "War"], damage: 60, effect: null, text: "He crushes all resistance." }
     ],
     ability: { name: "Heroic Resolve", text: "Heracles takes -10 damage from attacks while he has any Energy attached." },
+    activated: { name: "Heroic Recovery", cost: ["Any", "Any"], effect: "healSelf30", text: "Tapni + 2 mana: Heracles se pozdravi 30 HP." },
     weakness: "Sky", resistance: "War", retreatCost: 2,
     flavorText: "Half man, half legend.",
     deckTags: ["Olympus"]
@@ -260,6 +262,7 @@ const CARDS = {
       { name: "Avalanche", cost: ["Frost", "Frost"], damage: 70, effect: null, text: "The mountain falls." }
     ],
     ability: { name: "Jotun Hide", text: "Frost Giant takes -10 damage from War attacks." },
+    activated: { name: "Jotun Wall", cost: ["Any", "Any"], effect: "guard", text: "Tapni + 2 mana: −50% prejete škode do tvoje naslednje poteze." },
     weakness: "Fire", resistance: "Frost", retreatCost: 3,
     flavorText: "Older than the gods themselves.",
     deckTags: ["Ragnarok"]
@@ -407,6 +410,7 @@ const CARDS = {
       { name: "Wings of Magic", cost: ["Sun", "Wisdom"], damage: 50, effect: null, text: "Her wings shelter the worthy." }
     ],
     ability: { name: "Renewal", text: "At the end of your turn, your Active Champion heals 10 HP." },
+    activated: { name: "Blessing of Life", cost: ["Any", "Any"], effect: "healBoard20", text: "Tapni + 2 mana: vsi tvoji šampioni +20 HP." },
     weakness: "Underworld", resistance: "Sun", retreatCost: 1,
     flavorText: "She gathered the scattered and made them whole.",
     deckTags: ["Eternity"]
@@ -666,6 +670,7 @@ const CARDS = {
         text: "Omen Roll. On a Favorable Omen, the Defender is Stunned." }
     ],
     ability: { name: "Glamour", text: "Faerie Trickster has no retreat cost." },
+    dodge: 0.25,
     weakness: "Sun", resistance: "Trickery", retreatCost: 0,
     flavorText: "Never accept a faerie's bargain.",
     deckTags: ["Spirits"]
