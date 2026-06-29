@@ -10,6 +10,86 @@ function artImg(d, cls) { return d && d.id ? `<img class="${cls}" src="art/${d.i
 let toastTimer;
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.remove("hidden"); t.style.opacity = "1"; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.opacity = "0"; }, 1800); }
 
+/* ---------------- FX (puščica, animacije, reveal) ---------------- */
+function ensureFx() {
+  if (!document.getElementById("v2-fx")) { const f = el("div", "v2-fx"); f.id = "v2-fx"; document.body.appendChild(f); }
+  if (!document.getElementById("v2-arrow")) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "v2-arrow"; svg.classList.add("hidden");
+    svg.innerHTML = `<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#ffd97a"/></marker></defs>
+      <line id="v2-arrow-line" x1="0" y1="0" x2="0" y2="0" stroke="#ffd97a" stroke-width="4" stroke-linecap="round" marker-end="url(#ah)" opacity="0.9"/>`;
+    document.body.appendChild(svg);
+  }
+}
+function elCenter(e) { const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }
+function findChampEl(uid) { return document.querySelector(`.v2-champ[data-uid="${uid}"]`); }
+function heroElOf(side) { return document.querySelector(`.v2-${side} .v2-hero`); }
+function flyDamage(x, y, dmg, kind) {
+  ensureFx();
+  const n = el("div", "v2-fd " + (kind || ""));
+  n.textContent = kind === "heal" ? "+" + dmg : (dmg > 0 ? "-" + dmg : "0");
+  n.style.left = x + "px"; n.style.top = y + "px";
+  document.getElementById("v2-fx").appendChild(n);
+  setTimeout(() => n.remove(), 1100);
+}
+function shakeEl(e) { if (!e) return; e.classList.remove("v2-hit"); void e.offsetWidth; e.classList.add("v2-hit"); setTimeout(() => e.classList.remove("v2-hit"), 450); }
+function lunge(attEl, targetEl) {
+  if (!attEl || !targetEl) return;
+  const a = elCenter(attEl), t = elCenter(targetEl);
+  const dx = (t.x - a.x) * 0.3, dy = (t.y - a.y) * 0.3;
+  attEl.style.transition = "transform .13s ease-out";
+  attEl.style.transform = `translate(${dx}px,${dy}px) scale(1.05)`;
+  attEl.style.zIndex = "60";
+  setTimeout(() => { attEl.style.transform = ""; setTimeout(() => { attEl.style.transition = ""; attEl.style.zIndex = ""; }, 160); }, 150);
+}
+// animira napad: napadalec (uid) -> tarča (el); izpiše škodo
+function animateStrike(attUid, targetEl, dmg, dodged) {
+  const attEl = findChampEl(attUid);
+  lunge(attEl, targetEl);
+  if (targetEl) {
+    const c = elCenter(targetEl);
+    setTimeout(() => {
+      shakeEl(targetEl);
+      if (dodged) flyDamage(c.x, c.y, 0, "dodge");
+      else flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
+    }, 130);
+  }
+}
+// reveal karte, ki jo odigra nasprotnik (ali kdorkoli)
+function revealCard(d, label, done) {
+  ensureFx();
+  const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+  const card = el("div", "v2-reveal-card");
+  card.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#23233a,#3a3a52)");
+  let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : d.type === "Realm" ? "🏛" : "✦"));
+  card.innerHTML = `<div class="v2-reveal-label">${label || "Nasprotnik igra"}</div>
+    <div class="v2-reveal-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span></div>
+    <div class="v2-reveal-name">${d.name}</div>
+    <div class="v2-reveal-meta">${d.type}${d.type === "Champion" ? " · ❤" + d.hp : ""}</div>`;
+  const wrap = el("div", "v2-reveal");
+  wrap.appendChild(card);
+  document.getElementById("v2-fx").appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add("show"));
+  setTimeout(() => { wrap.classList.remove("show"); wrap.classList.add("out"); }, 1000);
+  setTimeout(() => { wrap.remove(); if (done) done(); }, 1350);
+}
+// puščica: posodobi glede na stanje + kazalec
+let arrowPos = { x: 0, y: 0 };
+function arrowActive() { return (G.turn === 0 && !G.over && ((selAttacker && selAtkIndex != null) || pendingPlay)); }
+function updateArrow() {
+  ensureFx();
+  const svg = document.getElementById("v2-arrow"), line = document.getElementById("v2-arrow-line");
+  if (!arrowActive()) { svg.classList.add("hidden"); return; }
+  let originEl = null;
+  if (selAttacker && selAtkIndex != null) originEl = findChampEl(selAttacker);
+  if (!originEl) { svg.classList.add("hidden"); return; }
+  const o = elCenter(originEl);
+  svg.classList.remove("hidden");
+  line.setAttribute("x1", o.x); line.setAttribute("y1", o.y);
+  line.setAttribute("x2", arrowPos.x || o.x); line.setAttribute("y2", arrowPos.y || o.y - 60);
+}
+
 let chosenDeck = null, chosenDiff = "normal";
 let selAttacker = null, selAtkIndex = null; // izbira napada (tvoja poteza)
 let pendingPlay = null;  // {inst, need:'ally'|'enemy'} — čaka izbiro tarče za urok/relic
@@ -134,6 +214,7 @@ function render() {
   renderLog();
   $("#v2-turn").innerHTML = G.over ? "" : `Poteza ${G.turnCount} · na potezi: <b>${G.turn === 0 ? "Ti" : "Nasprotnik"}</b>`;
   $("#v2-end").style.display = (G.turn === 0 && !G.over) ? "" : "none";
+  updateArrow();
 }
 
 function heroBar(p) {
@@ -170,6 +251,8 @@ function boardChamp(c, owner, isYou) {
   const life = c.maxHp - c.damage;
   const pct = Math.max(0, Math.round(life / c.maxHp * 100));
   const node = el("div", "v2-champ" + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : ""));
+  node.dataset.uid = c.uid;
+  node.dataset.owner = isYou ? "you" : "opp";
   node.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
   const canAtk = isYou && G.turn === 0 && !G.over && V2.canAttack(owner, c);
   if (canAtk) node.classList.add("ready");
@@ -415,7 +498,13 @@ function onChampClick(c, owner, isYou) {
   // 2) napad
   if (isYou) {
     if (!V2.canAttack(owner, c)) { toast("Ta šampion ne more napasti (tapnjen / sick / stun)."); return; }
-    selAttacker = (selAttacker === c.uid) ? null : c.uid; selAtkIndex = null; render();
+    if (selAttacker === c.uid) { selAttacker = null; selAtkIndex = null; render(); return; }
+    selAttacker = c.uid; selAtkIndex = null;
+    // če ima samo en plačljiv napad, ga samodejno izberi -> puščica se takoj pokaže
+    const atks = def(c).attacks || [];
+    const payable = atks.map((a, i) => i).filter(i => V2.canPay(owner, atks[i].cost, def(c).id === "celtic-lugh"));
+    if (payable.length === 1) selAtkIndex = payable[0];
+    render();
   } else {
     if (selAttacker && selAtkIndex != null) doAttack({ kind: "champ", uid: c.uid });
     else toast("Najprej izberi svojega napadalca in napad.");
@@ -436,11 +525,15 @@ function doAttack(target) {
   const you = G.players[0];
   const c = you.board.find(x => x.uid === selAttacker); if (!c) return;
   const atk = def(c).attacks[selAtkIndex];
+  const attUid = selAttacker, atkIdx = selAtkIndex;
   payThen(atk.cost, def(c).id === "celtic-lugh", idx => {
-    const r = V2.attack(you, selAttacker, selAtkIndex, target, idx);
+    const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("opp");
+    const r = V2.attack(you, attUid, atkIdx, target, idx);
     if (!r.ok) { toast(r.msg || "Napad ni mogoč."); manaPick = null; render(); return; }
     selAttacker = null; selAtkIndex = null; manaPick = null;
-    render(); checkOver();
+    updateArrow();
+    animateStrike(attUid, targetEl, r.dmg, r.dodged);
+    setTimeout(() => { render(); checkOver(); }, 300);
   });
 }
 
@@ -466,9 +559,9 @@ function aiSummon() {
   const ai = G.players[1];
   if (ai.board.length < V2.BOARD_MAX) {
     const c = ai.hand.find(i => def(i).type === "Champion" && def(i).stage === "basic" && V2.canPay(ai, Array.from({ length: V2.summonCostOf(def(i)) }, () => "Any")));
-    if (c) { V2.summon(ai, c); render(); setTimeout(aiSummon, 550); return; }
+    if (c) { const dd = def(c); revealCard(dd, "Nasprotnik prikliče", () => { V2.summon(ai, c); render(); setTimeout(aiSummon, 350); }); return; }
   }
-  setTimeout(aiSpells, 550);
+  setTimeout(aiSpells, 400);
 }
 function aiSpells() {
   if (G.over) { aiBusy = false; checkOver(); return; }
@@ -488,9 +581,9 @@ function aiSpells() {
     let targetUid = null;
     if (need === "enemy") targetUid = (you.board[0] || {}).uid;
     else if (need === "ally") targetUid = (ai.board.slice().sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0] || {}).uid;
-    V2.playCard(ai, inst, { targetUid });
-    render();
-    setTimeout(aiSpells, 550); return; // morda še en
+    const dd = def(inst);
+    revealCard(dd, "Nasprotnik igra", () => { V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 300); });
+    return; // morda še en
   }
   setTimeout(aiAbilities, 400);
 }
@@ -520,12 +613,15 @@ function aiAttack(queue) {
     if (bt && btDmg >= (bt.maxHp - bt.damage)) target = { kind: "champ", uid: bt.uid };
     else target = { kind: "face" }; // pritisk na obraz -> človek lahko blokira
   }
+  const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("you");
   const res = V2.attack(ai, c.uid, best.i, target);
-  render();
-  if (res && res.pending) { showBlock(() => { render(); checkOver(); if (!G.over) setTimeout(() => aiAttack(queue), 450); else aiBusy = false; }); return; }
-  checkOver();
-  if (G.over) { aiBusy = false; return; }
-  setTimeout(() => aiAttack(queue), 600);
+  if (res && res.pending) { render(); showBlock(() => { render(); checkOver(); if (!G.over) setTimeout(() => aiAttack(queue), 450); else aiBusy = false; }); return; }
+  animateStrike(c.uid, targetEl, res.dmg, res.dodged);
+  setTimeout(() => {
+    render(); checkOver();
+    if (G.over) { aiBusy = false; return; }
+    setTimeout(() => aiAttack(queue), 350);
+  }, 320);
 }
 function aiBestAttack(c) {
   const ai = G.players[1];
@@ -565,6 +661,11 @@ function checkOver() {
 
 /* ---------------- BOOT ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
+  ensureFx();
   buildSetup();
   $("#v2-end").addEventListener("click", endHumanTurn);
+  document.addEventListener("mousemove", (e) => {
+    arrowPos = { x: e.clientX, y: e.clientY };
+    if (arrowActive()) updateArrow();
+  });
 });

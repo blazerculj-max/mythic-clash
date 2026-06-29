@@ -133,6 +133,37 @@
 .v2-info-desc { font-size: 10.5px; color: var(--ink-dim); line-height: 1.4; margin-top: 5px; }
 #v2-pick-actions { margin-top: 18px; }
 
+/* ============================================================================
+   FX — puščica, leteča škoda, tresenje, reveal kart
+============================================================================ */
+#v2-fx { position: fixed; inset: 0; pointer-events: none; z-index: 500; overflow: hidden; }
+#v2-arrow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 480; }
+#v2-arrow.hidden { display: none; }
+
+.v2-fd { position: fixed; transform: translate(-50%, -50%); font-family: Georgia, serif; font-weight: 800;
+  font-size: 36px; color: #ff5e4d; text-shadow: 0 2px 0 #5a0e08, 0 0 16px rgba(255,94,77,0.8), 0 3px 10px rgba(0,0,0,0.6);
+  animation: v2fd 1s ease-out forwards; pointer-events: none; }
+.v2-fd.zero { color: #cfcfdf; } .v2-fd.heal { color: #7fe6a0; }
+.v2-fd.dodge { color: #a8ceff; font-size: 22px; }
+.v2-fd.dodge::after { content: " Umik!"; font-size: 14px; }
+@keyframes v2fd { 0% { opacity: 0; transform: translate(-50%,-30%) scale(.6); } 20% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); } 100% { opacity: 0; transform: translate(-50%,-135%) scale(.95); } }
+
+.v2-champ.v2-hit { animation: v2hit .42s ease; }
+@keyframes v2hit { 0%,100% { transform: translateX(0); } 22% { transform: translateX(-7px); } 48% { transform: translateX(7px); } 74% { transform: translateX(-3px); } }
+.v2-hero.v2-hit { animation: v2hit .42s ease; }
+
+/* reveal karte ki jo nasprotnik odigra */
+.v2-reveal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 520; opacity: 0; transition: opacity 0.2s ease; }
+.v2-reveal.show { opacity: 1; } .v2-reveal.out { opacity: 0; }
+.v2-reveal-card { width: 210px; border-radius: 14px; overflow: hidden; background: rgba(8,8,16,0.96);
+  border: 1px solid var(--gold-bright); box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 50px rgba(233,196,106,0.3);
+  transform: scale(0.82) translateY(20px); transition: transform 0.28s cubic-bezier(.2,1.3,.4,1); }
+.v2-reveal.show .v2-reveal-card { transform: scale(1) translateY(0); }
+.v2-reveal-label { text-align: center; font-family: "SF Mono", monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--gold); padding: 9px; text-transform: uppercase; }
+.v2-reveal-art { height: 150px; position: relative; background: var(--c-grad); display: flex; align-items: center; justify-content: center; font-size: 44px; overflow: hidden; }
+.v2-reveal-name { font-size: 15px; font-weight: 700; text-align: center; padding: 8px 8px 2px; }
+.v2-reveal-meta { font-size: 11px; color: var(--ink-dim); text-align: center; padding-bottom: 11px; font-family: "SF Mono", monospace; }
+
 /* first-champion pick: razširjene karte (napadi + energije + sposobnost) */
 #v2-pick .mull-cards { gap: 12px; max-height: 76vh; overflow-y: auto; align-items: flex-start; }
 .v2-pickcard { width: 200px; cursor: pointer; text-align: left; border: 1px solid rgba(255,255,255,0.12);
