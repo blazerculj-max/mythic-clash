@@ -76,7 +76,7 @@ function revealCard(d, label, done) {
 }
 // puščica: posodobi glede na stanje + kazalec
 let arrowPos = { x: 0, y: 0 };
-function arrowActive() { return (G.turn === 0 && !G.over && ((selAttacker && selAtkIndex != null) || pendingPlay)); }
+function arrowActive() { return (G.turn === 0 && !G.over && !manaPick && ((selAttacker && selAtkIndex != null) || pendingPlay)); }
 function updateArrow() {
   ensureFx();
   const svg = document.getElementById("v2-arrow"), line = document.getElementById("v2-arrow-line");
@@ -420,10 +420,15 @@ function render() {
 
 function heroBar(p) {
   const pct = Math.max(0, Math.round(p.life / (p.maxLife || V2.START_LIFE) * 100));
+  const st = PANTHEON_STYLE[p.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
+  const hpw = p.heroPower ? `<span class="v2-hero-pw" title="${p.heroPower.text}">★ ${p.heroPower.name}</span>` : "";
   return `<div class="v2-hero">
-    <span class="v2-hero-name">${p.name}</span>
-    <div class="v2-hero-bar"><div class="v2-hero-fill ${p.life <= 40 ? "low" : ""}" style="width:${pct}%"></div>
-      <span class="v2-hero-life">❤ ${p.life}</span></div>
+    <div class="v2-hero-ava" style="--c-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">${st.symbol}</div>
+    <div class="v2-hero-info">
+      <span class="v2-hero-name">${p.name} ${hpw}</span>
+      <div class="v2-hero-bar"><div class="v2-hero-fill ${p.life <= 40 ? "low" : ""}" style="width:${pct}%"></div>
+        <span class="v2-hero-life">❤ ${p.life}</span></div>
+    </div>
   </div>`;
 }
 function manaRow(p) {
@@ -440,6 +445,17 @@ function renderSide(container, p, isYou) {
   const head = el("div", "v2-head");
   head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + manaRow(p);
   container.appendChild(head);
+  // nasprotnikov lik = face tarča (klik med napadom)
+  if (!isYou) {
+    const heroEl = head.querySelector(".v2-hero");
+    if (heroEl) {
+      if (G.turn === 0 && !G.over && selAttacker && selAtkIndex != null) heroEl.classList.add("face-targetable");
+      heroEl.addEventListener("click", () => {
+        if (G.turn === 0 && !G.over && selAttacker && selAtkIndex != null) doAttack({ kind: "face" });
+        else toast("Izberi svojega napadalca in napad, nato klikni nasprotnikov lik.");
+      });
+    }
+  }
   const row = el("div", "v2-board-row");
   if (!p.board.length) row.appendChild(el("div", "v2-empty", isYou ? "Tvoj board je prazen" : "Brez branilcev — napadljiv obraz!"));
   p.board.forEach(c => row.appendChild(boardChamp(c, p, isYou)));
@@ -614,6 +630,17 @@ function renderActions() {
     }
   } else {
     panel.appendChild(el("div", "hint", "Klikni svojega <b>netapnjenega</b> šampiona za napad, ali igraj karto iz roke (energija / priklic)."));
+    // Hero Power
+    if (you.heroPower) {
+      const hpw = you.heroPower;
+      const canHP = !you.heroPowerUsed && V2.canPay(you, Array.from({ length: hpw.cost }, () => "Any"));
+      const b = el("button", "action-btn hero-power" + (you.heroPowerUsed ? " used" : ""));
+      b.innerHTML = `★ ${hpw.name} <span class="ab-cost">⬡${hpw.cost}</span>`;
+      b.title = hpw.text;
+      b.disabled = !canHP;
+      b.addEventListener("click", doHeroPower);
+      panel.appendChild(b);
+    }
     // Naklonjenost toggle
     if (you.favor > 0 || you._favorArmed) {
       const armed = you._favorArmed && you.favor > 0;
@@ -622,6 +649,14 @@ function renderActions() {
       panel.appendChild(fb);
     }
   }
+}
+function doHeroPower() {
+  const you = G.players[0]; const hpw = you.heroPower; if (!hpw) return;
+  payThen(Array.from({ length: hpw.cost }, () => "Any"), false, idx => {
+    const r = V2.useHeroPower(you, idx);
+    if (!r.ok) toast(r.msg || "Ni mogoče.");
+    manaPick = null; render(); checkOver();
+  });
 }
 function costHtml(cost) {
   return (cost || []).map(c => { const s = ENERGY_STYLE[c]; return `<span class="v2-cc" style="--mc:${s ? s.color : "#aaa"}">${s ? s.glyph : "◇"}</span>`; }).join("");
@@ -790,7 +825,17 @@ function aiSpells() {
 }
 function aiAbilities() {
   if (G.over) { aiBusy = false; checkOver(); return; }
-  const ai = G.players[1];
+  const ai = G.players[1], opp = G.players[0];
+  // Hero Power, če je smiseln in plačljiv
+  const hpw = ai.heroPower;
+  if (hpw && !ai.heroPowerUsed && V2.canPay(ai, Array.from({ length: hpw.cost }, () => "Any"))) {
+    let use = false;
+    if (hpw.kind === "heroHeal") use = ai.life < ai.maxLife * 0.6;
+    else if (hpw.kind === "chain") use = opp.board.length >= 2 || (opp.board.length === 1 && (opp.board[0].maxHp - opp.board[0].damage) <= hpw.value);
+    else if (hpw.kind === "heroAttack") use = !opp.board.some(c => !c.tapped) || opp.life <= hpw.value;
+    else if (hpw.kind === "shieldAll") use = ai.board.length >= 2 && opp.board.length >= 1;
+    if (use) { V2.useHeroPower(ai); render(); setTimeout(aiAbilities, 600); return; }
+  }
   // aktiviraj obrambno/heal sposobnost na poškodovanem šampionu (HP < 55%)
   const c = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) &&
     (x.maxHp - x.damage) / x.maxHp < 0.55 &&

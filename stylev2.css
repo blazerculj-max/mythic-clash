@@ -38,6 +38,17 @@
 .v2-hero-fill.low { background: linear-gradient(90deg, #7a1d16, #ff5e4d); animation: heroLow 1.2s ease-in-out infinite; }
 @keyframes heroLow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 .v2-hero-life { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); font-family: "SF Mono", monospace; }
+.v2-hero-ava { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--c-grad, linear-gradient(160deg,#333,#555)); border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,255,255,0.25); transition: box-shadow .2s, transform .2s; }
+.v2-hero-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.v2-hero-pw { font-size: 9px; letter-spacing: 0.06em; color: #ffd86b; opacity: 0.85; margin-left: 6px; }
+.v2-hero.face-targetable { cursor: crosshair; }
+.v2-hero.face-targetable .v2-hero-ava { border-color: var(--danger); box-shadow: 0 0 14px var(--danger), inset 0 1px 3px rgba(255,255,255,0.3); animation: faceTarget 1s ease-in-out infinite; }
+.v2-hero.face-targetable:hover .v2-hero-ava { transform: scale(1.12); }
+@keyframes faceTarget { 0%,100% { box-shadow: 0 0 8px var(--danger), inset 0 1px 3px rgba(255,255,255,0.3); } 50% { box-shadow: 0 0 20px var(--danger), 0 0 6px var(--danger), inset 0 1px 3px rgba(255,255,255,0.3); } }
+.action-btn.hero-power { border-color: rgba(255,216,107,0.5); background: linear-gradient(160deg, rgba(255,216,107,0.16), rgba(255,170,40,0.08)); color: #ffe8a8; font-weight: 600; }
+.action-btn.hero-power:hover:not(:disabled) { background: linear-gradient(160deg, rgba(255,216,107,0.28), rgba(255,170,40,0.16)); border-color: var(--gold); box-shadow: 0 0 12px rgba(255,216,107,0.35); }
+.action-btn.hero-power .ab-cost { opacity: 0.85; margin-left: 4px; }
+.action-btn.hero-power.used, .action-btn.hero-power:disabled { opacity: 0.4; filter: grayscale(0.6); }
 
 /* mana row */
 .v2-mana-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }

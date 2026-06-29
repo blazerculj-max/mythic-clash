@@ -24,6 +24,16 @@
   const HAND_START = 7;
   let UID = 1;
 
+  // Hero Power po panteonu (balansirano: ~2 mana, 1× na potezo)
+  const HERO_POWERS = {
+    Greek:    { name: "Bolt of Olympus", cost: 2, kind: "heroAttack", value: 25, text: "25 škode nasprotnikovemu heroju (lahko brani netapnjen šampion)." },
+    Norse:    { name: "Storm Chain",     cost: 2, kind: "chain",      value: 15, text: "15 škode VSEM nasprotnikovim šampionom." },
+    Egyptian: { name: "Solar Renewal",   cost: 2, kind: "heroHeal",   value: 25, text: "Heroj dobi +25 življenja." },
+    Slavic:   { name: "Frost Surge",     cost: 2, kind: "chain",      value: 12, text: "12 škode vsem nasprotnikovim šampionom." },
+    Roman:    { name: "Legion Bulwark",  cost: 2, kind: "shieldAll",  value: 0,  text: "Vsi tvoji šampioni dobijo Shield." },
+    Celtic:   { name: "Moon Mend",       cost: 1, kind: "heroHeal",   value: 18, text: "Heroj dobi +18 življenja (poceni)." },
+  };
+
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function omenRoll() { return Math.random() < 0.5; }
   function def(inst) { return CARDS[inst.cardId]; }
@@ -77,6 +87,7 @@
       deck: shuffle(dk.list.map(makeInstance)),
       hand: [], discard: [], board: [], mana: [], life: START_LIFE, maxLife: START_LIFE,
       favor: 0, _favorArmed: false, kills: 0,
+      heroPower: HERO_POWERS[dk.pantheon] || HERO_POWERS.Greek, heroPowerUsed: false,
       playedEnergyThisTurn: false,
       stats: { damageDealt: 0, cardsDrawn: 0, kills: 0 },
     };
@@ -137,6 +148,7 @@
   function beginTurn(first) {
     const p = cur();
     p.playedEnergyThisTurn = false;
+    p.heroPowerUsed = false;
     // untap mana + champs; clear sickness; overload
     p.mana.forEach(m => m.tapped = false);
     for (const c of p.board) {
@@ -300,6 +312,40 @@
       case "guard": c.status.guard = true; logMsg(def(c).name + " zavzame obrambno držo (−50% škode)."); break;
       case "blessSelf": c.status.blessing = Math.max(c.status.blessing || 0, 2); logMsg(def(c).name + " dobi Blessing."); break;
       default: logMsg("(sposobnost " + e + " še ni v v2)"); break;
+    }
+    return { ok: true };
+  }
+
+  /* ---------------- Hero Power (1× na potezo) ---------------- */
+  function useHeroPower(p, manaIdx) {
+    const hpw = p.heroPower; if (!hpw) return { ok: false };
+    if (p.heroPowerUsed) return { ok: false, msg: "Hero Power je že uporabljen to potezo." };
+    const cost = manaCostArr(hpw.cost);
+    if (!canPay(p, cost)) return { ok: false, msg: "Premalo mane za Hero Power." };
+    if (!payCost(p, cost, false, manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
+    p.heroPowerUsed = true;
+    const opp = oppOf(p);
+    if (hpw.kind === "heroAttack") {
+      const blockers = opp.board.filter(c => !c.tapped);
+      if (blockers.length) {
+        const b = blockers.sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0];
+        logMsg(def(b).name + " prestreže Hero Power.");
+        rawDamage(b, opp, hpw.value, "Hero Power"); checkDeaths();
+      } else {
+        opp.life -= hpw.value;
+        logMsg(p.name + ": Hero Power udari OBRAZ za " + hpw.value + " (življenja " + opp.name + ": " + opp.life + ").");
+        if (opp.life <= 0) endGame(G.players.indexOf(p), opp.name + " je premagan!");
+      }
+    } else if (hpw.kind === "chain") {
+      opp.board.slice().forEach(c => rawDamage(c, opp, hpw.value, "Chain"));
+      logMsg(p.name + ": Chain — " + hpw.value + " škode vsem nasprotnikovim šampionom.");
+      checkDeaths();
+    } else if (hpw.kind === "heroHeal") {
+      p.life = Math.min(p.maxLife, p.life + hpw.value);
+      logMsg(p.name + ": Hero Power — heroj +" + hpw.value + " (življenja " + p.life + ").");
+    } else if (hpw.kind === "shieldAll") {
+      p.board.forEach(c => c.status.shield = true);
+      logMsg(p.name + ": Hero Power — vsi šampioni dobijo Shield.");
     }
     return { ok: true };
   }
@@ -680,7 +726,7 @@
   const api = {
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
     summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf, manaCostOf,
-    playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand,
+    playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
     BOARD_MAX, START_LIFE,
   };
