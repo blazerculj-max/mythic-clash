@@ -84,6 +84,7 @@
 
   function cur() { return G.players[G.turn]; }
   function oppOf(p) { return G.players[1 - G.players.indexOf(p)]; }
+  function ownerOfChamp(c) { return G.players.find(p => p.board.indexOf(c) >= 0) || null; }
   function hp(c) { return c.maxHp - c.damage; }
 
   /* ---------------- setup ---------------- */
@@ -172,7 +173,12 @@
       if (c.status.burn) { let d = 15; if (c.status.poison) d += 5; rawDamage(c, p, d, "Burn"); if (checkDeaths()) return; }
       if (c.status.poison) { rawDamage(c, p, 5 + 10 * c.status.poison, "Poison"); c.status.poison++; if (checkDeaths()) return; }
       if (c.status.blessing) { c.status.blessing--; if (c.status.blessing <= 0) delete c.status.blessing; }
-      if (c.lifestealHealPending) c.lifestealHealPending = 0;
+      // Relikvija Druidic Amulet: +10 HP na koncu poteze
+      if (c.relicEffect === "healEndTurn10") { c.damage = Math.max(0, c.damage - 10); }
+    }
+    // Realm Grove: lastnikovi šampioni +10 HP na koncu poteze
+    if (G.realm === "realm-grove" && G.realmOwner === G.players.indexOf(p)) {
+      p.board.forEach(c => c.damage = Math.max(0, c.damage - 10));
     }
   }
 
@@ -215,21 +221,107 @@
     for (const m of untapped) { if (cnt >= anyN) break; if (!m.tapped) { m.tapped = true; cnt++; } }
     return true;
   }
+  // plača z IZBRANIMI mana indeksi (ročna izbira); validira, da pokrijejo cost
+  function paySpecific(p, indices, cost, lughAny) {
+    const chosen = (indices || []).map(i => p.mana[i]).filter(m => m && !m.tapped);
+    if (chosen.length !== cost.length) return false;
+    const pool = chosen.map(m => m.type);
+    const specific = cost.filter(c => c !== "Any");
+    const anyN = cost.filter(c => c === "Any").length;
+    const tmp = pool.slice();
+    for (const need of specific) {
+      let idx = tmp.indexOf(need);
+      if (idx < 0 && lughAny && tmp.length) idx = 0;
+      if (idx < 0) return false; tmp.splice(idx, 1);
+    }
+    if (tmp.length !== anyN) return false;
+    chosen.forEach(m => m.tapped = true);
+    return true;
+  }
+  // plača cost: ročno (manaIdx) ali samodejno
+  function payCost(p, cost, lughAny, manaIdx) {
+    if (manaIdx && manaIdx.length) return paySpecific(p, manaIdx, cost, lughAny);
+    return payMana(p, cost, lughAny);
+  }
+  function manaCostArr(n) { return Array.from({ length: n }, () => "Any"); }
+  function cardNeedsTarget(d) {
+    if (d.type === "Champion") return null;
+    if (d.type === "Realm") return null;
+    const ENEMY = ["curseEnemy", "dmgEnemy30", "burnEnemy", "freezeEnemy"];
+    const ALLY = ["healActive60", "healActive40", "blessActive"];
+    const e = d.effect;
+    if (d.type === "Relic" && d.relicMode === "attach") return "ally";
+    if (ENEMY.includes(e)) return "enemy";
+    if (ALLY.includes(e)) return "ally";
+    return null; // board-wide / draw
+  }
 
   /* ---------------- summon ---------------- */
-  function summon(p, champInst) {
+  function summon(p, champInst, manaIdx) {
     const d = def(champInst);
     if (d.type !== "Champion") return { ok: false };
     if (p.board.length >= BOARD_MAX) return { ok: false, msg: "Board je poln (3)." };
-    const cost = Array.from({ length: summonCostOf(d) }, () => "Any");
+    const cost = manaCostArr(summonCostOf(d));
     if (!canPay(p, cost)) return { ok: false, msg: "Premalo mane za priklic (" + cost.length + ")." };
     const i = p.hand.indexOf(champInst); if (i < 0) return { ok: false };
-    payMana(p, cost);
+    if (!payCost(p, cost, false, manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
     p.hand.splice(i, 1);
     champInst.sick = !d.charge; // Naval obide summon sickness
     p.board.push(champInst);
     logMsg(p.name + " prikliče " + d.name + " (cena " + cost.length + ").");
     onEnter(p, champInst);
+    return { ok: true };
+  }
+
+  /* ---------------- Oracle / Relic / Realm ---------------- */
+  function spellEffect(key, p, targetUid) {
+    const opp = oppOf(p);
+    const ally = p.board.find(c => c.uid === targetUid) || p.board[0];
+    const enemy = opp.board.find(c => c.uid === targetUid) || opp.board[0];
+    switch (key) {
+      case "draw3": draw(p, 3); break;
+      case "draw2": case "draw2attach": draw(p, 2); break;
+      case "healActive60": if (ally) { ally.damage = Math.max(0, ally.damage - 60); logMsg(def(ally).name + " +60 HP."); } break;
+      case "healActive40": if (ally) { ally.damage = Math.max(0, ally.damage - 40); logMsg(def(ally).name + " +40 HP."); } break;
+      case "healReserve30": p.board.forEach(c => c.damage = Math.max(0, c.damage - 30)); logMsg(p.name + ": vsi šampioni +30 HP."); break;
+      case "blessActive": if (ally) { ally.status.blessing = Math.max(ally.status.blessing || 0, 2); logMsg(def(ally).name + " dobi Blessing."); } break;
+      case "shieldAll": p.board.forEach(c => c.status.shield = true); logMsg(p.name + ": vsi dobijo Shield."); break;
+      case "curseEnemy": if (enemy) { enemy.status.curse = true; logMsg(def(enemy).name + " je preklet."); } break;
+      case "burnEnemy": if (enemy) { enemy.status.burn = true; logMsg(def(enemy).name + " gori."); } break;
+      case "freezeEnemy": if (enemy) { enemy.status.freeze = true; logMsg(def(enemy).name + " zamrznjen."); } break;
+      case "dmgEnemy30": if (enemy) { rawDamage(enemy, opp, 30, "urok"); checkDeaths(); } break;
+      default: logMsg("(učinek " + key + " še ni v v2)"); break;
+    }
+  }
+  // odigraj Oracle/Relic/Realm; opts={targetUid, manaIdx}
+  function playCard(p, inst, opts) {
+    opts = opts || {};
+    const d = def(inst);
+    if (!["Oracle", "Relic", "Realm"].includes(d.type)) return { ok: false };
+    const cost = manaCostArr(manaCostOf(d));
+    if (!canPay(p, cost)) return { ok: false, msg: "Premalo mane (" + cost.length + ")." };
+    const i = p.hand.indexOf(inst); if (i < 0) return { ok: false };
+    if (!payCost(p, cost, false, opts.manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
+    p.hand.splice(i, 1);
+
+    if (d.type === "Realm") {
+      G.realm = d.id; G.realmEffect = d.effect || d.realmEffect; G.realmOwner = G.players.indexOf(p);
+      p.discard.push(inst);
+      logMsg(p.name + " razglasi Realm: " + d.name + ".");
+      return { ok: true };
+    }
+    if (d.type === "Relic" && d.relicMode === "attach") {
+      const tgt = p.board.find(c => c.uid === opts.targetUid) || p.board[0];
+      if (!tgt) { return { ok: false, msg: "Ni tarče za relikvijo." }; }
+      tgt.relic = d.id; tgt.relicEffect = d.effect;
+      p.discard.push(inst);
+      logMsg(p.name + ": " + def(tgt).name + " dobi " + d.name + ".");
+      return { ok: true };
+    }
+    // Oracle ali instant Relic
+    logMsg(p.name + " odigra " + d.name + ".");
+    spellEffect(d.effect, p, opts.targetUid);
+    p.discard.push(inst);
     return { ok: true };
   }
 
@@ -241,9 +333,20 @@
     let dmg = atk.damage || 0;
     if (attacker.status.blessing) dmg += 15;
     if (attacker.status.curse) dmg -= 15;
+    const atkType0 = effType(atk);
+    // Relikvije na napadalcu / branilcu
+    if (attacker.relicEffect === "dmgPlus20") dmg += 20;
+    if (defender.relicEffect === "dmgReduce20") dmg -= 20;
+    // Realm bonusi (napadalec)
+    const ad = def(attacker);
+    if (G.realm === "realm-olympus" && atkType0 === "Sky" && ad.pantheon === "Greek") dmg += 10;
+    if (G.realm === "realm-asgard" && atkType0 === "War" && ad.pantheon === "Norse") dmg += 10;
+    if (G.realm === "realm-duat" && (atkType0 === "Underworld" || atkType0 === "Sun")) dmg += 10;
+    // Realm: Forum -10 če ima branilčev lastnik 2+ šampione
+    if (G.realm === "realm-forum") { const dOwn = ownerOfChamp(defender); if (dOwn && dOwn.board.length >= 2) dmg -= 10; }
     if (defender.status.shield) dmg -= 20;
     if (dmg < 0) dmg = 0;
-    const atkType = effType(atk);
+    const atkType = atkType0;
     let mult = 1; const parts = [];
     const dd = def(defender);
     if (atkType) {
@@ -280,7 +383,7 @@
   }
 
   // attacker napade; target = {kind:'champ', uid} | {kind:'face'}
-  function attack(p, attackerUid, atkIndex, target) {
+  function attack(p, attackerUid, atkIndex, target, manaIdx) {
     if (G.over) return { ok: false };
     if (G.pendingBlock) return { ok: false, msg: "Najprej razreši obrambo." };
     const att = p.board.find(c => c.uid === attackerUid);
@@ -288,10 +391,11 @@
     if (!canAttack(p, att)) return { ok: false, msg: "Ta šampion ne more napasti (tapnjen/sick/stun)." };
     const atk = def(att).attacks[atkIndex];
     if (!atk) return { ok: false };
-    if (!canPay(p, atk.cost, def(att).id === "celtic-lugh")) return { ok: false, msg: "Premalo mane za napad." };
+    const lugh = def(att).id === "celtic-lugh";
+    if (!canPay(p, atk.cost, lugh)) return { ok: false, msg: "Premalo mane za napad." };
 
     // plačaj + tapni napadalca
-    payMana(p, atk.cost, def(att).id === "celtic-lugh");
+    if (!payCost(p, atk.cost, lugh, manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
     att.tapped = true;
 
     const opp = oppOf(p);
@@ -528,6 +632,7 @@
   const api = {
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
     summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf, manaCostOf,
+    playCard, cardNeedsTarget,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
     BOARD_MAX, START_LIFE,
   };

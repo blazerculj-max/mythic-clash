@@ -12,6 +12,8 @@ function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.remove
 
 let chosenDeck = null, chosenDiff = "normal";
 let selAttacker = null, selAtkIndex = null; // izbira napada (tvoja poteza)
+let pendingPlay = null;  // {inst, need:'ally'|'enemy'} — čaka izbiro tarče za urok/relic
+let manaPick = null;     // {cost, lughAny, sel:[], onPaid} — ročna izbira mane
 let aiBusy = false;
 
 /* ---------------- SETUP ---------------- */
@@ -135,8 +137,10 @@ function boardChamp(c, owner, isYou) {
   const canAtk = isYou && G.turn === 0 && !G.over && V2.canAttack(owner, c);
   if (canAtk) node.classList.add("ready");
   if (selAttacker === c.uid) node.classList.add("selected-att");
-  // targetable highlight (kadar izbiramo tarčo)
+  // targetable highlight (napad ali izbira tarče za urok/relic)
   if (selAttacker && selAtkIndex != null && !isYou) node.classList.add("targetable");
+  if (pendingPlay && ((pendingPlay.need === "ally" && isYou) || (pendingPlay.need === "enemy" && !isYou)))
+    node.classList.add(pendingPlay.need === "enemy" ? "targetable" : "target-ally");
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
       <span class="v2-champ-hp">${life}</span>
@@ -181,7 +185,8 @@ function renderHand() {
     node.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#2a2a3a,#444)");
     let cost = "";
     if (d.type === "Champion") cost = `<span class="v2-cost">⬡ ${V2.summonCostOf(d)}</span>`;
-    if (d.type === "Energy") cost = `<span class="v2-cost energy">+mana</span>`;
+    else if (d.type === "Energy") cost = `<span class="v2-cost energy">+mana</span>`;
+    else if (["Oracle", "Relic", "Realm"].includes(d.type)) cost = `<span class="v2-cost">⬡ ${V2.manaCostOf(d)}</span>`;
     const playable = isPlayable(inst);
     if (playable) node.classList.add("playable");
     let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : "✦");
@@ -196,10 +201,18 @@ function renderHand() {
 }
 function isPlayable(inst) {
   const you = G.players[0]; const d = def(inst);
-  if (G.turn !== 0 || G.over) return false;
+  if (G.turn !== 0 || G.over || G.pendingBlock || manaPick) return false;
   if (d.type === "Energy") return !you.playedEnergyThisTurn;
-  if (d.type === "Champion" && d.stage === "basic") return you.board.length < V2.BOARD_MAX && V2.canPay(you, Array.from({ length: V2.summonCostOf(d) }, () => "Any"));
-  return false; // oracle/relic/realm: kasneje
+  if (d.type === "Champion") return d.stage === "basic" && you.board.length < V2.BOARD_MAX && V2.canPay(you, Array.from({ length: V2.summonCostOf(d) }, () => "Any"));
+  if (["Oracle", "Relic", "Realm"].includes(d.type)) {
+    if (!V2.canPay(you, Array.from({ length: V2.manaCostOf(d) }, () => "Any"))) return false;
+    const need = V2.cardNeedsTarget(d);
+    if (need === "ally" && !you.board.length) return false;
+    if (need === "enemy" && !G.players[1].board.length) return false;
+    if (d.type === "Realm" && G.realm === d.id) return false;
+    return true;
+  }
+  return false;
 }
 
 function renderActions() {
@@ -207,6 +220,43 @@ function renderActions() {
   if (G.over) { panel.appendChild(el("div", "hint", G.winner === 0 ? "ZMAGA! 🏆" : "Poraz.")); return; }
   if (G.turn !== 0) { panel.appendChild(el("div", "hint", "Nasprotnik je na potezi…")); return; }
   const you = G.players[0];
+
+  // ročna izbira mane
+  if (manaPick) {
+    panel.appendChild(el("div", "hint", `Plačaj: ${costHtml(manaPick.cost)} — klikni katero mano porabiš (${manaPick.sel.length}/${manaPick.cost.length}).`));
+    const row = el("div", "v2-manapick");
+    you.mana.forEach((m, i) => {
+      if (m.tapped && !manaPick.sel.includes(i)) return;
+      const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
+      const b = el("button", "v2-mp" + (manaPick.sel.includes(i) ? " sel" : ""), `${s.glyph} ${m.type}`);
+      b.style.setProperty("--mc", s.color);
+      b.addEventListener("click", () => {
+        const k = manaPick.sel.indexOf(i);
+        if (k >= 0) manaPick.sel.splice(k, 1); else manaPick.sel.push(i);
+        render();
+      });
+      row.appendChild(b);
+    });
+    panel.appendChild(row);
+    const ok = manaSelValid(manaPick.sel, manaPick.cost, manaPick.lughAny);
+    const confirm = el("button", "action-btn end-turn", "Potrdi plačilo");
+    confirm.disabled = !ok;
+    confirm.addEventListener("click", () => { const cb = manaPick.onPaid, idx = manaPick.sel.slice(); manaPick = null; cb(idx); });
+    const cancel = el("button", "action-btn", "Prekliči");
+    cancel.addEventListener("click", () => { manaPick = null; render(); });
+    panel.appendChild(confirm); panel.appendChild(cancel);
+    return;
+  }
+
+  // čaka tarčo za urok/relic
+  if (pendingPlay) {
+    panel.appendChild(el("div", "hint", `Izberi ${pendingPlay.need === "enemy" ? "nasprotnikovega" : "svojega"} šampiona za <b>${def(pendingPlay.inst).name}</b>.`));
+    const cancel = el("button", "action-btn", "Prekliči");
+    cancel.addEventListener("click", () => { pendingPlay = null; render(); });
+    panel.appendChild(cancel);
+    return;
+  }
+
   if (selAttacker) {
     const c = you.board.find(x => x.uid === selAttacker); const d = c ? def(c) : null;
     if (d) {
@@ -251,15 +301,69 @@ function renderLog() {
 }
 
 /* ---------------- HUMAN INTERACTION ---------------- */
+// plačaj cost: če ni izbire (untapped == cost) avtomatsko; sicer ročna izbira mane
+function payThen(cost, lughAny, onPaid) {
+  const you = G.players[0];
+  if (!V2.canPay(you, cost, lughAny)) { toast("Premalo mane."); return; }
+  const untapped = you.mana.map((m, i) => i).filter(i => !you.mana[i].tapped);
+  if (untapped.length === cost.length) { onPaid(untapped); return; }
+  manaPick = { cost, lughAny, sel: [], onPaid };
+  selAttacker = selAttacker; // ohrani
+  toast("Izberi mano za plačilo (" + cost.length + ").");
+  render();
+}
+function manaSelValid(sel, cost, lughAny) {
+  const you = G.players[0];
+  if (sel.length !== cost.length) return false;
+  const pool = sel.map(i => you.mana[i]).filter(m => m && !m.tapped).map(m => m.type);
+  if (pool.length !== cost.length) return false;
+  const specific = cost.filter(c => c !== "Any"); const anyN = cost.filter(c => c === "Any").length;
+  const tmp = pool.slice();
+  for (const need of specific) { let k = tmp.indexOf(need); if (k < 0 && lughAny && tmp.length) k = 0; if (k < 0) return false; tmp.splice(k, 1); }
+  return tmp.length === anyN;
+}
+
 function onHandClick(inst) {
   const you = G.players[0]; const d = def(inst);
-  if (G.turn !== 0 || G.over) return;
+  if (G.turn !== 0 || G.over || manaPick) return;
   if (d.type === "Energy") { const r = V2.playEnergy(you, inst); if (!r.ok && r.msg) toast(r.msg); render(); return; }
-  if (d.type === "Champion" && d.stage === "basic") { const r = V2.summon(you, inst); if (!r.ok) toast(r.msg || "Ni mogoče priklicati."); render(); return; }
-  toast("Ta tip karte (Oracle/Relic/Realm) pride v naslednji fazi v2.");
+  if (d.type === "Champion") {
+    if (d.stage !== "basic") { toast("Ascension karte (zaenkrat) v v2 ne moreš priklicati."); return; }
+    if (you.board.length >= V2.BOARD_MAX) { toast("Board je poln (3)."); return; }
+    const cost = Array.from({ length: V2.summonCostOf(d) }, () => "Any");
+    payThen(cost, false, idx => { const r = V2.summon(you, inst, idx); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    return;
+  }
+  if (["Oracle", "Relic", "Realm"].includes(d.type)) {
+    const need = V2.cardNeedsTarget(d);
+    if (need) {
+      pendingPlay = { inst, need };
+      selAttacker = null; selAtkIndex = null;
+      toast(need === "enemy" ? "Izberi nasprotnikovega šampiona." : "Izberi svojega šampiona.");
+      render();
+      return;
+    }
+    const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    return;
+  }
 }
+
 function onChampClick(c, owner, isYou) {
-  if (G.turn !== 0 || G.over) return;
+  if (G.turn !== 0 || G.over || manaPick) return;
+  // 1) izbira tarče za urok/relic
+  if (pendingPlay) {
+    const want = pendingPlay.need;
+    if ((want === "ally" && isYou) || (want === "enemy" && !isYou)) {
+      const inst = pendingPlay.inst; const d = def(inst);
+      const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
+      const targetUid = c.uid;
+      pendingPlay = null;
+      payThen(cost, false, idx => { const r = V2.playCard(G.players[0], inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+      return;
+    } else { toast(want === "ally" ? "Izberi SVOJEGA šampiona." : "Izberi NASPROTNIKOVEGA šampiona."); return; }
+  }
+  // 2) napad
   if (isYou) {
     if (!V2.canAttack(owner, c)) { toast("Ta šampion ne more napasti (tapnjen / sick / stun)."); return; }
     selAttacker = (selAttacker === c.uid) ? null : c.uid; selAtkIndex = null; render();
@@ -268,12 +372,17 @@ function onChampClick(c, owner, isYou) {
     else toast("Najprej izberi svojega napadalca in napad.");
   }
 }
+
 function doAttack(target) {
   const you = G.players[0];
-  const r = V2.attack(you, selAttacker, selAtkIndex, target);
-  if (!r.ok) { toast(r.msg || "Napad ni mogoč."); return; }
-  selAttacker = null; selAtkIndex = null;
-  render(); checkOver();
+  const c = you.board.find(x => x.uid === selAttacker); if (!c) return;
+  const atk = def(c).attacks[selAtkIndex];
+  payThen(atk.cost, def(c).id === "celtic-lugh", idx => {
+    const r = V2.attack(you, selAttacker, selAtkIndex, target, idx);
+    if (!r.ok) { toast(r.msg || "Napad ni mogoč."); manaPick = null; render(); return; }
+    selAttacker = null; selAtkIndex = null; manaPick = null;
+    render(); checkOver();
+  });
 }
 
 $("#v2-end") && document.addEventListener("DOMContentLoaded", () => {});
@@ -299,6 +408,30 @@ function aiSummon() {
   if (ai.board.length < V2.BOARD_MAX) {
     const c = ai.hand.find(i => def(i).type === "Champion" && def(i).stage === "basic" && V2.canPay(ai, Array.from({ length: V2.summonCostOf(def(i)) }, () => "Any")));
     if (c) { V2.summon(ai, c); render(); setTimeout(aiSummon, 550); return; }
+  }
+  setTimeout(aiSpells, 550);
+}
+function aiSpells() {
+  if (G.over) { aiBusy = false; checkOver(); return; }
+  const ai = G.players[1], you = G.players[0];
+  // odigraj en smiseln Oracle/Relic/Realm, če je mana in tarča
+  const inst = ai.hand.find(i => {
+    const d = def(i); if (!["Oracle", "Relic", "Realm"].includes(d.type)) return false;
+    if (!V2.canPay(ai, Array.from({ length: V2.manaCostOf(d) }, () => "Any"))) return false;
+    const need = V2.cardNeedsTarget(d);
+    if (need === "ally" && !ai.board.length) return false;
+    if (need === "enemy" && !you.board.length) return false;
+    if (d.type === "Realm" && G.realm === d.id) return false;
+    return true;
+  });
+  if (inst) {
+    const need = V2.cardNeedsTarget(def(inst));
+    let targetUid = null;
+    if (need === "enemy") targetUid = (you.board[0] || {}).uid;
+    else if (need === "ally") targetUid = (ai.board.slice().sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0] || {}).uid;
+    V2.playCard(ai, inst, { targetUid });
+    render();
+    setTimeout(aiSpells, 550); return; // morda še en
   }
   setTimeout(() => aiAttack(ai.board.filter(c => V2.canAttack(ai, c))), 550);
 }
