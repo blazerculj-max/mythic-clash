@@ -1272,7 +1272,10 @@ function boardChamp(c, owner, isYou) {
   const life = c.maxHp - c.damage;
   const pct = Math.max(0, Math.round(life / c.maxHp * 100));
   const taunt = V2.isTaunt(c);
-  const node = el("div", "v2-champ" + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : "") + (d.minion ? " minion" : "") + (taunt ? " taunt" : ""));
+  const rar = (RARITY_STYLE && RARITY_STYLE[d.rarity]) || { color: "#9aa0a6", glow: "rgba(154,160,166,0)" };
+  const atkVal = Math.max(0, ...(d.attacks || []).map(a => a.damage || 0));
+  const node = el("div", "v2-champ rar-" + (d.rarity || "Common").toLowerCase() + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : "") + (d.minion ? " minion" : "") + (taunt ? " taunt" : ""));
+  node.style.setProperty("--rar", rar.color); node.style.setProperty("--rar-glow", rar.glow);
   node.dataset.uid = c.uid;
   node.dataset.owner = isYou ? "you" : "opp";
   if (!seenChampUids.has(c.uid)) { node.classList.add("entering"); seenChampUids.add(c.uid); } // enter-play animacija (enkrat)
@@ -1300,7 +1303,8 @@ function boardChamp(c, owner, isYou) {
   const decayTag = d.decay ? `<span class="v2-tag decay" ${tipAttr("☠ Razpad " + d.decay + "/potezo", "Vsak konec poteze izgubi " + d.decay + " HP in sčasoma umre.")}>☠${d.decay}</span>` : "";
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
-      <span class="v2-champ-hp">${life}</span>
+      <span class="v2-champ-gem atk" ${tipAttr("Napad", "Najmočnejši napad tega šampiona.")}>${atkVal}</span>
+      <span class="v2-champ-hp v2-champ-gem hp${life <= c.maxHp * 0.35 ? " low" : ""}">${life}</span>
       ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${tauntTag}${decayTag}${comboTag}
       ${stChips ? `<div class="v2-champ-statusbar">${stChips}</div>` : ""}</div>
     <div class="v2-champ-body">
@@ -1355,20 +1359,27 @@ function equipChips(c) {
 function renderHand() {
   const you = G.players[0];
   const h = $("#v2-hand"); h.innerHTML = "";
-  you.hand.forEach(inst => {
+  const n = you.hand.length, center = (n - 1) / 2;
+  you.hand.forEach((inst, idx) => {
     const d = def(inst);
     const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
-    const node = el("div", "v2-handcard");
+    const rar = (RARITY_STYLE && RARITY_STYLE[d.rarity]) || { color: "#9aa0a6", glow: "rgba(154,160,166,0)" };
+    const node = el("div", "v2-handcard rar-" + (d.rarity || "Common").toLowerCase());
     node.setAttribute("data-tip-title", d.name); node.setAttribute("data-tip", cardTipText(d));
     node.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#2a2a3a,#444)");
-    let cost = "";
-    if (d.type === "Champion") cost = `<span class="v2-cost">⬡ ${V2.summonCostOf(d)}</span>`;
-    else if (d.type === "Energy") cost = `<span class="v2-cost energy">+mana</span>`;
-    else if (["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) cost = `<span class="v2-cost">⬡ ${V2.manaCostOf(d)}</span>`;
+    node.style.setProperty("--rar", rar.color); node.style.setProperty("--rar-glow", rar.glow);
+    // pahljača (fan): rahla rotacija + spust proti robovom
+    const off = idx - center;
+    node.style.setProperty("--fan-rot", Math.max(-11, Math.min(11, off * 3.2)) + "deg");
+    node.style.setProperty("--fan-y", (Math.abs(off) * 5) + "px");
+    // mana dragulj
+    let gem;
+    if (d.type === "Energy") gem = `<span class="v2-gem energy" title="Energija">+</span>`;
+    else gem = `<span class="v2-gem">${d.type === "Champion" ? V2.summonCostOf(d) : V2.manaCostOf(d)}</span>`;
     const playable = isPlayable(inst);
     if (playable) node.classList.add("playable");
     let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : "✦");
-    node.innerHTML = `<div class="v2-hc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span>${cost}</div>
+    node.innerHTML = `${gem}<div class="v2-hc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span></div>
       <div class="v2-hc-body"><div class="v2-hc-name">${d.name}</div>
       <div class="v2-hc-meta">${d.type === "Equipment" ? (d.slot === "armor" ? "Oklep" : "Orožje") : d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
       ${d.type === "Champion" ? atkRowsHtml(d, null) : ""}</div>`;

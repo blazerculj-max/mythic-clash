@@ -611,3 +611,97 @@
 .v2-manacard small { white-space: nowrap; }
 /* osnovni napad (basic strike) — diskreten */
 .action-btn.attack.basic, .v2-atk.basic { opacity: 0.92; }
+
+/* ===================================================================
+   PREMIUM VISUAL PASS v1 — Hearthstone / Slay the Spire / MTG občutek
+   (naloženo zadnje => prepiše prejšnje, kjer se prekriva)
+=================================================================== */
+
+/* — Bojišče: globlja plošča z vinjeto in žarečo ločnico — */
+.v2-field {
+  background:
+    radial-gradient(140% 78% at 50% -10%, rgba(120,92,180,0.20), transparent 56%),
+    radial-gradient(150% 82% at 50% 110%, rgba(210,158,72,0.18), transparent 56%),
+    radial-gradient(100% 62% at 50% 50%, rgba(42,46,74,0.55), rgba(7,7,12,0.9) 78%),
+    linear-gradient(180deg, #15131f, #0a0a12 52%, #16131e);
+  box-shadow: inset 0 0 130px rgba(0,0,0,0.72), inset 0 0 0 1px rgba(255,255,255,0.035);
+}
+.v2-mid {
+  background: linear-gradient(90deg, transparent, rgba(255,216,107,0.18), rgba(255,216,107,0.06) 50%, rgba(255,216,107,0.18), transparent);
+  box-shadow: 0 0 22px rgba(255,200,90,0.14);
+}
+
+/* — Mana dragulj (kristal v slogu HS) — */
+.v2-gem {
+  position: absolute; top: -8px; left: -8px; z-index: 14; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "SF Mono", monospace; font-weight: 800; font-size: 14px; color: #eaf4ff;
+  border-radius: 50%; background: radial-gradient(circle at 38% 28%, #74bbff, #2b6fd6 56%, #143f7d);
+  border: 2px solid #c5e3ff;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.65), 0 0 12px rgba(80,150,255,0.55), inset 0 2px 4px rgba(255,255,255,0.55);
+  text-shadow: 0 1px 2px rgba(0,20,60,0.85);
+}
+.v2-gem.energy {
+  background: radial-gradient(circle at 38% 28%, #8fffd2, #1fae84 56%, #0c6a52); border-color: #c9ffea;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.65), 0 0 12px rgba(60,230,170,0.55), inset 0 2px 4px rgba(255,255,255,0.55);
+}
+
+/* — Karte v roki: pahljača + premium okvir + hover-pop — */
+.v2-hand-wrap { overflow: visible; }
+.v2-hand { overflow: visible; gap: 2px; padding: 32px 10px 12px; align-items: flex-end; }
+.v2-handcard {
+  width: 124px; flex: 0 0 124px; border-radius: 12px; overflow: visible; position: relative;
+  background: linear-gradient(180deg, #21212f, #14141d);
+  border: 1px solid var(--rar, #2a2a3a);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+  transform: translateY(var(--fan-y,0)) rotate(var(--fan-rot,0deg));
+  transform-origin: bottom center;
+  transition: transform .16s cubic-bezier(.2,.8,.3,1.25), box-shadow .16s ease, filter .16s ease;
+}
+.v2-handcard .v2-hc-art { border-radius: 11px 11px 0 0; height: 94px; }
+.v2-handcard .v2-hc-body { background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent); border-radius: 0 0 11px 11px; padding: 6px 8px 8px; }
+.v2-handcard .v2-hc-name { font-family: Georgia, serif; font-size: 11px; letter-spacing: .2px; }
+.v2-handcard:hover {
+  transform: translateY(-48px) rotate(0deg) scale(1.34); z-index: 60;
+  box-shadow: 0 28px 52px rgba(0,0,0,0.72), 0 0 0 2px var(--rar), 0 0 28px var(--rar-glow);
+}
+.v2-handcard.playable {
+  box-shadow: 0 6px 15px rgba(0,0,0,0.5), 0 0 0 1.5px var(--good), 0 0 16px rgba(111,217,138,0.4);
+  animation: cardBob 2.6s ease-in-out infinite;
+}
+.v2-handcard.playable:hover { animation: none; box-shadow: 0 28px 52px rgba(0,0,0,0.72), 0 0 0 2px var(--good), 0 0 30px rgba(111,217,138,0.55); }
+.v2-hand.dim .v2-handcard { filter: saturate(0.6) brightness(0.72); }
+@keyframes cardBob {
+  0%,100% { transform: translateY(var(--fan-y,0)) rotate(var(--fan-rot,0deg)); }
+  50%     { transform: translateY(calc(var(--fan-y,0) - 5px)) rotate(var(--fan-rot,0deg)); }
+}
+/* foil sheen na epic/legendary/mythic */
+.v2-handcard.rar-epic .v2-hc-art::after,
+.v2-handcard.rar-legendary .v2-hc-art::after,
+.v2-handcard.rar-mythic .v2-hc-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 36%, rgba(255,255,255,0.30) 50%, transparent 64%);
+  transform: translateX(-130%); animation: foilSweep 3.8s ease-in-out infinite;
+}
+@keyframes foilSweep { 0%,62% { transform: translateX(-130%); } 86%,100% { transform: translateX(130%); } }
+
+/* — Šampioni na boardu: rarity rob + vogalni dragulji (napad/življenje) — */
+.v2-champ {
+  border-radius: 11px; border: 1px solid var(--rar, rgba(255,255,255,0.14));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+.v2-champ:hover { transform: translateY(-5px) scale(1.045); box-shadow: 0 15px 30px rgba(0,0,0,0.62), 0 0 0 1px var(--rar), 0 0 16px var(--rar-glow); }
+.v2-champ-art { border-radius: 10px 10px 0 0; }
+.v2-champ-gem {
+  position: absolute; bottom: 3px; z-index: 9; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "SF Mono", monospace; font-weight: 800; font-size: 13px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.72), inset 0 2px 3px rgba(255,255,255,0.45);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+}
+.v2-champ-gem.atk { left: 3px; color: #fff3d6; background: radial-gradient(circle at 38% 28%, #ffd27a, #e8a32f 56%, #9c6512); }
+.v2-champ-gem.hp { right: 3px; left: auto; top: auto; padding: 0; color: #fff; background: radial-gradient(circle at 38% 28%, #ff8a7a, #d63b2b 56%, #7e1d15); }
+.v2-champ-gem.hp.low { animation: heroLow 1.1s ease-in-out infinite; }
+/* statusi naj ne prekrijejo vogalnih draguljev */
+.v2-champ-statusbar { left: 30px; right: 30px; bottom: 5px; justify-content: center; }
