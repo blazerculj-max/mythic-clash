@@ -6,7 +6,7 @@ const G = V2.G;
 const def = V2.def;
 const $ = s => document.querySelector(s);
 function el(t, c, h) { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; }
-function artImg(d, cls) { return d && d.id ? `<img class="${cls}" src="art/${d.id}.png" alt="" decoding="async" onerror="this.style.display='none'">` : ""; }
+function artImg(d, cls) { if (!d || !d.id) return ""; const artId = d._baseId || d.id; return `<img class="${cls}" src="art/${encodeURIComponent(artId)}.png" alt="" decoding="async" onerror="this.style.display='none'">`; }
 let toastTimer;
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.remove("hidden"); t.style.opacity = "1"; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.opacity = "0"; }, 1800); }
 
