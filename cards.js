@@ -964,9 +964,9 @@ const CARDS = {
   "minion-druid-acolyte": {
     id: "minion-druid-acolyte", name: "Druid Acolyte", type: "Champion", minion: true,
     pantheon: "Celtic", rarity: "Common", stage: "basic", summonCost: 1, hp: 25,
-    attacks: [{ name: "Staff Tap", cost: ["Nature"], damage: 5, effect: null, text: "Komaj kaj udari." }],
+    attacks: [{ name: "Mending Tap", cost: ["Nature"], damage: 5, effect: "healSelf20", text: "Tarčni (Nature): udari 5 in se pozdravi 20 HP (vzdržljiv zdravilec)." }],
     activated: { name: "Healing Touch", cost: ["Any"], effect: "healBoard20", text: "Tapni + 1 mana: vsi tvoji šampioni +20 HP." },
-    ability: { name: "Mender", text: "Skoraj brez napada — tu je za zdravljenje." },
+    ability: { name: "Mender", text: "Izbira: Basic Strike (10 škode) za poke, ali Mending Tap (Nature) za samo-zdravljenje, ali tap za board heal." },
     weakness: "Trickery", resistance: "Nature", flavorText: "Moč je v koreninah, ne v meču.",
   },
   "minion-pixie": {

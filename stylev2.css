@@ -757,3 +757,44 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
 .v2-field.v2-shake-big { animation: scrShakeBig .44s ease; }
 @keyframes scrShake { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-4px,2px)} 40%{transform:translate(4px,-2px)} 60%{transform:translate(-3px,-1px)} 80%{transform:translate(3px,1px)} }
 @keyframes scrShakeBig { 0%,100%{transform:translate(0,0)} 12%{transform:translate(-8px,4px)} 28%{transform:translate(8px,-5px)} 44%{transform:translate(-7px,3px)} 60%{transform:translate(6px,-3px)} 78%{transform:translate(-3px,2px)} }
+
+/* ===================================================================
+   SUMMON FLOURISH (#1) + MANA KRISTALI (#2)
+=================================================================== */
+/* — Priklic šampiona: razširjajoč obroč + bliskovit flash v barvi redkosti — */
+.v2-champ.entering { animation: champEnter 0.55s cubic-bezier(.2,.9,.3,1.3); z-index: 6; }
+@keyframes champEnter {
+  0%   { opacity: 0; transform: translateY(-30px) scale(0.55) rotate(-6deg); }
+  45%  { opacity: 1; transform: translateY(3px) scale(1.12) rotate(2deg); }
+  70%  { transform: translateY(0) scale(0.97) rotate(-1deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+.v2-champ.entering::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 7;
+  animation: champSummon 0.62s ease-out forwards;
+}
+@keyframes champSummon {
+  0%   { opacity: 1; box-shadow: 0 0 0 0 var(--rar, #ffd97a); background: radial-gradient(circle, rgba(255,255,255,0.85), transparent 60%); }
+  55%  { opacity: 0.8; box-shadow: 0 0 0 7px var(--rar-glow, rgba(255,217,122,0.5)); background: radial-gradient(circle, rgba(255,255,255,0.2), transparent 55%); }
+  100% { opacity: 0; box-shadow: 0 0 0 16px transparent; background: transparent; }
+}
+
+/* — Mana kristali (HS): sijoči dragulji, ki se polnijo/praznijo — */
+.v2-manacard {
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.42); position: relative; overflow: hidden;
+  background: radial-gradient(125% 95% at 38% 16%, rgba(255,255,255,0.9), var(--mc) 54%, rgba(0,0,0,0.4));
+  box-shadow: 0 2px 7px rgba(0,0,0,0.5), 0 0 10px -2px var(--mc), inset 0 1px 2px rgba(255,255,255,0.7), inset 0 -3px 6px rgba(0,0,0,0.32);
+}
+.v2-manacard::before {
+  content: ""; position: absolute; top: 2px; left: 3px; right: 9px; height: 36%;
+  border-radius: 6px 6px 60% 50%; background: linear-gradient(180deg, rgba(255,255,255,0.65), transparent); pointer-events: none;
+}
+.v2-manacard.dual { background: linear-gradient(125deg, var(--mc) 0 47%, var(--mc2, var(--mc)) 53% 100%); }
+.v2-manacard.tapped { filter: grayscale(0.85) brightness(0.42); box-shadow: inset 0 0 9px rgba(0,0,0,0.65); border-color: rgba(255,255,255,0.12); transform: rotate(10deg) scale(0.9); }
+.v2-manacard.tapped::before { opacity: 0.12; }
+.v2-manacard.just-added { animation: mcAdd2 0.52s cubic-bezier(.2,.9,.3,1.45); }
+@keyframes mcAdd2 {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; filter: brightness(2.2); }
+  60%  { transform: scale(1.28); opacity: 1; filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
