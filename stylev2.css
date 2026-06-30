@@ -14,19 +14,32 @@
 .v2-arena {
   height: 100%; display: grid;
   grid-template-columns: minmax(0,1fr) 264px;
-  grid-template-rows: minmax(0,1fr) auto minmax(0,1fr) 172px;
+  grid-template-rows: minmax(0,1fr) 172px;
   gap: 8px; padding: 8px; max-width: 1240px; margin: 0 auto;
 }
-.v2-opp { grid-column: 1; grid-row: 1; }
-.v2-mid { grid-column: 1; grid-row: 2; display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  border: 1px dashed var(--panel-edge); border-radius: var(--radius); padding: 6px 12px; }
-.v2-you { grid-column: 1; grid-row: 3; }
-.v2-hand-wrap { grid-column: 1; grid-row: 4; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
-.v2-panel { grid-column: 2; grid-row: 1 / span 4; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+/* ENO bojišče: nasprotnik zgoraj, ti spodaj, vmes ločnica */
+.v2-field {
+  grid-column: 1; grid-row: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--panel-edge); border-radius: var(--radius); overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(255,107,94,0.06), transparent 60%),
+    radial-gradient(120% 60% at 50% 100%, rgba(255,216,107,0.06), transparent 60%),
+    linear-gradient(180deg, rgba(20,16,24,0.6), rgba(8,8,14,0.5) 50%, rgba(16,18,26,0.6));
+}
+.v2-opp { flex: 1 1 0; border-bottom: none; }
+.v2-you { flex: 1 1 0; }
+.v2-mid { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 5px 14px; border-top: 1px solid var(--panel-edge); border-bottom: 1px solid var(--panel-edge);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent); }
+.v2-hand-wrap { grid-column: 1; grid-row: 2; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
+.v2-panel { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .v2-turn { font-size: 13px; color: var(--ink-dim); }
 .v2-turn b { color: var(--gold-bright); }
 
-.v2-side { border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 10px 12px; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.v2-side { border: none; background: transparent; border-radius: 0; padding: 8px 12px; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+.v2-opp.v2-side { justify-content: flex-start; }
+.v2-you.v2-side { justify-content: flex-end; }
 .v2-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .v2-meta { font-size: 11px; color: var(--ink-dim); font-family: "SF Mono", monospace; }
 
@@ -80,7 +93,8 @@
 .v2-hpfill { height: 100%; background: linear-gradient(90deg, var(--good), #aef0c0); }
 .v2-hpfill.low { background: linear-gradient(90deg, var(--danger), #ffb0a8); }
 .v2-status { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; min-height: 14px; font-size: 11px; }
-.v2-st { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 999px; font-size: 9.5px; font-weight: 600; line-height: 1.5; border: 1px solid transparent; }
+.v2-st { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 17px; height: 17px; padding: 0 3px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 1; border: 1px solid transparent; }
+.v2-st b { font-size: 8px; }
 .v2-st.buff { background: rgba(94,201,122,0.16); border-color: rgba(94,201,122,0.5); color: #b6f0c6; }
 .v2-st.debuff { background: rgba(255,107,94,0.16); border-color: rgba(255,107,94,0.5); color: #ffc0b6; }
 .v2-kw { margin-left: auto; opacity: 0.9; display: inline-flex; gap: 2px; align-self: center; }
@@ -390,3 +404,7 @@
 /* combo / momentum badge */
 .v2-tag.combo { left: 50%; right: auto; top: 4px; transform: translateX(-50%); font-size: 10px; font-weight: 800; color: var(--mc, #ffd97a);
   background: rgba(0,0,0,0.7); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--mc, #ffd97a); text-shadow: 0 0 6px var(--mc); z-index: 6; }
+
+/* nadgrajena karta v Pohodu (★) */
+.rdc-up { position: absolute; top: 4px; left: 4px; z-index: 5; color: var(--gold-bright, #ffd97a); font-size: 13px; text-shadow: 0 0 6px rgba(255,216,107,0.8); }
+.run-deckcard .rdc-n { color: inherit; }

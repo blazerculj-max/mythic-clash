@@ -419,7 +419,7 @@ function openRunStart() {
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startRun(b.dataset.deck)));
 }
 function startRun(deckId) {
-  RUN = { deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0 };
+  RUN = { deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {} };
   saveRun(); showRunMap();
 }
 
@@ -457,9 +457,11 @@ function showRunDeck(removeMode) {
     const d = CARDS[id]; const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
     const glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : "🏛"));
     const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : d.type === "Energy" ? "+mana" : `⬡${V2.manaCostOf(d)}`;
-    return `<button class="run-deckcard ${removeMode ? "removable" : ""}" data-id="${id}" style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
-      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">×${counts[id]}</span></div>
-      <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.type} · ${cost}</div></button>`;
+    const up = RUN.upgrades && RUN.upgrades[id];
+    const upTip = up ? "Nadgradnje: " + (up.hp ? "+" + up.hp + " HP " : "") + (up.dmg ? "+" + up.dmg + " škode " : "") + (up.grants || []).map(g => g.split(":").pop()).join(", ") : "";
+    return `<button class="run-deckcard ${removeMode ? "removable" : ""}" data-id="${id}" ${up ? tipAttr(d.name + " ★", upTip) : ""} style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
+      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">×${counts[id]}</span>${up ? `<span class="rdc-up">★</span>` : ""}</div>
+      <div class="rdc-n">${d.name}${up ? " ★" : ""}</div><div class="rdc-m">${d.type} · ${cost}</div></button>`;
   }).join("");
   const s = showRunScreen(`
     <header class="run-head"><div><span class="eyebrow">${removeMode ? "Odstrani karto" : "Tvoj deck"}</span><h2 class="run-title">${RUN.deck.length} kart</h2></div>
@@ -475,8 +477,8 @@ function showRunDeck(removeMode) {
 
 // nagrade po zmagi
 function randomCardPool() {
-  // igrljive karte (brez energij in ascension — teh ne moreš priklicati)
-  return Object.values(CARDS).filter(d => d.type !== "Energy" && d.stage !== "ascended").map(d => d.id);
+  // igrljive karte (brez energij, ascension in nadgrajenih klonov)
+  return Object.values(CARDS).filter(d => d.type !== "Energy" && d.stage !== "ascended" && !d.upgraded).map(d => d.id);
 }
 function genRewards() {
   const all = randomCardPool();
@@ -485,6 +487,7 @@ function genRewards() {
   const top = runTopPantheons().slice(0, 3);
   const onColor = all.filter(id => { const d = CARDS[id]; return (d.pantheon && top.includes(d.pantheon)) || d.type === "Equipment"; });
   const upgrades = [
+    { t: "upgradeCard", label: "⬆ Nadgradi šampiona", desc: "Izberi šampiona in mu daj trajno novo moč (HP / škodo / sposobnost)." },
     { t: "life", label: "❤ Heroj +25 življenja", desc: "Trajno višja meja življenj." },
     { t: "champhp", label: "🛡 Blagoslov: šampioni +10 HP", desc: "Vsi tvoji šampioni dobijo +10 HP." },
     { t: "hand", label: "✋ +1 karta v začetni roki", desc: "Vsako bitko začneš z eno karto več." },
@@ -493,7 +496,10 @@ function genRewards() {
   ];
   const c1 = pick(onColor.length ? onColor : all);
   let c2 = pick(all); let g = 0; while (c2 === c1 && g++ < 6) c2 = pick(all);
-  const up = upgrades[(Math.random() * upgrades.length) | 0];
+  // nadgradnja championa je na voljo le, če imaš šampiona; sicer običajni upgrade
+  const hasChamp = RUN.deck.some(id => (CARDS[id] || {}).type === "Champion");
+  const pool = hasChamp ? upgrades : upgrades.filter(u => u.t !== "upgradeCard");
+  const up = pool[(Math.random() * pool.length) | 0];
   return [{ t: "card", id: c1, tag: "V tvojem slogu" }, { t: "card", id: c2, tag: "Divja karta" }, up];
 }
 function showReward(rewards) {
@@ -533,11 +539,90 @@ function applyReward(r) {
   if (r.t === "hand") { RUN.handBonus += 1; saveRun(); showRunMap(); return; }
   if (r.t === "favor") { RUN.favorStart += 1; saveRun(); showRunMap(); return; }
   if (r.t === "remove") { showRunDeck(true); return; }
+  if (r.t === "upgradeCard") { showUpgradePicker(); return; }
+}
+
+/* ---------------- Nadgradnja kart (per-champion, trajno v runu) ---------------- */
+// možne nadgradnje za danega championa (smiselne glede na to, kar že ima)
+function champUpgradeOptions(cardId) {
+  const d = CARDS[cardId]; const up = RUN.upgrades[cardId] || { grants: [] };
+  const has = kw => (d[kw] || (up.grants || []).includes(kw));
+  const opts = [
+    { k: "hp", label: "❤ +25 HP", desc: "Trajno +25 najvišjega HP." },
+    { k: "dmg", label: "⚔ +10 škode", desc: "Vsi napadi te karte +10 škode." },
+  ];
+  const extra = [];
+  if (!has("lifesteal")) extra.push({ k: "kw:lifesteal", label: "🩸 Krvoses", desc: "Napadi zdravijo to karto za zadano škodo." });
+  if (!has("charge")) extra.push({ k: "kw:charge", label: "⚡ Naval", desc: "Lahko napade že v potezi priklica." });
+  if (!d.activated && !(up.grants || []).some(g => g.startsWith("ability:")))
+    extra.push({ k: "ability:shieldSelf", label: "🛡 Aegis (aktivno)", desc: "Tapni + 1 mana: dvigne Shield." });
+  if (!d.activated && !(up.grants || []).some(g => g.startsWith("ability:")))
+    extra.push({ k: "ability:healSelf30", label: "❤ Okrevanje (aktivno)", desc: "Tapni + 2 mana: pozdravi 30 HP." });
+  // 1 naključni "extra" + 2 osnovni = 3 izbire
+  if (extra.length) opts.push(extra[(Math.random() * extra.length) | 0]);
+  return opts;
+}
+function showUpgradePicker() {
+  const champIds = [...new Set(RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion"))];
+  const cards = champIds.map(id => {
+    const d = CARDS[id]; const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
+    const up = RUN.upgrades[id];
+    const mark = up ? `<span class="rdc-x">★${(up.hp ? " +" + up.hp + "HP" : "") + (up.dmg ? " +" + up.dmg + "dmg" : "")}</span>` : "";
+    return `<button class="run-deckcard" data-id="${id}" ${tipAttr(d.name, cardTipText(d))} style="--c-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
+      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${st.symbol}</span>${mark}</div>
+      <div class="rdc-n">${d.name}${up ? " ★" : ""}</div><div class="rdc-m">❤${d.hp} · Champion</div></button>`;
+  }).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Nadgradnja</span><h2 class="run-title">Katerega šampiona okrepiš?</h2></div>
+      <button class="rules-toggle" id="up-back">← Nazaj</button></header>
+    <p class="run-sub">Nadgradnja velja za <b>vse kopije</b> te karte v decku — fokus na en tip šampiona se splača.</p>
+    <div class="run-deckgrid">${cards}</div>`);
+  s.querySelector("#up-back").addEventListener("click", () => showReward(RUN._pendingRewards));
+  s.querySelectorAll(".run-deckcard").forEach(b => b.addEventListener("click", () => showUpgradeOptions(b.dataset.id)));
+}
+function showUpgradeOptions(cardId) {
+  const d = CARDS[cardId]; const opts = champUpgradeOptions(cardId);
+  const cardsHtml = opts.map((o, i) => `<button class="reward-card upgrade" data-i="${i}">
+    <div class="rw-tag">${d.name}</div><div class="rw-up-label">${o.label}</div><div class="rw-up-desc">${o.desc}</div></button>`).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Nadgradnja · ${d.name}</span><h2 class="run-title">Izberi moč</h2></div>
+      <button class="rules-toggle" id="up-back2">← Nazaj</button></header>
+    <div class="reward-grid">${cardsHtml}</div>`);
+  s.querySelector("#up-back2").addEventListener("click", () => showUpgradePicker());
+  s.querySelectorAll(".reward-card").forEach((b, i) => b.addEventListener("click", () => applyUpgrade(cardId, opts[i])));
+}
+function applyUpgrade(cardId, opt) {
+  const up = RUN.upgrades[cardId] || { hp: 0, dmg: 0, grants: [] };
+  if (opt.k === "hp") up.hp = (up.hp || 0) + 25;
+  else if (opt.k === "dmg") up.dmg = (up.dmg || 0) + 10;
+  else { up.grants = up.grants || []; if (!up.grants.includes(opt.k)) up.grants.push(opt.k); }
+  RUN.upgrades[cardId] = up; saveRun();
+  toast(CARDS[cardId].name + ": " + opt.label);
+  showRunMap();
+}
+// zgradi nadgrajeno definicijo karte in jo registriraj; vrne (morda novi) id
+function upgradedCardId(baseId) {
+  const up = RUN.upgrades[baseId]; if (!up) return baseId;
+  const id = baseId + "#u";
+  const c = JSON.parse(JSON.stringify(CARDS[baseId]));
+  c.id = id; c._baseId = baseId; c.upgraded = true;
+  c.name = c.name + " ★";
+  if (up.hp) c.hp += up.hp;
+  if (up.dmg) (c.attacks || []).forEach(a => { a.damage = (a.damage || 0) + up.dmg; });
+  (up.grants || []).forEach(g => {
+    if (g === "kw:lifesteal") c.lifesteal = true;
+    else if (g === "kw:charge") c.charge = true;
+    else if (g === "ability:shieldSelf") c.activated = { name: "Aegis", cost: ["Any"], effect: "shieldSelf", text: "Tapni + 1 mana: dvigne Shield (−20 naslednji udarec)." };
+    else if (g === "ability:healSelf30") c.activated = { name: "Okrevanje", cost: ["Any", "Any"], effect: "healSelf30", text: "Tapni + 2 mana: pozdravi 30 HP." };
+  });
+  CARDS[id] = c;
+  return id;
 }
 
 function runLaunch() {
   const stage = RUN_STAGES[RUN.stage];
-  STARTER_DECKS.run = { id: "run", name: "Tvoj pohod", pantheon: deckPantheon(RUN.deck), blurb: "", style: "Run", list: RUN.deck.slice() };
+  const list = RUN.deck.map(id => upgradedCardId(id)); // vključi per-card nadgradnje
+  STARTER_DECKS.run = { id: "run", name: "Tvoj pohod", pantheon: deckPantheon(RUN.deck), blurb: "", style: "Run", list };
   V2.startGame("run", stage.ai, stage.diff);
   G.noDeckout = true; // lean run deck -> brez deckout poraza (samo nehaš vleči)
   const you = G.players[0];
@@ -801,11 +886,12 @@ const STATUS_SHORT = { burn: "Ožig", freeze: "Zmrznjen", stun: "Omama", curse: 
 function statusChips(c) {
   const s = c.status || {}; const out = [];
   const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
+  // kompaktni ikonski badge-i — VSI vidni; ime+učinek v tooltipu (hover/dvoklik)
   for (const k in map) if (s[k]) {
     const t = STATUS_TEXT[k] || [k, ""];
     const kind = STATUS_BUFFS.includes(k) ? "buff" : "debuff";
-    const n = (typeof s[k] === "number" && s[k] > 1) ? " " + s[k] : "";
-    out.push(`<span class="v2-st ${kind}" ${tipAttr(t[0], t[1])}>${map[k]} ${STATUS_SHORT[k] || k}${n}</span>`);
+    const n = (typeof s[k] === "number" && s[k] > 1) ? `<b>${s[k]}</b>` : "";
+    out.push(`<span class="v2-st ${kind}" ${tipAttr(t[0], (STATUS_SHORT[k] || k) + " — " + t[1])}>${map[k]}${n}</span>`);
   }
   return out.join("");
 }
