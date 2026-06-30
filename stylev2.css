@@ -14,7 +14,7 @@
 .v2-arena {
   height: 100%; display: grid;
   grid-template-columns: minmax(0,1fr) 264px;
-  grid-template-rows: minmax(0,1fr) 172px;
+  grid-template-rows: minmax(0,1fr) 160px;
   gap: 8px; padding: 8px; max-width: 1240px; margin: 0 auto;
 }
 /* ENO bojišče: nasprotnik zgoraj, ti spodaj, vmes ločnica */
@@ -458,3 +458,55 @@
 .v2-champ.taunt.targetable { box-shadow: 0 0 0 2px var(--danger), 0 0 18px rgba(255,107,94,0.6), inset 0 0 0 2px rgba(127,179,255,0.4); }
 .v2-tag.taunt { left: 8px; }
 .hint.taunt-hint { color: #cfe3ff; background: rgba(127,179,255,0.12); border: 1px solid rgba(127,179,255,0.4); border-radius: 8px; padding: 5px 8px; }
+
+/* ---------------- Simetrična postavitev: tvoja noga (heroj + energije v eni vrstici) ---------------- */
+.v2-you-footer { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex: 0 0 auto; padding-top: 4px; border-top: 1px dashed var(--panel-edge); }
+.v2-you-footer .v2-head { flex: 0 0 auto; gap: 10px; }
+.v2-you-footer .v2-manazone { border-top: none; margin-top: 0; padding: 0; flex: 1 1 auto; justify-content: flex-end; }
+.v2-you-footer .v2-hero { min-width: 200px; }
+
+/* ---------------- Kompaktnejše kartice + noga (prilegajo se nizkim/zoomanim oknom) ---------------- */
+.v2-champ { width: 124px; flex-basis: 124px; }
+.v2-champ-art { height: 54px; font-size: 24px; }
+.v2-champ-body { padding: 4px 6px 5px; }
+.v2-champ-name { font-size: 10.5px; line-height: 1.05; max-height: 2.2em; overflow: hidden; }
+.v2-champ.minion .v2-champ-name { font-size: 10px; }
+.v2-hpbar { height: 4px; margin-top: 4px; }
+.v2-status { margin-top: 3px; min-height: 0; }
+.v2-atks { gap: 2px; margin-top: 4px; }
+.v2-atk { padding: 1px 4px; font-size: 10px; }
+.v2-champ-hp { font-size: 11px; top: 3px; right: 4px; padding: 1px 6px; }
+.v2-tag { top: 3px; left: 4px; font-size: 11px; }
+.v2-tag.tap { top: 24px; }
+.v2-tag.decay { top: 24px; }
+.v2-champ-statusbar { left: 3px; right: 3px; bottom: 3px; }
+/* noga: heroj + energije v eni vrstici, brez ovijanja */
+.v2-you-footer { flex-wrap: nowrap; gap: 12px; padding-top: 3px; }
+.v2-you-footer .v2-hero { min-width: 160px; gap: 6px; }
+.v2-you-footer .v2-hero-ava { width: 32px; height: 32px; font-size: 16px; }
+.v2-you-footer .v2-hero-bar { height: 15px; min-width: 100px; }
+.v2-you-footer .v2-manazone { overflow: hidden; }
+.v2-you-footer .v2-manazone .mz-pips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+.v2-manacard { width: 30px; height: 38px; font-size: 14px; }
+.v2-opp .v2-hero-ava { width: 34px; height: 34px; font-size: 17px; }
+
+/* ---------------- Prilagoditev nizkim oknom / zoomu (da se kartice ne odrežejo) ---------------- */
+@media (max-height: 720px) {
+  .v2-champ-art { height: 48px; }
+  .v2-arena { grid-template-rows: minmax(0,1fr) 150px; }
+}
+@media (max-height: 620px) {
+  .v2-arena { grid-template-rows: minmax(0,1fr) 132px; }
+  .v2-champ-art { height: 40px; font-size: 20px; }
+  .v2-champ-name { font-size: 9.5px; }
+  .v2-handcard { width: 96px; flex: 0 0 96px; }
+  .v2-you-footer .v2-hero-ava, .v2-opp .v2-hero-ava { width: 28px; height: 28px; font-size: 14px; }
+}
+@media (max-height: 540px) {
+  .v2-arena { grid-template-rows: minmax(0,1fr) 108px; gap: 6px; padding: 6px; }
+  .v2-champ-art { height: 30px; font-size: 16px; }
+  .v2-champ-body { padding: 2px 5px 3px; }
+  .v2-champ-name { font-size: 9px; }
+  .v2-atk { padding: 0 4px; font-size: 9.5px; }
+  .v2-handcard { width: 84px; flex: 0 0 84px; }
+}

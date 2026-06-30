@@ -842,17 +842,21 @@ function renderManaZone(you) {
 
 function renderSide(container, p, isYou) {
   container.innerHTML = "";
-  const head = el("div", "v2-head");
-  head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + (isYou ? "" : manaRow(p));
   const row = el("div", "v2-board-row");
   if (!p.board.length) row.appendChild(el("div", "v2-empty", isYou ? "Tvoj board je prazen" : "Brez branilcev — napadljiv obraz!"));
   p.board.forEach(c => row.appendChild(boardChamp(c, p, isYou)));
-  // razpored: nasprotnik = glava zgoraj, board spodaj; ti = board zgoraj, cona energij, glava spodaj (ob roki)
+  // razpored simetričen: nasprotnik = glava zgoraj + board; ti = board + noga (heroj + energije v eni vrstici)
   if (isYou) {
     container.appendChild(row);
-    container.appendChild(renderManaZone(p));
-    container.appendChild(head);
+    const footer = el("div", "v2-you-footer");
+    const hb = el("div", "v2-head");
+    hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>`;
+    footer.appendChild(hb);
+    footer.appendChild(renderManaZone(p));
+    container.appendChild(footer);
   } else {
+    const head = el("div", "v2-head");
+    head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + manaRow(p);
     container.appendChild(head);
     container.appendChild(row);
     const heroEl = head.querySelector(".v2-hero");
