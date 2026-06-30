@@ -124,9 +124,11 @@ function ensureFx() {
   if (!document.getElementById("v2-arrow")) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.id = "v2-arrow"; svg.classList.add("hidden");
-    svg.innerHTML = `<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#ffd97a"/></marker></defs>
-      <line id="v2-arrow-line" x1="0" y1="0" x2="0" y2="0" stroke="#ffd97a" stroke-width="4" stroke-linecap="round" marker-end="url(#ah)" opacity="0.9"/>`;
+    svg.innerHTML = `<defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffd97a"/></marker>
+      <filter id="arrowglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <path id="v2-arrow-line" d="" fill="none" stroke="#ffd97a" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)" filter="url(#arrowglow)" opacity="0.95"/>`;
     document.body.appendChild(svg);
   }
 }
@@ -207,9 +209,11 @@ function updateArrow() {
   if (selAttacker && selAtkIndex != null) originEl = findChampEl(selAttacker);
   if (!originEl) { svg.classList.add("hidden"); return; }
   const o = elCenter(originEl);
+  const tx = arrowPos.x || o.x, ty = arrowPos.y || (o.y - 60);
+  const mx = (o.x + tx) / 2, my = (o.y + ty) / 2;
+  const cy = my - Math.max(45, Math.abs(tx - o.x) * 0.32); // lok navzgor (Hearthstone-like)
   svg.classList.remove("hidden");
-  line.setAttribute("x1", o.x); line.setAttribute("y1", o.y);
-  line.setAttribute("x2", arrowPos.x || o.x); line.setAttribute("y2", arrowPos.y || o.y - 60);
+  line.setAttribute("d", `M ${o.x} ${o.y} Q ${mx} ${cy} ${tx} ${ty}`);
 }
 // predogled škode med ciljanjem (Hearthstone-like): koliko + ali je smrtno
 function ensureDmgPrev() {
@@ -566,7 +570,7 @@ function runGameOver(won) {
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
 function showFirstPick() {
-  seenChampUids = new Set(); prevBoardUids = new Set(); champRects = {}; // nova bitka -> ponastavi FX sledenje
+  seenChampUids = new Set(); lastChampFx = {}; prevYouMana = []; // nova bitka -> ponastavi FX sledenje
   const you = G.players[0];
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
   // prikaži CELO roko: basic championi so izberljivi (bogata kartica), ostalo je info
@@ -644,8 +648,8 @@ function champPreviewCard(d) {
 }
 
 /* ---------------- RENDER ---------------- */
-let prevBoardUids = new Set();   // za zaznavo smrti (death poof)
-let champRects = {};             // zadnje pozicije šampionov
+let lastChampFx = {};   // {uid:{hp,buffs,x,y}} — za smrt/heal/buff FX
+let prevYouMana = [];   // za mana tap/dodajanje FX
 function render() {
   if (!G.players.length) return;
   renderSide($("#v2-opp"), G.players[1], false);
@@ -657,16 +661,29 @@ function render() {
   $("#v2-end").style.display = (G.turn === 0 && !G.over) ? "" : "none";
   updateArrow();
   hideDmgPreview();
-  fxDetectDeaths();
+  fxTrackChamps();
+  fxManaChanges();
 }
-// poišči šampione, ki so izginili od zadnjega renderja, in zaigraj "death poof"
-function fxDetectDeaths() {
-  const cur = new Set();
-  document.querySelectorAll(".v2-champ").forEach(eln => cur.add(eln.dataset.uid));
-  prevBoardUids.forEach(uid => { if (!cur.has(uid) && champRects[uid]) deathPoof(champRects[uid].x, champRects[uid].y); });
-  champRects = {};
-  document.querySelectorAll(".v2-champ").forEach(eln => { const b = eln.getBoundingClientRect(); champRects[eln.dataset.uid] = { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
-  prevBoardUids = cur;
+// zazna smrt (poof), zdravljenje (zelen +) in nove buffe (utrip) med renderji
+function fxTrackChamps() {
+  const all = []; G.players.forEach(pl => pl.board.forEach(c => all.push(c)));
+  const curUids = new Set(all.map(c => c.uid));
+  Object.keys(lastChampFx).forEach(uid => { if (!curUids.has(uid)) { const f = lastChampFx[uid]; deathPoof(f.x, f.y); } });
+  const cur = {};
+  all.forEach(c => {
+    const eln = findChampEl(c.uid);
+    const b = eln ? eln.getBoundingClientRect() : null;
+    const pos = b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : (lastChampFx[c.uid] || { x: 0, y: 0 });
+    const hp = c.maxHp - c.damage;
+    const buffs = ["blessing", "shield", "guard"].filter(k => c.status && c.status[k]);
+    const prev = lastChampFx[c.uid];
+    if (prev && eln) {
+      if (hp > prev.hp) { flyDamage(pos.x, pos.y - 14, hp - prev.hp, "heal"); eln.classList.add("fx-heal"); setTimeout(() => eln.classList.remove("fx-heal"), 650); }
+      if (buffs.some(bk => !prev.buffs.includes(bk))) { eln.classList.add("fx-buff"); setTimeout(() => eln.classList.remove("fx-buff"), 750); }
+    }
+    cur[c.uid] = { hp, buffs, x: pos.x, y: pos.y };
+  });
+  lastChampFx = cur;
 }
 function deathPoof(x, y) {
   ensureFx();
@@ -674,6 +691,18 @@ function deathPoof(x, y) {
   n.style.left = x + "px"; n.style.top = y + "px";
   document.getElementById("v2-fx").appendChild(n);
   setTimeout(() => n.remove(), 700);
+}
+// mana: utrip ob tapanju, pop ob dodajanju (samo igralčeva)
+function fxManaChanges() {
+  const you = G.players[0]; if (!you) { prevYouMana = []; return; }
+  const cur = you.mana.map(m => m.tapped);
+  const pips = document.querySelectorAll('#v2-you .v2-mana');
+  cur.forEach((tapped, i) => {
+    const pip = pips[i]; if (!pip) return;
+    if (i >= prevYouMana.length) { pip.classList.add("just-added"); setTimeout(() => pip.classList.remove("just-added"), 500); }
+    else if (tapped && !prevYouMana[i]) { pip.classList.add("just-tapped"); setTimeout(() => pip.classList.remove("just-tapped"), 420); }
+  });
+  prevYouMana = cur;
 }
 
 function heroBar(p) {
@@ -691,11 +720,11 @@ function heroBar(p) {
 }
 function manaRow(p) {
   const untap = p.mana.filter(m => !m.tapped).length;
-  const pips = p.mana.map(m => {
+  const pips = p.mana.map((m, i) => {
     const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
-    return `<span class="v2-mana ${m.tapped ? "tapped" : ""}" title="${m.type}" style="--mc:${s.color}">${s.glyph}</span>`;
+    return `<span class="v2-mana ${m.tapped ? "tapped" : ""}" data-mi="${i}" ${tipAttr(m.type + " mana", m.tapped ? "Porabljena to potezo (odtapne se ob začetku tvoje poteze)." : "Na voljo za priklic / napade / efekte.")} style="--mc:${s.color}">${s.glyph}</span>`;
   }).join("");
-  return `<div class="v2-mana-row"><span class="v2-mana-lab">MANA ${untap}/${p.mana.length}</span>${pips}</div>`;
+  return `<div class="v2-mana-row"><span class="v2-mana-lab">MANA <b>${untap}</b>/${p.mana.length}</span>${pips}</div>`;
 }
 
 function renderSide(container, p, isYou) {
@@ -738,10 +767,17 @@ function boardChamp(c, owner, isYou) {
   if (pendingPlay && ((pendingPlay.need === "ally" && isYou) || (pendingPlay.need === "enemy" && !isYou)))
     node.classList.add(pendingPlay.need === "enemy" ? "targetable" : "target-ally");
   const stChips = statusChips(c);
+  // combo/momentum badge: zaporedni napadi istega tipa dajo bonus naslednjemu
+  let comboTag = "";
+  if (c._comboCount >= 2 && c._comboType) {
+    const es = ENERGY_STYLE[c._comboType] || { glyph: "✦", color: "#ffd97a" };
+    const nextBonus = Math.min(c._comboCount * 10, 30);
+    comboTag = `<span class="v2-tag combo" style="--mc:${es.color}" ${tipAttr("🔥 Combo ×" + c._comboCount, "Zaporedni " + c._comboType + " napadi. Naslednji " + c._comboType + " napad: +" + nextBonus + " škode.")}>🔥${c._comboCount}</span>`;
+  }
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
       <span class="v2-champ-hp">${life}</span>
-      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}
+      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${comboTag}
       ${stChips ? `<div class="v2-champ-statusbar">${stChips}</div>` : ""}</div>
     <div class="v2-champ-body">
       <div class="v2-champ-name" ${tipAttr(d.name, cardTipText(d))}>${d.name}</div>
