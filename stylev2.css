@@ -140,6 +140,9 @@
 .action-btn.attack .atk-tag.flex { background: rgba(160,180,200,0.16); color: #b9c6d6; border-color: rgba(160,180,200,0.35); }
 .action-btn.attack .atk-tag.nf { background: rgba(127,179,255,0.16); color: #9fc4ff; border-color: rgba(127,179,255,0.45); }
 .action-btn.attack .atk-fx { color: #8effc4; margin-left: 4px; font-size: 11px; }
+.action-btn.attack .atk-tag.motor { background: rgba(186,142,255,0.18); color: #d7bcff; border-color: rgba(186,142,255,0.5); }
+.v2-atk.motor { box-shadow: inset 0 0 0 1px rgba(186,142,255,0.45); }
+.v2-atk.motor .v2-atk-dmg { color: #d7bcff; }
 .action-btn.attack.has-fx { border-color: rgba(142,255,196,0.35); }
 .action-btn.attack.basic-atk { opacity: 0.95; }
 

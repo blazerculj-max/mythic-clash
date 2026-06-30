@@ -994,6 +994,43 @@ const CARDS = {
     weakness: "Fire", resistance: "Nature", flavorText: "Duh, ki točí sok življenja.",
   },
 
+  /* ============ SKALIRNI MOTORJI (Korak 3 — Balatro build-around) ============
+     Karte, katerih moč RASTE s številom/dogodki. atk.scale = {per, amt, type?}.
+  --------------------------------------------------------------------------- */
+  "champ-berserker-king": {
+    id: "champ-berserker-king", name: "Berserški Kralj", type: "Champion",
+    pantheon: "Norse", rarity: "Epic", stage: "basic", hp: 90, summonCost: 3,
+    attacks: [
+      { name: "Rising Fury", cost: ["War"], damage: 20, scale: { per: "attacksThisTurn", amt: 10 },
+        text: "Skalira: +10 škode za vsak napad, ki si ga to potezo že naredil." }
+    ],
+    ability: { name: "Vojni zagon", text: "Motor: vsak zaporedni napad to potezo je močnejši — napadi z drugimi PRED njim." },
+    weakness: "Sky", resistance: "War", retreatCost: 2,
+    flavorText: "Bolj ko teče kri, močnejši je njegov udarec.",
+  },
+  "champ-ra-radiance": {
+    id: "champ-ra-radiance", name: "Rajev Sij", type: "Champion",
+    pantheon: "Egyptian", rarity: "Epic", stage: "basic", hp: 90, summonCost: 3,
+    attacks: [
+      { name: "Radiant Beam", cost: ["Sun"], damage: 20, scale: { per: "sunAllies", amt: 10, type: "Sun" },
+        text: "Skalira: +10 za vsakega DRUGEGA Sun šampiona na tvojem boardu." }
+    ],
+    ability: { name: "Sončni zbor", text: "Motor: gradi širok Sun board — vsak Sun zaveznik krepi njegov žarek." },
+    weakness: "Underworld", resistance: "Sun", retreatCost: 2,
+    flavorText: "Sonce sije močneje, ko ga časti vsa vojska.",
+  },
+  "champ-standard-bearer": {
+    id: "champ-standard-bearer", name: "Praporščak", type: "Champion",
+    pantheon: "Roman", rarity: "Rare", stage: "basic", hp: 80, summonCost: 2,
+    attacks: [
+      { name: "Rally", cost: ["War"], damage: 15, scale: { per: "boardPairs", amt: 10 },
+        text: "Skalira: +10 škode na vsaka 2 šampiona na tvojem boardu (go-wide)." }
+    ],
+    ability: { name: "Formacija", text: "Motor: bolj ko je board poln, močnejši je njegov napad." },
+    weakness: "Sky", resistance: "War", retreatCost: 1,
+    flavorText: "Prapor dvigne pogum cele legije.",
+  },
+
   /* ====================== NAPADALNI UROKI (spelle) ======================
      Oracle karte, ki zadajo škodo: en cilj, ves nasprotnikov board (AoE) ali obraz.
      Stanejo generično mano (ne potrebujejo specifične energije).
@@ -1045,6 +1082,12 @@ const CARDS = {
     manaCost: 2, effect: "faceDmg25",
     text: "Zada 25 škode naravnost nasprotnikovemu HEROJU (obraz).",
     flavorText: "Bes bogov ne pozna ščitov."
+  },
+  "spell-apotheosis": {
+    id: "spell-apotheosis", name: "Apoteoza", type: "Oracle", pantheon: "Greek", rarity: "Epic",
+    manaCost: 2, effect: "apotheosis",
+    text: "To potezo tvoja skalirna izplačila (motorji) štejejo DVOJNO.",
+    flavorText: "Za en trenutek smrtnik zakoraka med bogove."
   },
 };
 

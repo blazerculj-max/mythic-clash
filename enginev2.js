@@ -252,6 +252,7 @@
     if (hasAlliance(p, "sunring")) synHeal += 10;
     if (synHeal) { p.board.forEach(c => c.damage = Math.max(0, c.damage - synHeal)); logMsg(p.name + ": Sinergija — šampioni +" + synHeal + " HP."); artHeal(p); }
     p.mana = p.mana.filter(m => !m.temp); // začasna (dork) mana izgine ob koncu poteze
+    delete p._apotheosis; // Apoteoza velja le to potezo
   }
 
   /* ---------------- mana ---------------- */
@@ -453,6 +454,7 @@
       case "aoe20": opp.board.slice().forEach(c => rawDamage(c, opp, 20, "Sončni izbruh")); logMsg(p.name + ": 20 vsem nasprotnikovim šampionom."); checkDeaths(); break;
       case "aoe15freeze": opp.board.slice().forEach(c => { rawDamage(c, opp, 15, "Zmrzal"); c.status.freeze = true; }); logMsg(p.name + ": Zmrzal — 15 + zmrznitev vsem."); checkDeaths(); break;
       case "faceDmg25": opp.life -= 25; logMsg(p.name + ": urok udari OBRAZ za 25 (življenja " + opp.name + ": " + opp.life + ")."); if (opp.life <= 0) endGame(G.players.indexOf(p), opp.name + " je premagan z urokom!"); break;
+      case "apotheosis": p._apotheosis = true; logMsg(p.name + ": APOTEOZA — skalirni motorji to potezo štejejo dvojno!"); break;
       default: logMsg("(učinek " + key + " še ni v v2)"); break;
     }
   }
@@ -546,6 +548,31 @@
     if (hasArt(p, "art-glasscannon")) { p.life = Math.max(1, p.life - 30); logMsg(p.name + ": Steklen top — −30 življenja, a +15 škode."); }
   }
 
+  /* ---------------- Skalirni motorji (Balatro) ---------------- */
+  // Karta lahko ima atk.scale = {per, amt, type?} ali polje takih. Bonus = amt * count(per).
+  // _apotheosis na lastniku podvoji ta bonus to potezo.
+  function champHasType(c, t) { return (def(c).attacks || []).some(a => (a.cost || []).includes(t)) || def(c).resistance === t; }
+  function scaleCount(per, attacker, p) {
+    switch (per) {
+      case "allyChamps":    return Math.max(0, p.board.length - 1);
+      case "boardChamps":   return p.board.length;
+      case "boardPairs":    return Math.floor(p.board.length / 2);
+      case "sunAllies":     return p.board.filter(c => c !== attacker && champHasType(c, "Sun")).length;
+      case "natureAllies":  return p.board.filter(c => c !== attacker && champHasType(c, "Nature")).length;
+      case "attacksThisTurn": return p._atkChain || 0;
+      case "enemyStatuses": { const s = new Set(); oppOf(p).board.forEach(c => { const st = c.status || {}; for (const k in st) if (st[k]) s.add(k); }); return s.size; }
+      default: return 0;
+    }
+  }
+  function scaleBonus(atk, attacker, atkOwner, atkType) {
+    const sc = atk && atk.scale; if (!sc || !atkOwner) return 0;
+    const arr = Array.isArray(sc) ? sc : [sc];
+    let bonus = 0;
+    for (const s of arr) { if (s.type && s.type !== atkType) continue; bonus += (s.amt || 0) * scaleCount(s.per, attacker, atkOwner); }
+    if (atkOwner._apotheosis) bonus *= 2; // Apoteoza ×2
+    return bonus;
+  }
+
   /* ---------------- combat ---------------- */
   function effType(atk) { return (atk.cost || []).find(c => c !== "Any") || null; }
 
@@ -578,6 +605,7 @@
       if ((atkType0 === "Sky" || atkType0 === "Sun") && hasAlliance(atkOwner, "sunsky")) { dmg += 10; parts.push("SONCE"); } // Greek+Egyptian
       if (hasBond(atkOwner, "Slavic")) { const s = defender.status || {}; if (s.burn || s.freeze || s.stun || s.curse || s.poison) { dmg += 15; parts.push("KLETEV"); } } // Slavic Bond
       const af = artAtkFlat(atkOwner, atkType0); if (af) { dmg += af; parts.push("ARTEFAKT"); } // Artefakti (Bojni rog, Vrela kri, Momentum ...)
+      const sb = scaleBonus(atk, attacker, atkOwner, atkType0); if (sb) { dmg += sb; parts.push(atkOwner._apotheosis ? "MOTOR×2" : "MOTOR"); } // Skalirni motorji
     }
     // Sinergije — obramba
     if (dOwner && hasBond(dOwner, "Roman")) { dmg -= 10; parts.push("FORMACIJA"); }                          // Roman Bond
@@ -626,6 +654,7 @@
     if (att.status.curse) dmg -= 15;
     const w = weaponOf(att); if (w && w.atkBonus) dmg += w.atkBonus;
     if (attOwner) { const af = artAtkFlat(attOwner, atkType); if (af) { dmg += af; parts.push("ARTEFAKT"); } }
+    if (attOwner) { const sb = scaleBonus(atk, att, attOwner, atkType); if (sb) { dmg += sb; parts.push(attOwner._apotheosis ? "MOTOR×2" : "MOTOR"); } }
     const heavy = (atk.cost || []).length >= 3;
     let mult = 1;
     if (attOwner) { const am = artAtkMult(attOwner, atkType); if (am !== 1) { mult *= am; parts.push("OLTAR"); } }
@@ -737,6 +766,7 @@
     if (att.status.curse) dmg -= 15;
     const wF = weaponOf(att); if (wF && wF.atkBonus) dmg += wF.atkBonus; // orožje šteje tudi proti obrazu
     dmg += artAtkFlat(p, atkType); // Artefakti (Bojni rog, Vrela kri, Momentum ...)
+    dmg += scaleBonus(atk, att, p, atkType); // Skalirni motorji
     let mult = 1;
     mult *= artAtkMult(p, atkType); // Sončni oltar
     if (forceOmen) mult *= 1.3; else if (heavy && omen === true) mult *= 1.3; else if (heavy && omen == null) mult *= 1.15;

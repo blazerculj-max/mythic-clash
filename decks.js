@@ -46,6 +46,8 @@ const STARTER_DECKS = {
       ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2),
       // Napadalni uroki
       ...rep("spell-lightning-bolt", 2), "spell-divine-wrath",
+      // Skalirni motor (Korak 3)
+      "spell-apotheosis",
       // Dual energija + mana dork (zmerno)
       "energy-dual-skywar", "minion-oracle-adept",
     ],
@@ -85,6 +87,8 @@ const STARTER_DECKS = {
       ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2),
       // Napadalni uroki
       "spell-mjolnir", ...rep("spell-frost-nova", 1),
+      // Skalirni motor (Korak 3)
+      "champ-berserker-king",
       // Dual energija
       "energy-dual-frostwar",
     ],
@@ -125,6 +129,8 @@ const STARTER_DECKS = {
       ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2),
       // Napadalni uroki
       ...rep("spell-solar-flare", 2),
+      // Skalirni motor (Korak 3)
+      "champ-ra-radiance",
       // Dual energija
       "energy-dual-sunmoon",
     ],
@@ -203,6 +209,8 @@ const STARTER_DECKS = {
       ...rep("minion-legionnaire", 2), ...rep("minion-velite", 2),
       // Napadalni uroki
       ...rep("spell-javelin", 2),
+      // Skalirni motor (Korak 3)
+      "champ-standard-bearer",
       // Dual energija
       "energy-dual-skywar",
     ],

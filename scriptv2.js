@@ -89,6 +89,7 @@ const EFFECT_TEXT = {
   shieldAll: "Vsi tvoji šampioni dobijo Shield.", curseEnemy: "Nasprotnikov šampion je preklet (−15 škode).",
   burnEnemy: "Nasprotnikov šampion gori.", freezeEnemy: "Nasprotnikov šampion zamrzne (+20% škode).",
   dmgEnemy30: "Zada 30 škode nasprotnikovemu šampionu.",
+  apotheosis: "To potezo tvoja skalirna izplačila (motorji) štejejo dvojno.",
   healSelf30: "Ta šampion +30 HP.", healBoard20: "Vsi tvoji šampioni +20 HP.",
   healSelf20: "Ta šampion +20 HP.", healBoard15: "Vsi tvoji šampioni +15 HP.",
   tauntSelf: "Ta šampion prevzame Taunt (zid) do tvoje naslednje poteze.",
@@ -249,7 +250,7 @@ function updateDmgPreview() {
   if (!pv || !target) { hideDmgPreview(); return; }
   document.querySelectorAll(".lethal-target").forEach(e => e.classList.remove("lethal-target"));
   const p = ensureDmgPrev();
-  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15", ARTEFAKT: "ARTEFAKT ⚔", OLTAR: "SONČNI OLTAR ×1.5" };
+  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15", ARTEFAKT: "ARTEFAKT ⚔", OLTAR: "SONČNI OLTAR ×1.5", MOTOR: "MOTOR ⚙", "MOTOR×2": "MOTOR ⚙ ×2 (Apoteoza)" };
   const parts = (pv.parts || []).filter(x => lab[x]);
   p.className = "v2-dmgprev" + (lethal ? " lethal" : "");
   p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
@@ -1316,7 +1317,7 @@ function atkRowsHtml(d, owner) {
   if (!d.attacks || !d.attacks.length) return "";
   return `<div class="v2-atks">` + d.attacks.map(a => {
     const payable = owner && G.turn === 0 && !G.over && V2.canPay(owner, a.cost, d.id === "celtic-lugh");
-    return `<div class="v2-atk${payable ? " ok" : ""}" ${tipAttr(a.name, atkTipText(a))}><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}</span></div>`;
+    return `<div class="v2-atk${payable ? " ok" : ""}${a.scale ? " motor" : ""}" ${tipAttr(a.name, atkTipText(a))}><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}${a.scale ? "⚙" : ""}</span></div>`;
   }).join("") + `</div>`;
 }
 const STATUS_BUFFS = ["blessing", "shield", "guard"];
@@ -1420,11 +1421,12 @@ function renderActions() {
       if (V2.tauntsOf(G.players[1]).length) panel.appendChild(el("div", "hint taunt-hint", `🛡 Nasprotnik ima <b>zid (Taunt)</b> — najprej premagaj branilce z 🛡 (obraz in ostali so zaščiteni).`));
       d.attacks.forEach((atk, i) => {
         const can = V2.canPay(you, atk.cost, d.id === "celtic-lugh");
-        const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : "") + (atk.basic ? " basic-atk" : "") + (atk.effect || atk.noFace ? " has-fx" : ""));
+        const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : "") + (atk.basic ? " basic-atk" : "") + (atk.effect || atk.noFace || atk.scale ? " has-fx" : ""));
         const tag = atk.basic ? `<span class="atk-tag flex">katerakoli ⬡</span>` : `<span class="atk-tag">tarčni</span>`;
         const restrict = atk.noFace ? `<span class="atk-tag nf">le bitja</span>` : "";
         const fx = atk.effect && EFFECT_TEXT[atk.effect] ? `<span class="atk-fx">✦</span>` : "";
-        b.innerHTML = `${atk.name} ${tag}${restrict}${fx} <span class="ab-cost">${atk.damage} dmg · ${costHtml(atk.cost)}</span>`;
+        const motor = atk.scale ? `<span class="atk-tag motor">⚙ motor</span>` : "";
+        b.innerHTML = `${atk.name} ${tag}${restrict}${motor}${fx} <span class="ab-cost">${atk.damage}${atk.scale ? "+⚙" : ""} dmg · ${costHtml(atk.cost)}</span>`;
         b.disabled = !can;
         b.setAttribute("data-tip-title", atk.name); b.setAttribute("data-tip", atkTipText(atk));
         b.addEventListener("click", () => { selAtkIndex = i; toast(atk.noFace ? "Klikni nasprotnikovega ŠAMPIONA (ta napad ne gre v obraz)." : "Klikni nasprotnikovega šampiona ali NJEGOV OBRAZ."); render(); });
