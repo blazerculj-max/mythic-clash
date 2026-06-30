@@ -795,6 +795,19 @@
         if (!c) break; const r = summon(p, c); if (!r.ok) break;
       }
     });
+    // 2b) Hero Power — uporabi, ko je smiselno (po priklicu, pred napadom)
+    steps.push(() => {
+      const hpw = p.heroPower;
+      if (!hpw || p.heroPowerUsed) return;
+      let want = false;
+      switch (hpw.kind) {
+        case "chain":      want = opp.board.length >= 2; break;                 // AoE se splača pri 2+ tarčah
+        case "heroAttack": want = opp.board.every(c => c.tapped); break;        // pritisni obraz le ko ni netapnjenih blokerjev
+        case "heroHeal":   want = p.life <= p.maxLife - hpw.value + 1 && p.life < p.maxLife * 0.7; break; // ko si pod pritiskom, brez overheala
+        case "shieldAll":  want = p.board.length >= 2; break;                   // zaščiti pred povratnim napadom
+      }
+      if (want) useHeroPower(p); // sam preveri mano; če je ni, je no-op
+    });
     // 3) napadi z vsemi pripravljenimi
     steps.push(() => {
       for (const c of p.board.slice()) {
