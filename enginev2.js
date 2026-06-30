@@ -765,6 +765,67 @@
     });
     return best;
   }
+  // AI: aktiviraj mana dorke (rampAny/Nature/Sun), če imamo s to mano kaj odigrati
+  function aiUseDorks(p) {
+    const RAMP = { rampAny: 1, rampNature: 1, rampSun: 1 };
+    const wantMana = p.hand.some(i => {
+      const d = def(i);
+      return (d.type === "Champion" && d.stage === "basic") || d.type === "Oracle";
+    });
+    if (!wantMana) return;
+    for (const c of p.board.slice()) {
+      const d = def(c);
+      if (d.activated && RAMP[d.activated.effect] && canActivate(p, c)) activateAbility(p, c.uid);
+    }
+  }
+  // AI: odigraj uroke (napadalne, AoE, obrazni burst, vlek, zdravljenje)
+  function aiPlaySpells(p, opp) {
+    const DMG1 = { dmgEnemy25: 25, dmgEnemy30: 30, fireball40burn: 40, boltStun50: 50 };
+    const AOE  = { aoe15: 15, aoe20: 20, aoe15freeze: 15 };
+    const FACE = { faceDmg25: 25 };
+    const HEAL = { healActive60: 60, healActive40: 40, healReserve30: 30 };
+    const DRAW = { draw3: 1, draw2attach: 1, draw2: 1 };
+    let guard = 0;
+    while (guard++ < 5 && !G.over) {
+      const playable = p.hand.filter(i => def(i).type === "Oracle" && canPay(p, manaCostArr(manaCostOf(def(i)))));
+      if (!playable.length) break;
+      let best = null;
+      const consider = (inst, target, score) => { if (!best || score > best.score) best = { inst, target, score }; };
+      for (const inst of playable) {
+        const e = def(inst).effect;
+        if (DMG1[e] !== undefined) {
+          const dmg = DMG1[e];
+          const kills = opp.board.filter(t => aiHp(t) <= dmg);
+          if (kills.length) {
+            kills.sort((a, b) => (isTaunt(b) - isTaunt(a)) || (aiHp(b) - aiHp(a)));
+            const t = kills[0];
+            consider(inst, t.uid, 50 + (isTaunt(t) ? 30 : 0) + aiHp(t)); // ubij: prednost taunt, nato največji
+          } else if (e === "boltStun50" && opp.board.length) {
+            const t = opp.board.slice().sort((a, b) => aiHp(b) - aiHp(a))[0];
+            consider(inst, t.uid, 22 + aiHp(t) * 0.2); // stun največje grožnje tudi brez ubitja
+          }
+        } else if (AOE[e] !== undefined) {
+          const dmg = AOE[e];
+          const kills = opp.board.filter(t => aiHp(t) <= dmg).length;
+          if (opp.board.length >= 2 || kills >= 1) consider(inst, null, 25 + kills * 30 + opp.board.length * 5);
+        } else if (FACE[e] !== undefined) {
+          if (opp.life <= FACE[e]) consider(inst, null, 200);              // smrtonosno
+          else if (!opp.board.length) consider(inst, null, 15);            // čip ko ni blokerjev
+        } else if (HEAL[e] !== undefined) {
+          const hurt = p.board.filter(c => c.damage >= 30);
+          if (hurt.length) {
+            if (e === "healReserve30") consider(inst, null, 10 + hurt.length * 8);
+            else { hurt.sort((a, b) => b.damage - a.damage); consider(inst, hurt[0].uid, 12 + Math.min(HEAL[e], hurt[0].damage) * 0.3); }
+          }
+        } else if (DRAW[e] !== undefined) {
+          if (p.hand.length <= 6 && p.deck.length > 5) consider(inst, null, 8); // vlek za card advantage, brez deckouta
+        }
+      }
+      if (!best) break;
+      const r = playCard(p, best.inst, { targetUid: best.target });
+      if (!r.ok) break;
+    }
+  }
   function aiChooseBlock(defOwner, attacker, atk) {
     const incoming = (atk.damage || 0); // груба ocena
     const untapped = defOwner.board.filter(c => !c.tapped);
@@ -787,6 +848,8 @@
     const steps = [];
     // 1) igraj energijo
     steps.push(() => { const e = p.hand.find(i => def(i).type === "Energy"); if (e) playEnergy(p, e); });
+    // 1b) aktiviraj mana dorke, če imamo s to mano kaj odigrati (pred priklicem)
+    steps.push(() => aiUseDorks(p));
     // 2) prikliči šampione dokler je prostor in mana
     steps.push(() => {
       let guard = 0;
@@ -808,6 +871,8 @@
       }
       if (want) useHeroPower(p); // sam preveri mano; če je ni, je no-op
     });
+    // 2c) odigraj uroke (removal/AoE/burst/vlek/heal) — pred napadom, da počistiš blokerje
+    steps.push(() => aiPlaySpells(p, opp));
     // 3) napadi z vsemi pripravljenimi
     steps.push(() => {
       for (const c of p.board.slice()) {
