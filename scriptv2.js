@@ -265,37 +265,61 @@ let aiBusy = false;
 let seenChampUids = new Set(); // za "enter play" animacijo (vsak šampion se animira ob prvem prikazu)
 
 /* ---------------- SETUP ---------------- */
-function buildSetup() {
-  const dg = $("#v2-decks"); dg.innerHTML = "";
-  Object.values(STARTER_DECKS).filter(d => d.id !== "custom").forEach(d => {
+function setupInner(html) { const w = document.querySelector("#v2-setup .v2-setup-inner"); w.innerHTML = html; return w; }
+function setupHeader(sub) {
+  return `<span class="eyebrow">Wars of Pantheons · Arena v2</span>
+    <h1 class="game-title" style="font-size:clamp(34px,7vw,68px)">MYTHIC<br>CLASH</h1>
+    ${sub ? `<p class="tagline">${sub}</p>` : ""}`;
+}
+function buildSetup() { loadRun(); showMainMenu(); }
+function showMainMenu() {
+  loadRun();
+  const resume = RUN ? `<button class="mode-card resume" data-m="resume"><div class="mc-ic">▶</div><h3>Nadaljuj</h3><p>${RUN.mode === "arena" ? "Arena" : "Kampanja"} v teku — ${RUN.deck.length} kart.</p></button>` : "";
+  const w = setupInner(`${setupHeader("Izberi način igre.")}
+    <div class="mode-grid">
+      <button class="mode-card" data-m="premade"><div class="mc-ic">⚔️</div><h3>Hitra igra</h3><p>Izberi enega od premade deckov in se bori proti naključnemu nasprotniku.</p></button>
+      <button class="mode-card" data-m="custom"><div class="mc-ic">🛠️</div><h3>Custom deck</h3><p>Sestavi svoj deck in igraj proti smiselnemu nasprotniku.</p></button>
+      <button class="mode-card" data-m="campaign"><div class="mc-ic">🗺️</div><h3>Kampanja</h3><p>Premagaj 6 vse težjih panteonov. Deck in heroj rasteta. 1 poraz konča.</p></button>
+      <button class="mode-card" data-m="arena"><div class="mc-ic">🏟️</div><h3>Arena</h3><p>Draftaj deck 30 kart (3 na izbiro). Nagrada po vsaki zmagi. Do 3 porazov.</p></button>
+    </div>
+    ${resume}`);
+  w.querySelectorAll(".mode-card").forEach(b => b.addEventListener("click", () => {
+    const m = b.dataset.m;
+    if (m === "premade") showPremade();
+    else if (m === "custom") showCustomBuilder();
+    else if (m === "campaign") { if (RUN && RUN.mode === "campaign") showRunMap(); else { clearRun(); openRunStart(); } }
+    else if (m === "arena") { if (RUN && RUN.mode === "arena") showRunMap(); else { clearRun(); openArenaStart(); } }
+    else if (m === "resume") showRunMap();
+  }));
+}
+function showPremade() {
+  const decks = Object.values(STARTER_DECKS).filter(d => d.id !== "custom" && d.id !== "run");
+  const cards = decks.map(d => {
     const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
-    const b = el("button", "deck-card");
-    b.style.setProperty("--deck-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
-    b.innerHTML = `<span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
-      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div>`;
-    b.addEventListener("click", () => { chosenDeck = d.id; document.querySelectorAll("#v2-decks .deck-card").forEach(c => c.classList.remove("selected")); b.classList.add("selected"); $("#v2-start").disabled = false; });
-    dg.appendChild(b);
-  });
-  const dr = $("#v2-diff"); dr.innerHTML = "";
+    return `<button class="deck-card" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
+      <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
+      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div></button>`;
+  }).join("");
+  const w = setupInner(`${setupHeader("Hitra igra — izberi deck.")}
+    <button class="rules-toggle" id="back-menu" style="align-self:flex-start">← Nazaj</button>
+    <div id="v2-decks" class="v2-decks">${cards}</div>
+    <div class="difficulty-block"><span class="eyebrow">Težavnost</span><div id="v2-diff" class="diff-row"></div></div>
+    <button id="v2-start" class="btn-primary" disabled>Začni bitko</button>`);
+  w.querySelector("#back-menu").addEventListener("click", showMainMenu);
+  w.querySelectorAll(".deck-card").forEach(b => b.addEventListener("click", () => {
+    chosenDeck = b.dataset.deck; w.querySelectorAll(".deck-card").forEach(c => c.classList.remove("selected")); b.classList.add("selected"); w.querySelector("#v2-start").disabled = false;
+  }));
+  const dr = w.querySelector("#v2-diff");
   [["easy", "Lahko"], ["normal", "Normalno"], ["hard", "Težko"]].forEach(([id, lab]) => {
     const b = el("button", "diff-chip" + (id === chosenDiff ? " sel" : ""), `<span class="diff-name">${lab}</span>`);
     b.addEventListener("click", () => { chosenDiff = id; dr.querySelectorAll(".diff-chip").forEach(c => c.classList.remove("sel")); b.classList.add("sel"); });
     dr.appendChild(b);
   });
-  $("#v2-start").addEventListener("click", startV2);
-  // gumb za Roguelike pohod
-  if (!document.getElementById("v2-run-btn")) {
-    const rb = el("button", "rules-toggle"); rb.id = "v2-run-btn";
-    rb.style.marginTop = "10px";
-    loadRun();
-    rb.textContent = RUN ? "⚔ Nadaljuj pohod" : "⚔ Pohod (Roguelike)";
-    rb.addEventListener("click", openRunStart);
-    $("#v2-start").parentNode.appendChild(rb);
-  }
+  w.querySelector("#v2-start").addEventListener("click", startV2);
 }
 function startV2() {
   if (!chosenDeck) return;
-  const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck && k !== "custom");
+  const others = Object.keys(STARTER_DECKS).filter(k => k !== chosenDeck && k !== "custom" && k !== "run");
   const aiDeck = others[(Math.random() * others.length) | 0];
   V2.startGame(chosenDeck, aiDeck, chosenDiff);
   $("#v2-setup").classList.add("hidden");
@@ -303,8 +327,72 @@ function startV2() {
   showFirstPick();
 }
 
+/* ---------------- CUSTOM DECK BUILDER ---------------- */
+let customDeck = [];
+function energyFor(list, ratio) {
+  const need = {}; list.forEach(id => cardEnergyTypes(id).forEach(t => need[t] = (need[t] || 0) + 1));
+  let types = Object.keys(need).sort((a, b) => need[b] - need[a]); if (!types.length) types = ["Sky", "War", "Nature"];
+  const target = Math.round(list.length * (ratio || 0.5)); const out = []; let i = 0;
+  while (out.length < target && types.length) { const e = energyCardFor(types[i % types.length]); if (e) out.push(e); i++; if (i > 300) break; }
+  return out;
+}
+function showCustomBuilder() {
+  const counts = {}; customDeck.forEach(id => counts[id] = (counts[id] || 0) + 1);
+  const poolIds = [...new Set(randomCardPool())].sort((a, b) => {
+    const da = CARDS[a], db = CARDS[b];
+    return (da.pantheon || "z").localeCompare(db.pantheon || "z") || (V2.summonCostOf(da) || V2.manaCostOf(da)) - (V2.summonCostOf(db) || V2.manaCostOf(db));
+  });
+  const champCount = customDeck.filter(id => CARDS[id].type === "Champion").length;
+  const cardHtml = id => {
+    const d = CARDS[id]; const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+    const glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : "🏛"));
+    const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : `⬡${V2.manaCostOf(d)}`;
+    const n = counts[id] || 0;
+    return `<div class="cb-card ${n ? "owned" : ""}" data-id="${id}" ${tipAttr(d.name, cardTipText(d))} style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
+      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">${cost}</span>${n ? `<span class="cb-count">×${n}</span>` : ""}</div>
+      <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.minion ? "Minion" : d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
+      ${n ? `<button class="cb-rem" data-rem="${id}">−</button>` : ""}</div>`;
+  };
+  const enough = customDeck.length >= 16 && champCount >= 6;
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Custom deck</span><h2 class="run-title">Sestavi svoj deck</h2></div>
+      <button class="rules-toggle" id="cb-back">← Nazaj</button></header>
+    <div class="cb-bar">
+      <span class="run-statline">🃏 <b>${customDeck.length}</b> kart · ${champCount} šampionov ${customDeck.length < 16 ? "(min 16)" : ""} ${champCount < 6 ? "· potrebuješ ≥6 šampionov" : ""}</span>
+      ${affinityHtml(customDeck)}
+      <span class="cb-actions"><button class="rules-toggle" id="cb-clear">Počisti</button>
+      <button class="btn-primary" id="cb-start" ${enough ? "" : "disabled"}>Začni bitko</button></span>
+    </div>
+    <p class="run-sub">Klikni karto za dodajanje (do 3 kopije, max 30). Klikni <b>−</b> za odstranitev. Energije se dodajo samodejno. Igraš proti naključnemu premade decku.</p>
+    <div class="cb-pool">${poolIds.map(cardHtml).join("")}</div>`);
+  s.querySelector("#cb-back").addEventListener("click", showMainMenu);
+  s.querySelector("#cb-clear").addEventListener("click", () => { customDeck = []; showCustomBuilder(); });
+  s.querySelector("#cb-start").addEventListener("click", startCustom);
+  s.querySelectorAll(".cb-card").forEach(card => card.addEventListener("click", e => {
+    if (e.target.classList.contains("cb-rem")) return; // handled below
+    const id = card.dataset.id; const n = customDeck.filter(x => x === id).length;
+    if (n >= 3) { toast("Največ 3 kopije."); return; }
+    if (customDeck.length >= 30) { toast("Deck je poln (30)."); return; }
+    customDeck.push(id); showCustomBuilder();
+  }));
+  s.querySelectorAll(".cb-rem").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation(); const id = b.dataset.rem; const i = customDeck.indexOf(id); if (i >= 0) customDeck.splice(i, 1); showCustomBuilder();
+  }));
+}
+function startCustom() {
+  const champCount = customDeck.filter(id => CARDS[id].type === "Champion").length;
+  if (customDeck.length < 16 || champCount < 6) { toast("Potrebuješ vsaj 16 kart in 6 šampionov."); return; }
+  const list = customDeck.slice().concat(energyFor(customDeck, 0.55));
+  STARTER_DECKS.custom = { id: "custom", name: "Custom", pantheon: deckPantheon(customDeck), blurb: "", style: "Custom", list };
+  const others = Object.keys(STARTER_DECKS).filter(k => k !== "custom" && k !== "run");
+  const aiDeck = others[(Math.random() * others.length) | 0];
+  V2.startGame("custom", aiDeck, chosenDiff || "normal");
+  $("#v2-setup").classList.add("hidden"); $("#v2-game").classList.remove("hidden");
+  showFirstPick();
+}
+
 /* ============================================================================
-   ROGUELIKE POHOD (run): zaporedje bitk + nagrade, deck/heroj rasteta
+   ROGUELIKE (KAMPANJA / ARENA): zaporedje bitk + nagrade, deck/heroj rasteta
 ============================================================================ */
 const RUN_KEY = "mythic-run-v2";
 const RUN_STAGES = [
@@ -317,7 +405,7 @@ const RUN_STAGES = [
 ];
 let RUN = null;
 let runActive = false;
-function loadRun() { try { const s = JSON.parse(localStorage.getItem(RUN_KEY)); if (s && Array.isArray(s.deck)) RUN = s; } catch (_) {} }
+function loadRun() { try { const s = JSON.parse(localStorage.getItem(RUN_KEY)); if (s && Array.isArray(s.deck)) { if (!s.mode) s.mode = "campaign"; RUN = s; } } catch (_) {} }
 function saveRun() { try { localStorage.setItem(RUN_KEY, JSON.stringify(RUN)); } catch (_) {} }
 function clearRun() { RUN = null; try { localStorage.removeItem(RUN_KEY); } catch (_) {} }
 function deckPantheon(list) {
@@ -415,15 +503,64 @@ function openRunStart() {
       <button class="rules-toggle" id="run-back">← Nazaj</button></header>
     <p class="run-sub">Začneš z majhnim jedrom (~14 kart) izbranega panteona. Po vsaki zmagi draftaš karto — če dodaš novo energijo, dobiš tudi ustrezno mano. Gradi okrog enega panteona za moč, ali mešaj za fleksibilnost. Poraz konča pohod.</p>
     <div class="deck-grid run-decks">${cards}</div>`);
-  s.querySelector("#run-back").addEventListener("click", () => { hideRun(); $("#v2-setup").classList.remove("hidden"); });
+  s.querySelector("#run-back").addEventListener("click", backToMenu);
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startRun(b.dataset.deck)));
 }
 function startRun(deckId) {
-  RUN = { deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {} };
+  RUN = { mode: "campaign", deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {} };
   saveRun(); showRunMap();
 }
+function backToMenu() { hideRun(); $("#v2-setup").classList.remove("hidden"); showMainMenu(); }
+
+/* ---------------- ARENA (draft 30 + nagrade, do 3 porazov) ---------------- */
+const ARENA_PICKS = 30;
+function openArenaStart() {
+  loadRun(); if (RUN && RUN.mode === "arena") return showRunMap();
+  const decks = Object.values(STARTER_DECKS).filter(d => d.id !== "custom" && d.id !== "run");
+  const cards = decks.map(d => {
+    const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
+    return `<button class="deck-card run-pick" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
+      <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
+      <h3>${d.name}</h3><div class="deck-style">Hero: ${d.pantheon}</div><div class="deck-blurb">Določi tvojega heroja (Hero Power). Draftaš lahko karte vseh panteonov.</div></button>`;
+  }).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Arena</span><h2 class="run-title">Izberi svojega heroja</h2></div>
+      <button class="rules-toggle" id="run-back">← Nazaj</button></header>
+    <p class="run-sub">Panteon določi tvojega heroja in Hero Power. Nato draftaš 30 kart (3 na izbiro). Energije se dodajo samodejno. Igraš do <b>3 porazov</b>; po vsaki zmagi izbereš nagrado.</p>
+    <div class="deck-grid run-decks">${cards}</div>`);
+  s.querySelector("#run-back").addEventListener("click", backToMenu);
+  s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startArena(b.dataset.deck)));
+}
+function startArena(coreDeckId) {
+  RUN = { mode: "arena", deckId: coreDeckId, deck: [], draftLeft: ARENA_PICKS, heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, wins: 0, losses: 0, upgrades: {} };
+  saveRun(); showArenaDraft();
+}
+function showArenaDraft() {
+  if (RUN.draftLeft <= 0) { fillArenaEnergy(); saveRun(); showRunMap(); return; }
+  const pool = randomCardPool();
+  const offers = []; let guard = 0;
+  while (offers.length < 3 && guard++ < 200) { const id = pool[(Math.random() * pool.length) | 0]; if (!offers.includes(id)) offers.push(id); }
+  const cardHtml = id => {
+    const d = CARDS[id]; const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
+    const glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : "🏛"));
+    const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : `⬡${V2.manaCostOf(d)}`;
+    const atks = d.type === "Champion" ? atkRowsHtml(d, null) : `<div class="rdc-m">${d.text || d.effect || ""}</div>`;
+    return `<button class="reward-card" data-id="${id}" ${tipAttr(d.name, cardTipText(d))} style="--c-grad:linear-gradient(160deg,${st ? st.grad[0] : "#23233a"},${st ? st.grad[1] : "#3a3a52"})">
+      <div class="rw-tag">${d.minion ? "Minion" : d.type}</div>
+      <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">${cost}</span></div>
+      <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.pantheon || "—"}${d.type === "Champion" ? " · ❤" + d.hp : ""}</div>${atks}</button>`;
+  };
+  const picked = ARENA_PICKS - RUN.draftLeft;
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Arena draft · ${picked}/${ARENA_PICKS}</span><h2 class="run-title">Izberi karto</h2></div></header>
+    ${affinityHtml(RUN.deck)}
+    <div class="reward-grid">${offers.map(cardHtml).join("")}</div>`);
+  s.querySelectorAll(".reward-card").forEach((b, i) => b.addEventListener("click", () => { RUN.deck.push(offers[i]); RUN.draftLeft--; saveRun(); showArenaDraft(); }));
+}
+function fillArenaEnergy() { RUN.deck.push(...energyFor(RUN.deck, 0.5)); }
 
 function showRunMap() {
+  if (RUN.mode === "arena") return showArenaMap();
   const done = RUN.stage >= RUN_STAGES.length;
   const ladder = RUN_STAGES.map((st, i) => {
     const stt = i < RUN.stage ? "done" : (i === RUN.stage ? "current" : "locked");
@@ -434,8 +571,8 @@ function showRunMap() {
   }).join("");
   const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
   const s = showRunScreen(`
-    <header class="run-head"><div><span class="eyebrow">Pohod · ${RUN.stage}/${RUN_STAGES.length} zmag</span><h2 class="run-title">${done ? "🏆 Pohod dokončan!" : "Karta pohoda"}</h2></div>
-      <button class="rules-toggle" id="run-quit">Opusti pohod</button></header>
+    <header class="run-head"><div><span class="eyebrow">Kampanja · ${RUN.stage}/${RUN_STAGES.length} zmag</span><h2 class="run-title">${done ? "🏆 Kampanja dokončana!" : "Karta kampanje"}</h2></div>
+      <button class="rules-toggle" id="run-quit">Opusti</button></header>
     <div class="run-statline">
       ❤ Heroj: <b>${RUN.heroLife}</b> · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)
       ${RUN.champHpBonus ? ` · 🛡 Šampioni +${RUN.champHpBonus} HP` : ""}${RUN.handBonus ? ` · ✋ +${RUN.handBonus} karta` : ""}${RUN.favorStart ? ` · 🔮 +${RUN.favorStart} Naklonjenost` : ""}
@@ -444,11 +581,31 @@ function showRunMap() {
     <div class="run-ladder">${ladder}</div>
     <div class="run-foot">
       <button class="rules-toggle" id="run-deckbtn">Poglej deck</button>
-      ${done ? `<button class="btn-primary" id="run-finish">Zaključi (nov pohod)</button>` : `<button class="btn-primary" id="run-fight">Začni bitko ${RUN.stage + 1}: ${RUN_STAGES[RUN.stage].name}</button>`}
+      ${done ? `<button class="btn-primary" id="run-finish">Zaključi</button>` : `<button class="btn-primary" id="run-fight">Začni bitko ${RUN.stage + 1}: ${RUN_STAGES[RUN.stage].name}</button>`}
     </div>`);
-  s.querySelector("#run-quit").addEventListener("click", () => { if (confirm("Opustiš pohod?")) { clearRun(); hideRun(); $("#v2-setup").classList.remove("hidden"); } });
+  s.querySelector("#run-quit").addEventListener("click", () => { if (confirm("Opustiš kampanjo?")) { clearRun(); backToMenu(); } });
   s.querySelector("#run-deckbtn").addEventListener("click", () => showRunDeck());
-  if (done) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); hideRun(); $("#v2-setup").classList.remove("hidden"); });
+  if (done) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); backToMenu(); });
+  else s.querySelector("#run-fight").addEventListener("click", runLaunch);
+}
+function showArenaMap() {
+  if (RUN.draftLeft > 0) return showArenaDraft();
+  const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
+  const over = RUN.losses >= 3;
+  const hearts = "❤".repeat(3 - RUN.losses) + "🖤".repeat(RUN.losses);
+  const diffLab = RUN.wins < 3 ? "Lahko" : RUN.wins < 6 ? "Normalno" : "Težko";
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Arena · ${RUN.wins} zmag</span><h2 class="run-title">${over ? "🏟️ Arena končana" : "Arena"}</h2></div>
+      <button class="rules-toggle" id="run-quit">Opusti</button></header>
+    <div class="run-statline">🏆 Zmage: <b>${RUN.wins}</b> · Življenja runa: ${hearts} · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)</div>
+    ${affinityHtml(RUN.deck)}
+    <div class="run-foot">
+      <button class="rules-toggle" id="run-deckbtn">Poglej deck</button>
+      ${over ? `<button class="btn-primary" id="run-finish">Zaključi</button>` : `<button class="btn-primary" id="run-fight">Začni bitko ${RUN.wins + 1} (${diffLab})</button>`}
+    </div>`);
+  s.querySelector("#run-quit").addEventListener("click", () => { if (confirm("Opustiš areno?")) { clearRun(); backToMenu(); } });
+  s.querySelector("#run-deckbtn").addEventListener("click", () => showRunDeck());
+  if (over) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); backToMenu(); });
   else s.querySelector("#run-fight").addEventListener("click", runLaunch);
 }
 function showRunDeck(removeMode) {
@@ -499,8 +656,14 @@ function genRewards() {
   // nadgradnja championa je na voljo le, če imaš šampiona; sicer običajni upgrade
   const hasChamp = RUN.deck.some(id => (CARDS[id] || {}).type === "Champion");
   const pool = hasChamp ? upgrades : upgrades.filter(u => u.t !== "upgradeCard");
-  const up = pool[(Math.random() * pool.length) | 0];
-  return [{ t: "card", id: c1, tag: "V tvojem slogu" }, { t: "card", id: c2, tag: "Divja karta" }, up];
+  const up = () => pool[(Math.random() * pool.length) | 0];
+  // Arena: 2 naključni izbiri (lahko 2 karti, 2 upgrada ali mešano); Kampanja: karta + karta + upgrade
+  if (RUN.mode === "arena") {
+    const bag = [{ t: "card", id: c1, tag: "Karta" }, { t: "card", id: c2, tag: "Karta" }, up(), up()];
+    for (let i = bag.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[bag[i], bag[j]] = [bag[j], bag[i]]; }
+    return bag.slice(0, 2);
+  }
+  return [{ t: "card", id: c1, tag: "V tvojem slogu" }, { t: "card", id: c2, tag: "Divja karta" }, up()];
 }
 function showReward(rewards) {
   rewards = rewards || genRewards();
@@ -620,10 +783,17 @@ function upgradedCardId(baseId) {
 }
 
 function runLaunch() {
-  const stage = RUN_STAGES[RUN.stage];
+  let aiDeck, diff;
+  if (RUN.mode === "arena") {
+    const decks = Object.keys(STARTER_DECKS).filter(k => k !== "custom" && k !== "run");
+    aiDeck = decks[(Math.random() * decks.length) | 0];
+    diff = RUN.wins < 3 ? "easy" : RUN.wins < 6 ? "normal" : "hard";
+  } else {
+    const stage = RUN_STAGES[RUN.stage]; aiDeck = stage.ai; diff = stage.diff;
+  }
   const list = RUN.deck.map(id => upgradedCardId(id)); // vključi per-card nadgradnje
-  STARTER_DECKS.run = { id: "run", name: "Tvoj pohod", pantheon: deckPantheon(RUN.deck), blurb: "", style: "Run", list };
-  V2.startGame("run", stage.ai, stage.diff);
+  STARTER_DECKS.run = { id: "run", name: "Tvoj deck", pantheon: STARTER_DECKS[RUN.deckId] ? STARTER_DECKS[RUN.deckId].pantheon : deckPantheon(RUN.deck), blurb: "", style: "Run", list };
+  V2.startGame("run", aiDeck, diff);
   G.noDeckout = true; // lean run deck -> brez deckout poraza (samo nehaš vleči)
   const you = G.players[0];
   you.maxLife = RUN.heroLife; you.life = RUN.heroLife;
@@ -636,6 +806,12 @@ function runLaunch() {
 }
 function onRunBattleEnd(won) {
   $("#v2-game").classList.add("hidden");
+  if (RUN.mode === "arena") {
+    if (won) { RUN.wins++; saveRun(); showReward(); }
+    else { RUN.losses++; saveRun(); if (RUN.losses >= 3) runGameOver(false); else showArenaMap(); }
+    return;
+  }
+  // kampanja
   if (won) {
     RUN.stage++; saveRun();
     if (RUN.stage >= RUN_STAGES.length) runGameOver(true);
@@ -643,14 +819,19 @@ function onRunBattleEnd(won) {
   } else { runGameOver(false); }
 }
 function runGameOver(won) {
+  const arena = RUN.mode === "arena";
+  const title = arena ? (won ? "ARENA — ZMAGA 🏆" : "ARENA KONČANA") : (won ? "ZMAGA KAMPANJE 🏆" : "KAMPANJA KONČANA");
+  const sub = arena
+    ? `${RUN.wins} zmag pred 3 porazi. Deck je imel ${RUN.deck.length} kart.`
+    : (won ? "Premagal si vseh 6 panteonov!" : `Padel si v bitki ${RUN.stage + 1}. Deck je dosegel ${RUN.deck.length} kart.`);
   const s = showRunScreen(`
     <div class="run-over">
-      <h1 class="victory-title" style="${won ? "" : "background:linear-gradient(180deg,#ffd9d2,#ff6b5e 55%,#7a241d);-webkit-background-clip:text;background-clip:text;color:transparent;"}">${won ? "ZMAGA POHODA 🏆" : "POHOD KONČAN"}</h1>
-      <p class="run-sub">${won ? "Premagal si vseh 6 panteonov!" : `Padel si v bitki ${RUN.stage + 1}. Deck je dosegel ${RUN.deck.length} kart.`}</p>
-      <button class="btn-primary" id="run-new">Nov pohod</button>
+      <h1 class="victory-title" style="${won ? "" : "background:linear-gradient(180deg,#ffd9d2,#ff6b5e 55%,#7a241d);-webkit-background-clip:text;background-clip:text;color:transparent;"}">${title}</h1>
+      <p class="run-sub">${sub}</p>
+      <button class="btn-primary" id="run-new">Nazaj v meni</button>
     </div>`);
   clearRun();
-  s.querySelector("#run-new").addEventListener("click", () => { hideRun(); $("#v2-setup").classList.remove("hidden"); openRunStart(); });
+  s.querySelector("#run-new").addEventListener("click", backToMenu);
 }
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
@@ -1244,7 +1425,11 @@ function aiSummon() {
   if (G.over) { aiBusy = false; checkOver(); return; }
   const ai = G.players[1];
   if (ai.board.length < V2.BOARD_MAX) {
-    const c = ai.hand.find(i => def(i).type === "Champion" && def(i).stage === "basic" && V2.canPay(ai, Array.from({ length: V2.summonCostOf(def(i)) }, () => "Any")));
+    const affordable = ai.hand.filter(i => def(i).type === "Champion" && def(i).stage === "basic" && V2.canPay(ai, Array.from({ length: V2.summonCostOf(def(i)) }, () => "Any")));
+    // sinergija: raje prikliči šampiona prevladujočega panteona (gradi Bond)
+    const boardPan = {}; ai.board.forEach(x => { const p = def(x).pantheon; if (p) boardPan[p] = (boardPan[p] || 0) + 1; });
+    affordable.sort((a, b) => ((boardPan[def(b).pantheon] || 0) - (boardPan[def(a).pantheon] || 0)) || (V2.summonCostOf(def(b)) - V2.summonCostOf(def(a))));
+    const c = affordable[0];
     if (c) { const dd = def(c); revealCard(dd, "Nasprotnik prikliče", () => { V2.summon(ai, c); render(); setTimeout(aiSummon, 350); }); return; }
   }
   setTimeout(aiSpells, 400);
