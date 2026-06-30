@@ -510,3 +510,13 @@
   .v2-atk { padding: 0 4px; font-size: 9.5px; }
   .v2-handcard { width: 84px; flex: 0 0 84px; }
 }
+
+/* ---------------- Sinergije (chip-i) + Keep gumb ---------------- */
+.v2-syn { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.v2-synchip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+  font-family: "SF Mono", monospace; letter-spacing: 0.03em; cursor: help; white-space: nowrap; }
+.v2-synchip.syn-bond { background: rgba(255,216,107,0.16); border: 1px solid rgba(255,216,107,0.5); color: #ffe8a8; }
+.v2-synchip.syn-ally { background: rgba(176,107,255,0.18); border: 1px solid rgba(176,107,255,0.55); color: #d9b6ff;
+  box-shadow: 0 0 10px rgba(176,107,255,0.25); }
+.mull-btn.keep { background: linear-gradient(160deg, rgba(111,217,138,0.25), rgba(111,217,138,0.1)); border: 1px solid var(--good); color: #c6f7d4; font-weight: 700; }
+.mull-btn.keep:hover { background: linear-gradient(160deg, rgba(111,217,138,0.4), rgba(111,217,138,0.18)); box-shadow: 0 0 14px rgba(111,217,138,0.35); }

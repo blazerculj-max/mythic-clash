@@ -245,8 +245,8 @@ function updateDmgPreview() {
   if (!pv || !target) { hideDmgPreview(); return; }
   document.querySelectorAll(".lethal-target").forEach(e => e.classList.remove("lethal-target"));
   const p = ensureDmgPrev();
-  const parts = (pv.parts || []).filter(x => ["WEAK", "RESIST", "GUARD", "FAVOR", "OMEN?"].includes(x));
-  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)" };
+  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15" };
+  const parts = (pv.parts || []).filter(x => lab[x]);
   p.className = "v2-dmgprev" + (lethal ? " lethal" : "");
   p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
   const r = target.getBoundingClientRect();
@@ -657,29 +657,23 @@ function runGameOver(won) {
 function showFirstPick() {
   seenChampUids = new Set(); lastChampFx = {}; prevYouMana = []; // nova bitka -> ponastavi FX sledenje
   const you = G.players[0];
+  const titleEl = document.querySelector("#v2-pick .mull-title"); if (titleEl) titleEl.textContent = "Mulligan — obdrži ali zameši roko";
+  const subEl = document.querySelector("#v2-pick .mull-sub"); if (subEl) subEl.innerHTML = "Začneš s <b>praznim boardom</b> — vse igraš iz roke. Prvi mulligan je zastonj, vsak naslednji poteguje 1 karto manj.";
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
-  // prikaži CELO roko: basic championi so izberljivi (bogata kartica), ostalo je info
   you.hand.forEach(inst => {
     const d = def(inst);
-    if (d.type === "Champion" && d.stage === "basic") {
-      const node = champPreviewCard(d);
-      node.classList.add("pickable");
-      node.addEventListener("click", () => { V2.chooseFirstChampion(inst.uid); $("#v2-pick").classList.add("hidden"); render(); showTurnBanner("Tvoja poteza", "you"); });
-      wrap.appendChild(node);
-    } else {
-      wrap.appendChild(handInfoCard(d));
-    }
+    wrap.appendChild(d.type === "Champion" && d.stage === "basic" ? champPreviewCard(d) : handInfoCard(d));
   });
-  // gumb za mulligan
   let actions = document.getElementById("v2-pick-actions");
-  if (!actions) {
-    actions = el("div", "mull-actions"); actions.id = "v2-pick-actions";
-    $("#v2-pick .mulligan-inner").appendChild(actions);
-  }
+  if (!actions) { actions = el("div", "mull-actions"); actions.id = "v2-pick-actions"; $("#v2-pick .mulligan-inner").appendChild(actions); }
   actions.innerHTML = "";
-  const mull = el("button", "mull-btn mull", "🔄 Zamešaj roko (mulligan)");
+  const mulls = you._mulligans || 0;
+  const nextCost = mulls === 0 ? "zastonj" : "−" + mulls + (mulls === 1 ? " karta" : " kart");
+  const keep = el("button", "mull-btn keep", "✓ Obdrži in začni");
+  keep.addEventListener("click", () => { V2.keepHand(); $("#v2-pick").classList.add("hidden"); render(); showTurnBanner("Tvoja poteza", "you"); });
+  const mull = el("button", "mull-btn mull", `🔄 Mulligan (${nextCost})`);
   mull.addEventListener("click", () => { V2.mulliganHand(); showFirstPick(); });
-  actions.appendChild(mull);
+  actions.appendChild(keep); actions.appendChild(mull);
   $("#v2-pick").classList.remove("hidden");
 }
 // info kartica za ne-šampione (energija/oracle/relic/realm) v izbiri
@@ -812,6 +806,17 @@ function manaRow(p) {
   }).join("");
   return `<div class="v2-mana-row"><span class="v2-mana-lab">MANA <b>${untap}</b>/${p.mana.length}</span>${pips}</div>`;
 }
+// aktivne sinergije (Bond / Zavezništvo) kot chip-i
+function synergyChips(p) {
+  if (!V2.synergyLabels) return "";
+  const labels = V2.synergyLabels(p);
+  if (!labels.length) return "";
+  return `<div class="v2-syn">` + labels.map(l => {
+    const st = l.pantheon ? (PANTHEON_STYLE[l.pantheon] || { symbol: "✦" }) : null;
+    const ic = l.kind === "bond" ? (st ? st.symbol : "⚡") : "🤝";
+    return `<span class="v2-synchip ${l.kind === "bond" ? "syn-bond" : "syn-ally"}" ${tipAttr((l.kind === "bond" ? "⚡ Bond: " : "🤝 ") + l.name, l.text)}>${ic} ${l.name}</span>`;
+  }).join("") + `</div>`;
+}
 // interaktivna cona energij POD tvojim boardom — klikni karte energij za plačilo
 function renderManaZone(you) {
   const zone = el("div", "v2-manazone");
@@ -850,13 +855,13 @@ function renderSide(container, p, isYou) {
     container.appendChild(row);
     const footer = el("div", "v2-you-footer");
     const hb = el("div", "v2-head");
-    hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>`;
+    hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p);
     footer.appendChild(hb);
     footer.appendChild(renderManaZone(p));
     container.appendChild(footer);
   } else {
     const head = el("div", "v2-head");
-    head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + manaRow(p);
+    head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p) + manaRow(p);
     container.appendChild(head);
     container.appendChild(row);
     const heroEl = head.querySelector(".v2-hero");

@@ -63,6 +63,38 @@
   function equipGrants(c, kw) { const w = weaponOf(c), a = armorOf(c); return (!!w && w.grant === kw) || (!!a && a.grant === kw); }
   function isTaunt(c) { return !!(def(c).taunt || equipGrants(c, "taunt")); } // "zid" — napasti ga moraš najprej
 
+  /* ---------------- Sinergije (Faza 2) ----------------
+     Bond = 3+ šampionov enega panteona na boardu (trajen bonus).
+     Zavezništvo = 2+ enega IN 2+ drugega panteona (cross-combo). */
+  const BONDS = {
+    Greek:    { name: "Modrost",     text: "Na začetku poteze potegneš +1 karto." },
+    Norse:    { name: "Furija",      text: "Tvoji napadi zadajo +10 škode." },
+    Roman:    { name: "Formacija",   text: "Tvoji šampioni prejmejo −10 škode." },
+    Egyptian: { name: "Obnova",      text: "Ob koncu poteze tvoji šampioni +15 HP." },
+    Slavic:   { name: "Prekletstvo", text: "Napadi proti tarči s statusom +15 škode." },
+    Celtic:   { name: "Mistika",     text: "Tvoji šampioni dobijo +20% Umik (dodge)." },
+  };
+  const ALLIANCES = [
+    { id: "order",   a: "Greek",    b: "Roman",    name: "Klasični red", text: "Shield vpije −30 (namesto −20)." },
+    { id: "winter",  a: "Norse",    b: "Slavic",   name: "Zimski pakt",  text: "Zmrznjeni prejmejo ×1.4 škode." },
+    { id: "warhost", a: "Norse",    b: "Roman",    name: "Vojni pohod",  text: "War napadi +15 škode." },
+    { id: "sunsky",  a: "Greek",    b: "Egyptian", name: "Sončno nebo",  text: "Sky in Sun napadi +10 škode." },
+    { id: "sunring", a: "Egyptian", b: "Celtic",   name: "Sončni krog",  text: "Ob koncu poteze tvoji šampioni +10 HP." },
+  ];
+  function pantheonCounts(p) { const c = {}; p.board.forEach(ch => { const pan = def(ch).pantheon; if (pan) c[pan] = (c[pan] || 0) + 1; }); return c; }
+  function hasBond(p, pan) { return (pantheonCounts(p)[pan] || 0) >= 3; }
+  function hasAlliance(p, id) { const al = ALLIANCES.find(x => x.id === id); if (!al) return false; const c = pantheonCounts(p); return (c[al.a] || 0) >= 2 && (c[al.b] || 0) >= 2; }
+  function synergyOf(p) {
+    const c = pantheonCounts(p);
+    return { counts: c, bonds: Object.keys(c).filter(pan => c[pan] >= 3 && BONDS[pan]), alliances: ALLIANCES.filter(al => (c[al.a] || 0) >= 2 && (c[al.b] || 0) >= 2).map(al => al.id) };
+  }
+  function synergyLabels(p) {
+    const s = synergyOf(p); const out = [];
+    s.bonds.forEach(pan => out.push({ kind: "bond", pantheon: pan, name: BONDS[pan].name, text: pan + " Bond — " + BONDS[pan].text }));
+    s.alliances.forEach(id => { const al = ALLIANCES.find(x => x.id === id); out.push({ kind: "alliance", id, name: al.name, text: "Zavezništvo — " + al.text }); });
+    return out;
+  }
+
   const G = {
     players: [], turn: 0, turnCount: 1, log: [], over: false, winner: null,
     realm: null, difficulty: "normal",
@@ -113,39 +145,27 @@
     G.turn = 0; G.turnCount = 1; G.over = false; G.winner = null; G.log = [];
     G.pendingBlock = null; G.startingActiveChosen = false; G.noDeckout = false;
     for (const p of G.players) {
+      p._mulligans = 0;
       dealOpening(p);
       p.stats.cardsDrawn += HAND_START;
     }
-    // AI takoj postavi prvi (zastonj) šampion
-    const ai = G.players[1];
-    placeFirstChampion(ai, ai.hand.find(i => def(i).type === "Champion" && def(i).stage === "basic"));
-    G.mulliganPhase = true; G.mulliganStage = "pickFirst"; // človek izbere prvega
+    // brez "free" championa — oba začneta s praznim boardom, vse igraš iz roke
+    G.mulliganPhase = true; G.mulliganStage = "keep"; // človek obdrži ali mulligana
     logMsg("Bitka se začenja (v2)! " + G.players[0].name + " vs " + G.players[1].name + ".");
     return G;
   }
-  function dealOpening(p) {
+  function dealOpening(p, n) {
+    n = n || HAND_START;
     let tries = 0;
     do {
       p.deck = shuffle(p.deck.concat(p.hand)); p.hand = [];
-      for (let i = 0; i < HAND_START; i++) p.hand.push(p.deck.pop());
+      for (let i = 0; i < n && p.deck.length; i++) p.hand.push(p.deck.pop());
       tries++;
     } while (tries < 50 && !p.hand.some(i => def(i).type === "Champion" && def(i).stage === "basic"));
   }
-  function placeFirstChampion(p, inst) {
-    if (!inst) return { ok: false };
-    const i = p.hand.indexOf(inst); if (i < 0) return { ok: false };
-    p.hand.splice(i, 1);
-    inst.sick = false; // prvi lahko brani takoj (a napade šele naslednji turn? — first turn ne napada itak)
-    p.board.push(inst);
-    logMsg(p.name + " postavi prvega šampiona zastonj: " + def(inst).name + ".");
-    return { ok: true };
-  }
-  // človek izbere prvega šampiona iz roke -> konča mulligan/setup
-  function chooseFirstChampion(uid) {
-    const you = G.players[0];
-    const inst = you.hand.find(i => i.uid === uid);
-    if (!inst || def(inst).type !== "Champion" || def(inst).stage !== "basic") return { ok: false };
-    placeFirstChampion(you, inst);
+  // človek obdrži roko -> konča mulligan, začne bitko (board prazen)
+  function keepHand() {
+    if (!G.mulliganPhase) return { ok: false };
     G.mulliganPhase = false; G.startingActiveChosen = true;
     beginTurn(true);
     return { ok: true };
@@ -173,6 +193,7 @@
     }
     if (!first) draw(p, 1);
     else logMsg(p.name + " začenja (brez vleke na prvi potezi).");
+    if (!first && hasBond(p, "Greek")) { draw(p, 1); logMsg(p.name + ": Greek Bond (Modrost) — +1 karta."); } // Greek Bond
   }
   function draw(p, n) {
     for (let i = 0; i < n; i++) {
@@ -205,6 +226,11 @@
     if (G.realm === "realm-grove" && G.realmOwner === G.players.indexOf(p)) {
       p.board.forEach(c => c.damage = Math.max(0, c.damage - 10));
     }
+    // Sinergije: Egyptian Bond (Obnova +15) + Sončni krog zavezništvo (+10)
+    let synHeal = 0;
+    if (hasBond(p, "Egyptian")) synHeal += 15;
+    if (hasAlliance(p, "sunring")) synHeal += 10;
+    if (synHeal) { p.board.forEach(c => c.damage = Math.max(0, c.damage - synHeal)); logMsg(p.name + ": Sinergija — šampioni +" + synHeal + " HP."); }
   }
 
   /* ---------------- mana ---------------- */
@@ -363,12 +389,15 @@
   }
 
   /* ---------------- Mulligan (samo začetek, samo človek) ---------------- */
+  // mulligan: prvi je zastonj, vsak naslednji poteguje 1 karto manj
   function mulliganHand() {
     const you = G.players[0];
     if (!G.mulliganPhase) return { ok: false };
-    dealOpening(you); // zameša in potegne 7 (zagotovi vsaj 1 basic championa)
-    logMsg(you.name + " zameša roko (mulligan).");
-    return { ok: true };
+    you._mulligans = (you._mulligans || 0) + 1;
+    const n = Math.max(3, HAND_START - Math.max(0, you._mulligans - 1));
+    dealOpening(you, n);
+    logMsg(you.name + " mulligan #" + you._mulligans + " — roka " + n + (you._mulligans === 1 ? " (prvi zastonj)." : " (−1 karta)."));
+    return { ok: true, handSize: n, nextSize: Math.max(3, n - 1), free: you._mulligans === 1 };
   }
 
   /* ---------------- Oracle / Relic / Realm ---------------- */
@@ -445,7 +474,7 @@
 
   function computeDamage(attacker, atkOwner, defender, atk, opts) {
     opts = opts || {};
-    let dmg = atk.damage || 0;
+    let dmg = atk.damage || 0; const parts = [];
     if (attacker.status.blessing) dmg += 15;
     if (attacker.status.curse) dmg -= 15;
     const atkType0 = effType(atk);
@@ -463,17 +492,27 @@
     if (G.realm === "realm-asgard" && atkType0 === "War" && ad.pantheon === "Norse") dmg += 10;
     if (G.realm === "realm-duat" && (atkType0 === "Underworld" || atkType0 === "Sun")) dmg += 10;
     // Realm: Forum -10 če ima branilčev lastnik 2+ šampione
-    if (G.realm === "realm-forum") { const dOwn = ownerOfChamp(defender); if (dOwn && dOwn.board.length >= 2) dmg -= 10; }
-    if (defender.status.shield && !pierce) dmg -= 20;
+    const dOwner = ownerOfChamp(defender);
+    if (G.realm === "realm-forum") { if (dOwner && dOwner.board.length >= 2) dmg -= 10; }
+    // Sinergije — napad
+    if (atkOwner) {
+      if (hasBond(atkOwner, "Norse")) { dmg += 10; parts.push("FURIJA"); }                                  // Norse Bond
+      if (atkType0 === "War" && hasAlliance(atkOwner, "warhost")) { dmg += 15; parts.push("VOJNA"); }        // Norse+Roman
+      if ((atkType0 === "Sky" || atkType0 === "Sun") && hasAlliance(atkOwner, "sunsky")) { dmg += 10; parts.push("SONCE"); } // Greek+Egyptian
+      if (hasBond(atkOwner, "Slavic")) { const s = defender.status || {}; if (s.burn || s.freeze || s.stun || s.curse || s.poison) { dmg += 15; parts.push("KLETEV"); } } // Slavic Bond
+    }
+    // Sinergije — obramba
+    if (dOwner && hasBond(dOwner, "Roman")) { dmg -= 10; parts.push("FORMACIJA"); }                          // Roman Bond
+    if (defender.status.shield && !pierce) dmg -= (dOwner && hasAlliance(dOwner, "order")) ? 30 : 20;        // Greek+Roman: Shield −30
     if (dmg < 0) dmg = 0;
     const atkType = atkType0;
-    let mult = 1; const parts = [];
+    let mult = 1;
     const dd = def(defender);
     if (atkType) {
       if (dd.weakness === atkType) { mult *= 1.5; parts.push("WEAK"); }
       else if (dd.resistance === atkType) { mult *= 0.6; parts.push("RESIST"); }
     }
-    if (defender.status.freeze) mult *= 1.2;
+    if (defender.status.freeze) mult *= (atkOwner && hasAlliance(atkOwner, "winter")) ? 1.4 : 1.2;           // Norse+Slavic
     if (defender.status.stun) mult *= 1.1;
     if (defender.status.guard) { mult *= 0.5; parts.push("GUARD"); } // obrambna drža −50%
     if (opts.forceOmenBonus) { mult *= 1.3; parts.push("FAVOR"); }
@@ -578,7 +617,8 @@
     att._comboType = atkType; att._comboCount = cb.count;
     if (heavy && !forceOmen && omen === false) { p.favor = Math.min(3, p.favor + 1); }
     // Umik (dodge): pasivna možnost izogiba napadu
-    if (def(defn).dodge && Math.random() < def(defn).dodge) {
+    const dodgeChance = (def(defn).dodge || 0) + (hasBond(opp, "Celtic") ? 0.2 : 0); // Celtic Bond (Mistika)
+    if (dodgeChance > 0 && Math.random() < dodgeChance) {
       logMsg(def(defn).name + " se izogne napadu (Umik)!");
       att._comboType = atkType; att._comboCount = cb.count;
       afterAction(p);
@@ -776,8 +816,8 @@
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
     summon, attack, resolveBlock, previewDamage, previewFace, canAttack, summonCostOf, manaCostOf,
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
-    chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
-    isTaunt, tauntsOf, BOARD_MAX, START_LIFE,
+    keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
+    isTaunt, tauntsOf, synergyOf, synergyLabels, BOARD_MAX, START_LIFE,
   };
   if (typeof module !== "undefined") module.exports = api;
   if (global) { global.V2 = api; }
