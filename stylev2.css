@@ -225,6 +225,27 @@
 .run-stage.current .rs-mark { color: var(--gold-bright); } .run-stage.done .rs-mark { color: var(--good); }
 .run-foot { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 22px; }
 .run-foot .btn-primary { flex: 1; padding: 14px; font-size: 16px; }
+.run-hint { color: var(--ink-dim); font-size: 13px; font-style: italic; }
+
+/* razvejana mapa kampanje */
+.run-map { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; }
+.map-col { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; }
+.map-link { color: var(--panel-edge); font-size: 14px; line-height: 1; height: 12px; }
+.map-node { position: relative; width: 116px; min-height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); color: var(--ink); cursor: default; padding: 8px 6px; transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease; }
+.map-node .mn-ic { font-size: 24px; line-height: 1; }
+.map-node .mn-lab { font-family: Georgia, serif; font-size: 13px; }
+.map-node .mn-sub { font-size: 9.5px; color: var(--ink-dim); text-align: center; line-height: 1.15; max-width: 104px; }
+.map-node .mn-done { position: absolute; top: 4px; right: 6px; color: var(--good); font-size: 13px; }
+.map-node.other { opacity: 0.4; }
+.map-node.done { opacity: 0.8; border-color: rgba(111,217,138,0.4); }
+.map-node.avail { cursor: pointer; border-color: var(--gold-bright); box-shadow: 0 0 0 1px var(--gold-dim), 0 0 20px rgba(233,196,106,0.18); animation: nodePulse 1.8s ease-in-out infinite; }
+.map-node.avail:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 0 2px var(--gold-bright); }
+.map-node.elite { border-style: dashed; }
+.map-node.elite .mn-ic, .map-node.boss .mn-ic { filter: drop-shadow(0 2px 8px rgba(255,107,94,0.5)); }
+.map-node.boss { width: 150px; background: radial-gradient(circle at 50% 30%, rgba(255,107,94,0.16), var(--panel) 65%); }
+.map-node.treasure .mn-ic, .map-node.rest .mn-ic { filter: drop-shadow(0 2px 8px rgba(233,196,106,0.4)); }
+@keyframes nodePulse { 0%,100% { box-shadow: 0 0 0 1px var(--gold-dim), 0 0 14px rgba(233,196,106,0.12); } 50% { box-shadow: 0 0 0 1px var(--gold-bright), 0 0 22px rgba(233,196,106,0.28); } }
 
 /* nagrade */
 .reward-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px; }

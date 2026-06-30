@@ -520,7 +520,7 @@ function openRunStart() {
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startRun(b.dataset.deck)));
 }
 function startRun(deckId) {
-  RUN = { mode: "campaign", deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {}, artifacts: [] };
+  RUN = { mode: "campaign", deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {}, artifacts: [], map: genCampaignMap() };
   saveRun(); showRunMap();
 }
 function backToMenu() { hideRun(); $("#v2-setup").classList.remove("hidden"); showMainMenu(); }
@@ -603,35 +603,142 @@ function showArenaEnergyPick() {
 }
 function finalizeArenaEnergy() { RUN.energyDone = true; RUN.energyPick = {}; saveRun(); showRunMap(); }
 
+// --- Razvejana mapa kampanje (StS) ---
+const NODE_META = {
+  battle:   { icon: "⚔", label: "Bitka",    desc: "Navadna bitka proti naključnemu panteonu. Nagrada: karta ali nadgradnja." },
+  elite:    { icon: "☠", label: "Elita",    desc: "Težja bitka (okrepljen nasprotnik). Nagrada vključuje ZAJAMČEN artefakt." },
+  rest:     { icon: "🔥", label: "Ognjišče", desc: "Trajna izboljšava: nadgradi šampiona ALI +20 max življenja." },
+  event:    { icon: "🎲", label: "Dogodek",  desc: "Naključen dogodek z izbiro — tveganje in nagrada." },
+  treasure: { icon: "💎", label: "Zaklad",   desc: "Brezplačen artefakt po izbiri." },
+  boss:     { icon: "👑", label: "BOSS",     desc: "Zaključni boss. Zmaga konča kampanjo." },
+};
+function genCampaignMap() {
+  const DEPTH = 6;
+  const aiDecks = Object.keys(STARTER_DECKS).filter(k => !["custom", "run"].includes(k));
+  const rnd = n => (Math.random() * n) | 0;
+  const pickAi = () => aiDecks[rnd(aiDecks.length)];
+  const cols = [];
+  for (let c = 0; c < DEPTH; c++) {
+    const count = 2 + rnd(2); // 2–3 vozlov
+    const col = [];
+    for (let i = 0; i < count; i++) {
+      let type; const r = Math.random();
+      if (c === 0) type = r < 0.25 ? "event" : "battle";
+      else if (c === DEPTH - 1) type = r < 0.5 ? "rest" : (r < 0.8 ? "elite" : "treasure"); // pred-boss
+      else if (r < 0.42) type = "battle";
+      else if (r < 0.60) type = "elite";
+      else if (r < 0.76) type = "event";
+      else if (r < 0.90) type = "rest";
+      else type = "treasure";
+      const node = { type };
+      if (type === "battle") { node.ai = pickAi(); node.diff = c < 2 ? "easy" : c < 4 ? "normal" : "hard"; }
+      else if (type === "elite") { node.ai = pickAi(); node.diff = "hard"; node.elite = true; }
+      col.push(node);
+    }
+    cols.push(col);
+  }
+  cols.push([{ type: "boss", ai: pickAi(), diff: "hard", boss: true }]);
+  // povezave: vsak vozel -> 1–2 v naslednjem stolpcu; zagotovi pokritost
+  for (let c = 0; c < cols.length - 1; c++) {
+    const cur = cols[c], nxt = cols[c + 1];
+    cur.forEach((node, i) => {
+      const base = Math.round(i / Math.max(1, cur.length - 1) * (nxt.length - 1));
+      const t = new Set([base]);
+      if (nxt.length > 1 && Math.random() < 0.5) t.add(Math.max(0, Math.min(nxt.length - 1, base + (Math.random() < 0.5 ? -1 : 1))));
+      node.next = [...t];
+    });
+    nxt.forEach((_, j) => { if (!cur.some(n => n.next.includes(j))) { const src = Math.min(cur.length - 1, Math.round(j / Math.max(1, nxt.length - 1) * (cur.length - 1))); cur[src].next.push(j); } });
+  }
+  return { cols, pos: -1, path: [] };
+}
+function mapAvailable() {
+  const m = RUN.map; if (!m) return [];
+  if (m.pos === -1) return m.cols[0].map((_, i) => ({ c: 0, i }));
+  if (m.pos.c >= m.cols.length - 1) return [];
+  return (m.cols[m.pos.c][m.pos.i].next || []).map(j => ({ c: m.pos.c + 1, i: j }));
+}
+function enterNode(c, i) {
+  const avail = mapAvailable();
+  if (!avail.some(a => a.c === c && a.i === i)) { toast("Ta vozel ni dosegljiv."); return; }
+  RUN._node = { c, i }; saveRun();
+  const node = RUN.map.cols[c][i];
+  if (["battle", "elite", "boss"].includes(node.type)) return runLaunch();
+  if (node.type === "rest") return restScreen();
+  if (node.type === "event") return eventScreen();
+  if (node.type === "treasure") return treasureScreen();
+}
+function clearNode() { // označi trenutni vozel kot opravljen in napreduj
+  const n = RUN._node; if (!n) return;
+  RUN.map.path = RUN.map.path || []; RUN.map.path.push({ c: n.c, i: n.i });
+  RUN.map.pos = { c: n.c, i: n.i }; RUN._node = null; saveRun();
+}
 function showRunMap() {
   if (RUN.mode === "arena") return showArenaMap();
-  const done = RUN.stage >= RUN_STAGES.length;
-  const ladder = RUN_STAGES.map((st, i) => {
-    const stt = i < RUN.stage ? "done" : (i === RUN.stage ? "current" : "locked");
-    const sym = (PANTHEON_STYLE[(STARTER_DECKS[st.ai] || {}).pantheon] || { symbol: "✦" }).symbol;
-    const mark = stt === "done" ? "✓" : stt === "current" ? "▶" : "🔒";
-    return `<div class="run-stage ${stt}"><span class="rs-n">${i + 1}</span><span class="rs-sym">${sym}</span>
-      <div class="rs-info"><b>${st.name}</b> <span class="rs-diff">${({ easy: "Lahko", normal: "Normalno", hard: "Težko" })[st.diff]}</span></div><span class="rs-mark">${mark}</span></div>`;
-  }).join("");
+  if (!RUN.map) RUN.map = genCampaignMap();
+  const m = RUN.map;
+  const avail = mapAvailable();
+  const onPath = (c, i) => (m.path || []).some(p => p.c === c && p.i === i);
+  const isAvail = (c, i) => avail.some(a => a.c === c && a.i === i);
+  const bossDone = m.pos !== -1 && m.pos.c === m.cols.length - 1;
   const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
+  const mapHtml = m.cols.map((col, c) => `<div class="map-col">` + col.map((node, i) => {
+    const meta = NODE_META[node.type];
+    const cls = onPath(c, i) ? "done" : (isAvail(c, i) ? "avail" : "other");
+    const sub = (node.ai && STARTER_DECKS[node.ai]) ? STARTER_DECKS[node.ai].name : (node.type === "rest" ? "izbira" : node.type === "treasure" ? "artefakt" : node.type === "event" ? "?" : "");
+    return `<button class="map-node ${node.type} ${cls}" data-c="${c}" data-i="${i}" ${cls === "avail" ? "" : "disabled"} ${tipAttr(meta.icon + " " + meta.label, meta.desc)}>
+      <span class="mn-ic">${meta.icon}</span><span class="mn-lab">${meta.label}</span>${sub ? `<span class="mn-sub">${sub}</span>` : ""}${onPath(c, i) ? `<span class="mn-done">✓</span>` : ""}</button>`;
+  }).join("") + `</div>`).join(`<div class="map-link">⋮</div>`);
   const s = showRunScreen(`
-    <header class="run-head"><div><span class="eyebrow">Kampanja · ${RUN.stage}/${RUN_STAGES.length} zmag</span><h2 class="run-title">${done ? "🏆 Kampanja dokončana!" : "Karta kampanje"}</h2></div>
+    <header class="run-head"><div><span class="eyebrow">Kampanja · ${(m.path || []).length} osvojenih</span><h2 class="run-title">${bossDone ? "🏆 Kampanja dokončana!" : "Karta kampanje"}</h2></div>
       <button class="rules-toggle" id="run-quit">Opusti</button></header>
-    <div class="run-statline">
-      ❤ Heroj: <b>${RUN.heroLife}</b> · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)
-      ${RUN.champHpBonus ? ` · 🛡 Šampioni +${RUN.champHpBonus} HP` : ""}${RUN.handBonus ? ` · ✋ +${RUN.handBonus} karta` : ""}${RUN.favorStart ? ` · 🔮 +${RUN.favorStart} Naklonjenost` : ""}
-    </div>
+    <div class="run-statline">❤ Heroj: <b>${RUN.heroLife}</b> · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)${RUN.champHpBonus ? ` · 🛡 +${RUN.champHpBonus} HP` : ""}${RUN.handBonus ? ` · ✋ +${RUN.handBonus}` : ""}${RUN.favorStart ? ` · 🔮 +${RUN.favorStart}` : ""}</div>
     ${artStripHtml()}
     ${affinityHtml(RUN.deck)}
-    <div class="run-ladder">${ladder}</div>
+    <div class="run-map">${mapHtml}</div>
     <div class="run-foot">
       <button class="rules-toggle" id="run-deckbtn">Poglej deck</button>
-      ${done ? `<button class="btn-primary" id="run-finish">Zaključi</button>` : `<button class="btn-primary" id="run-fight">Začni bitko ${RUN.stage + 1}: ${RUN_STAGES[RUN.stage].name}</button>`}
+      ${bossDone ? `<button class="btn-primary" id="run-finish">Zaključi</button>` : `<span class="run-hint">Izberi osvetljen vozel za napredovanje.</span>`}
     </div>`);
   s.querySelector("#run-quit").addEventListener("click", () => { if (confirm("Opustiš kampanjo?")) { clearRun(); backToMenu(); } });
   s.querySelector("#run-deckbtn").addEventListener("click", () => showRunDeck());
-  if (done) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); backToMenu(); });
-  else s.querySelector("#run-fight").addEventListener("click", runLaunch);
+  if (bossDone) s.querySelector("#run-finish").addEventListener("click", () => { clearRun(); backToMenu(); });
+  s.querySelectorAll(".map-node.avail").forEach(b => b.addEventListener("click", () => enterNode(+b.dataset.c, +b.dataset.i)));
+  return;
+}
+function restScreen() {
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">🔥 Ognjišče</span><h2 class="run-title">Počitek</h2></div></header>
+    <p class="run-sub">Izberi eno trajno izboljšavo za ostanek runa.</p>
+    <div class="reward-grid">
+      <button class="reward-card upgrade" id="rest-upg"><div class="rw-tag">Nadgradnja</div><div class="rw-up-label">⬆ Nadgradi šampiona</div><div class="rw-up-desc">Daj šampionu trajno novo moč (HP / škodo / sposobnost).</div></button>
+      <button class="reward-card upgrade" id="rest-life"><div class="rw-tag">Okrepitev</div><div class="rw-up-label">❤ +20 max življenja</div><div class="rw-up-desc">Heroj trajno +20 življenja za vse prihodnje bitke.</div></button>
+    </div>`);
+  s.querySelector("#rest-life").addEventListener("click", () => { RUN.heroLife += 20; toast("Heroj +20 življenja."); clearNode(); showRunMap(); });
+  s.querySelector("#rest-upg").addEventListener("click", () => { RUN._restMode = true; showUpgradePicker(); });
+}
+function treasureScreen() {
+  let pool = Object.keys(V2.ARTIFACTS).filter(id => !(RUN.artifacts || []).includes(id)).sort(() => Math.random() - 0.5).slice(0, 3);
+  if (!pool.length) { RUN.heroLife += 20; toast("Ni več artefaktov — +20 življenja."); clearNode(); showRunMap(); return; }
+  const cards = pool.map(id => { const A = V2.ARTIFACTS[id]; return `<button class="reward-card artifact" data-id="${id}" ${tipAttr(A.icon + " " + A.name, A.desc)}><div class="rw-tag">Artefakt · ${A.rarity}${A.scale ? " · ⚙ motor" : ""}</div><div class="rw-art-ic">${A.icon}</div><div class="rdc-n">${A.name}</div><div class="rw-up-desc">${A.desc}</div></button>`; }).join("");
+  const s = showRunScreen(`<header class="run-head"><div><span class="eyebrow">💎 Zaklad</span><h2 class="run-title">Izberi artefakt</h2></div></header><div class="reward-grid">${cards}</div>`);
+  s.querySelectorAll(".reward-card").forEach(b => b.addEventListener("click", () => { RUN.artifacts = RUN.artifacts || []; RUN.artifacts.push(b.dataset.id); toast("Artefakt: " + V2.ARTIFACTS[b.dataset.id].name); clearNode(); showRunMap(); }));
+}
+const RUN_EVENTS = [
+  { title: "Starodavni oltar", text: "Daritev bogovom obljublja moč.", choices: [
+    { label: "🔮 +1 Naklonjenost (vsako bitko)", apply: () => { RUN.favorStart = (RUN.favorStart || 0) + 1; } },
+    { label: "❤ +15 max življenja", apply: () => { RUN.heroLife += 15; } }] },
+  { title: "Bojni tabor", text: "Veterani ponujajo urjenje.", choices: [
+    { label: "🛡 Vsi šampioni +10 HP", apply: () => { RUN.champHpBonus = (RUN.champHpBonus || 0) + 10; } },
+    { label: "✋ +1 karta v začetni roki", apply: () => { RUN.handBonus = (RUN.handBonus || 0) + 1; } }] },
+  { title: "Pozabljeno svetišče", text: "Tvegana bližnjica skozi temo.", choices: [
+    { label: "⚔ +1 divja karta", apply: () => { const all = randomCardPool(); RUN.deck.push(all[(Math.random() * all.length) | 0]); } },
+    { label: "💎 Artefakt, a −10 max življenja", apply: () => { const a = randomArtifactOffer(); if (a) { RUN.artifacts = RUN.artifacts || []; RUN.artifacts.push(a.id); } RUN.heroLife = Math.max(60, RUN.heroLife - 10); } }] },
+];
+function eventScreen() {
+  const ev = RUN_EVENTS[(Math.random() * RUN_EVENTS.length) | 0];
+  const choices = ev.choices.map((ch, i) => `<button class="reward-card upgrade" data-i="${i}"><div class="rw-tag">Izbira</div><div class="rw-up-label">${ch.label}</div></button>`).join("");
+  const s = showRunScreen(`<header class="run-head"><div><span class="eyebrow">🎲 Dogodek</span><h2 class="run-title">${ev.title}</h2></div></header><p class="run-sub">${ev.text}</p><div class="reward-grid">${choices}</div>`);
+  s.querySelectorAll(".reward-card").forEach((b, i) => b.addEventListener("click", () => { ev.choices[i].apply(); toast(ev.choices[i].label); clearNode(); showRunMap(); }));
 }
 function showArenaMap() {
   if (RUN.draftLeft > 0) return showArenaDraft();
@@ -752,7 +859,7 @@ function showReward(rewards) {
       <div class="rw-up-label">${r.label}</div><div class="rw-up-desc">${r.desc}</div></button>`;
   };
   const s = showRunScreen(`
-    <header class="run-head"><div><span class="eyebrow">Zmaga! Bitka ${RUN.stage}/${RUN_STAGES.length}</span><h2 class="run-title">Izberi nagrado</h2></div></header>
+    <header class="run-head"><div><span class="eyebrow">Zmaga! ${RUN.mode === "arena" ? RUN.wins + " zmag" : (RUN.map && RUN.map.path ? RUN.map.path.length + " osvojenih" : "")}</span><h2 class="run-title">Izberi nagrado</h2></div></header>
     <div class="reward-grid">${rewards.map(cardHtml).join("")}</div>`);
   const btns = s.querySelectorAll(".reward-card");
   rewards.forEach((r, i) => btns[i].addEventListener("click", () => applyReward(r)));
@@ -809,7 +916,7 @@ function showUpgradePicker() {
       <button class="rules-toggle" id="up-back">← Nazaj</button></header>
     <p class="run-sub">Nadgradnja velja za <b>vse kopije</b> te karte v decku — fokus na en tip šampiona se splača.</p>
     <div class="run-deckgrid">${cards}</div>`);
-  s.querySelector("#up-back").addEventListener("click", () => showReward(RUN._pendingRewards));
+  s.querySelector("#up-back").addEventListener("click", () => RUN._restMode ? restScreen() : showReward(RUN._pendingRewards));
   s.querySelectorAll(".run-deckcard").forEach(b => b.addEventListener("click", () => showUpgradeOptions(b.dataset.id)));
 }
 function showUpgradeOptions(cardId) {
@@ -830,6 +937,7 @@ function applyUpgrade(cardId, opt) {
   else { up.grants = up.grants || []; if (!up.grants.includes(opt.k)) up.grants.push(opt.k); }
   RUN.upgrades[cardId] = up; saveRun();
   toast(CARDS[cardId].name + ": " + opt.label);
+  if (RUN._restMode) { RUN._restMode = false; clearNode(); } // ognjišče: nadgradnja napreduje vozel
   showRunMap();
 }
 // zgradi nadgrajeno definicijo karte in jo registriraj; vrne (morda novi) id
@@ -858,7 +966,7 @@ function runLaunch() {
     aiDeck = decks[(Math.random() * decks.length) | 0];
     diff = RUN.wins < 3 ? "easy" : RUN.wins < 6 ? "normal" : "hard";
   } else {
-    const stage = RUN_STAGES[RUN.stage]; aiDeck = stage.ai; diff = stage.diff;
+    const node = RUN.map.cols[RUN._node.c][RUN._node.i]; aiDeck = node.ai; diff = node.diff;
   }
   const list = RUN.deck.map(id => upgradedCardId(id)); // vključi per-card nadgradnje
   STARTER_DECKS.run = { id: "run", name: "Tvoj deck", pantheon: STARTER_DECKS[RUN.deckId] ? STARTER_DECKS[RUN.deckId].pantheon : deckPantheon(RUN.deck), blurb: "", style: "Run", list };
@@ -870,6 +978,15 @@ function runLaunch() {
   if (RUN.champHpBonus) [...you.deck, ...you.hand].forEach(i => { if (def(i).type === "Champion") i.maxHp += RUN.champHpBonus; });
   for (let k = 0; k < (RUN.handBonus || 0); k++) { if (you.deck.length) you.hand.push(you.deck.pop()); }
   you.artifacts = (RUN.artifacts || []).slice(); V2.artBattleStart(you); // Artefakti runa
+  // Elita / boss: okrepljen nasprotnik
+  if (RUN.mode === "campaign" && RUN._node) {
+    const node = RUN.map.cols[RUN._node.c][RUN._node.i];
+    if (node.elite || node.boss) {
+      const ai = G.players[1]; const lifeBump = node.boss ? 40 : 20; const hpBump = node.boss ? 15 : 10;
+      ai.maxLife += lifeBump; ai.life += lifeBump;
+      [...ai.deck, ...ai.hand].forEach(i => { if (def(i).type === "Champion") i.maxHp += hpBump; });
+    }
+  }
   runActive = true;
   hideRun(); $("#v2-setup").classList.add("hidden"); $("#v2-game").classList.remove("hidden");
   showFirstPick();
@@ -883,17 +1000,24 @@ function onRunBattleEnd(won) {
   }
   // kampanja
   if (won) {
-    RUN.stage++; saveRun();
-    if (RUN.stage >= RUN_STAGES.length) runGameOver(true);
-    else showReward();
+    const node = RUN.map.cols[RUN._node.c][RUN._node.i];
+    clearNode(); // napreduj po mapi
+    if (node.boss) { runGameOver(true); return; }
+    showReward(node.elite ? eliteRewards() : undefined); // elita -> zajamčen artefakt
   } else { runGameOver(false); }
+}
+function eliteRewards() {
+  const base = genRewards(); // [karta, karta, tretje]
+  const art = randomArtifactOffer();
+  if (art) base[base.length - 1] = art; else base[base.length - 1] = { t: "life" };
+  return base;
 }
 function runGameOver(won) {
   const arena = RUN.mode === "arena";
   const title = arena ? (won ? "ARENA — ZMAGA 🏆" : "ARENA KONČANA") : (won ? "ZMAGA KAMPANJE 🏆" : "KAMPANJA KONČANA");
   const sub = arena
     ? `${RUN.wins} zmag pred 3 porazi. Deck je imel ${RUN.deck.length} kart.`
-    : (won ? "Premagal si vseh 6 panteonov!" : `Padel si v bitki ${RUN.stage + 1}. Deck je dosegel ${RUN.deck.length} kart.`);
+    : (won ? "Premagal si bossa kampanje!" : `Padel si po ${(RUN.map && RUN.map.path ? RUN.map.path.length : 0)} osvojenih vozlih. Deck je dosegel ${RUN.deck.length} kart.`);
   const s = showRunScreen(`
     <div class="run-over">
       <h1 class="victory-title" style="${won ? "" : "background:linear-gradient(180deg,#ffd9d2,#ff6b5e 55%,#7a241d);-webkit-background-clip:text;background-clip:text;color:transparent;"}">${title}</h1>
