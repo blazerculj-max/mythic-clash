@@ -211,6 +211,47 @@ function updateArrow() {
   line.setAttribute("x1", o.x); line.setAttribute("y1", o.y);
   line.setAttribute("x2", arrowPos.x || o.x); line.setAttribute("y2", arrowPos.y || o.y - 60);
 }
+// predogled škode med ciljanjem (Hearthstone-like): koliko + ali je smrtno
+function ensureDmgPrev() {
+  let p = document.getElementById("v2-dmgprev");
+  if (!p) { p = el("div", "v2-dmgprev hidden"); p.id = "v2-dmgprev"; document.body.appendChild(p); }
+  return p;
+}
+function hideDmgPreview() {
+  const p = document.getElementById("v2-dmgprev"); if (p) p.classList.add("hidden");
+  const svg = document.getElementById("v2-arrow"); if (svg) svg.classList.remove("lethal");
+  document.querySelectorAll(".v2-champ.lethal-target, .v2-hero.lethal-target").forEach(e => e.classList.remove("lethal-target"));
+}
+function updateDmgPreview() {
+  if (!(selAttacker && selAtkIndex != null) || G.turn !== 0 || G.over || manaPick) { hideDmgPreview(); return; }
+  const you = G.players[0], opp = G.players[1];
+  const att = you.board.find(c => c.uid === selAttacker); if (!att) { hideDmgPreview(); return; }
+  const atk = def(att).attacks[selAtkIndex];
+  if (!atk || !V2.canPay(you, atk.cost, def(att).id === "celtic-lugh")) { hideDmgPreview(); return; }
+  const elx = document.elementFromPoint(arrowPos.x, arrowPos.y); if (!elx) { hideDmgPreview(); return; }
+  const champEl = elx.closest('.v2-champ[data-owner="opp"]');
+  const heroEl = elx.closest('.v2-opp .v2-hero');
+  let pv = null, target = null, lethal = false;
+  if (champEl) {
+    const defn = opp.board.find(c => c.uid === champEl.dataset.uid);
+    if (defn) { pv = V2.previewDamage(att, you, defn, atk); lethal = pv && pv.dmg >= (defn.maxHp - defn.damage); target = champEl; }
+  } else if (heroEl) {
+    pv = V2.previewFace(att, you, atk); lethal = pv && pv.dmg >= opp.life; target = heroEl;
+  }
+  if (!pv || !target) { hideDmgPreview(); return; }
+  document.querySelectorAll(".lethal-target").forEach(e => e.classList.remove("lethal-target"));
+  const p = ensureDmgPrev();
+  const parts = (pv.parts || []).filter(x => ["WEAK", "RESIST", "GUARD", "FAVOR", "OMEN?"].includes(x));
+  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)" };
+  p.className = "v2-dmgprev" + (lethal ? " lethal" : "");
+  p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
+  const r = target.getBoundingClientRect();
+  p.style.left = (r.left + r.width / 2) + "px";
+  p.style.top = (r.top - 6) + "px";
+  p.classList.remove("hidden");
+  const svg = document.getElementById("v2-arrow"); if (svg) svg.classList.toggle("lethal", !!lethal);
+  if (lethal) target.classList.add("lethal-target");
+}
 
 let chosenDeck = null, chosenDiff = "normal";
 let selAttacker = null, selAtkIndex = null; // izbira napada (tvoja poteza)
@@ -525,7 +566,7 @@ function runGameOver(won) {
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
 function showFirstPick() {
-  seenChampUids = new Set(); // nova bitka -> ponastavi enter animacije
+  seenChampUids = new Set(); prevBoardUids = new Set(); champRects = {}; // nova bitka -> ponastavi FX sledenje
   const you = G.players[0];
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
   // prikaži CELO roko: basic championi so izberljivi (bogata kartica), ostalo je info
@@ -603,6 +644,8 @@ function champPreviewCard(d) {
 }
 
 /* ---------------- RENDER ---------------- */
+let prevBoardUids = new Set();   // za zaznavo smrti (death poof)
+let champRects = {};             // zadnje pozicije šampionov
 function render() {
   if (!G.players.length) return;
   renderSide($("#v2-opp"), G.players[1], false);
@@ -613,6 +656,24 @@ function render() {
   $("#v2-turn").innerHTML = G.over ? "" : `Poteza ${G.turnCount} · na potezi: <b>${G.turn === 0 ? "Ti" : "Nasprotnik"}</b>`;
   $("#v2-end").style.display = (G.turn === 0 && !G.over) ? "" : "none";
   updateArrow();
+  hideDmgPreview();
+  fxDetectDeaths();
+}
+// poišči šampione, ki so izginili od zadnjega renderja, in zaigraj "death poof"
+function fxDetectDeaths() {
+  const cur = new Set();
+  document.querySelectorAll(".v2-champ").forEach(eln => cur.add(eln.dataset.uid));
+  prevBoardUids.forEach(uid => { if (!cur.has(uid) && champRects[uid]) deathPoof(champRects[uid].x, champRects[uid].y); });
+  champRects = {};
+  document.querySelectorAll(".v2-champ").forEach(eln => { const b = eln.getBoundingClientRect(); champRects[eln.dataset.uid] = { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  prevBoardUids = cur;
+}
+function deathPoof(x, y) {
+  ensureFx();
+  const n = el("div", "v2-poof", "☠");
+  n.style.left = x + "px"; n.style.top = y + "px";
+  document.getElementById("v2-fx").appendChild(n);
+  setTimeout(() => n.remove(), 700);
 }
 
 function heroBar(p) {
@@ -1157,7 +1218,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#v2-end").addEventListener("click", endHumanTurn);
   document.addEventListener("mousemove", (e) => {
     arrowPos = { x: e.clientX, y: e.clientY };
-    if (arrowActive()) updateArrow();
+    if (arrowActive()) { updateArrow(); updateDmgPreview(); }
+    else hideDmgPreview();
   });
 });
 

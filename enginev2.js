@@ -496,6 +496,24 @@
     const r = computeDamage(att, attOwner, defn, atk, { comboBonus: cb.bonus, forceOmenBonus: fo });
     return { dmg: r.dmg, parts: r.parts, comboCount: cb.count };
   }
+  // predviden damage proti OBRAZU (brez naključnega omena; heavy -> ×1.15 pričakovano)
+  function previewFace(att, attOwner, atk) {
+    if (!att || !atk) return null;
+    const atkType = effType(atk); const cb = comboInfo(att, atkType);
+    const fo = !!(attOwner && attOwner._favorArmed && attOwner.favor > 0);
+    let dmg = atk.damage || 0; const parts = [];
+    if (att.status.blessing) dmg += 15;
+    if (att.status.curse) dmg -= 15;
+    const w = weaponOf(att); if (w && w.atkBonus) dmg += w.atkBonus;
+    const heavy = (atk.cost || []).length >= 3;
+    let mult = 1;
+    if (fo) { mult *= 1.3; parts.push("FAVOR"); }
+    else if (heavy) { mult *= 1.15; parts.push("OMEN?"); }
+    dmg = Math.round((dmg * mult) / 5) * 5 + cb.bonus;
+    if (dmg < 0) dmg = 0;
+    if (cb.bonus > 0) parts.push("COMBO+" + cb.bonus);
+    return { dmg, parts, comboCount: cb.count };
+  }
 
   function canAttack(p, c) {
     return c && !c.tapped && !c.sick && !c.status.stun;
@@ -602,6 +620,7 @@
     let dmg = atk.damage || 0;
     if (att.status.blessing) dmg += 15;
     if (att.status.curse) dmg -= 15;
+    const wF = weaponOf(att); if (wF && wF.atkBonus) dmg += wF.atkBonus; // orožje šteje tudi proti obrazu
     let mult = 1;
     if (forceOmen) mult *= 1.3; else if (heavy && omen === true) mult *= 1.3; else if (heavy && omen == null) mult *= 1.15;
     dmg = Math.round((dmg * mult) / 5) * 5 + cb.bonus;
@@ -763,7 +782,7 @@
   /* ---------------- exports ---------------- */
   const api = {
     G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
-    summon, attack, resolveBlock, previewDamage, canAttack, summonCostOf, manaCostOf,
+    summon, attack, resolveBlock, previewDamage, previewFace, canAttack, summonCostOf, manaCostOf,
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
     BOARD_MAX, START_LIFE,

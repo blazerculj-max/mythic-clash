@@ -339,3 +339,35 @@
 /* statusi (buff/curse) kot overlay na sliki šampiona — vedno vidni */
 .v2-champ-statusbar { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 6; display: flex; gap: 3px; flex-wrap: wrap; }
 .v2-champ-statusbar .v2-st { backdrop-filter: blur(2px); box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+
+/* ---------------- Damage preview (Hearthstone-like ciljanje) ---------------- */
+#v2-dmgprev {
+  position: fixed; z-index: 545; pointer-events: none; transform: translate(-50%, -100%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 10px; border-radius: 10px; background: rgba(8,8,16,0.92);
+  border: 1px solid var(--panel-edge, rgba(255,255,255,0.18)); box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  font-family: "SF Mono", monospace; white-space: nowrap;
+}
+#v2-dmgprev.hidden { display: none; }
+#v2-dmgprev .dp-dmg { font-size: 20px; font-weight: 800; color: #ff8a7a; line-height: 1; }
+#v2-dmgprev.lethal { border-color: var(--danger); box-shadow: 0 0 22px rgba(255,107,94,0.6); }
+#v2-dmgprev.lethal .dp-dmg { color: #ff5e4d; }
+#v2-dmgprev .dp-lethal { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: #ff5e4d; }
+#v2-dmgprev .dp-parts { font-size: 8.5px; letter-spacing: 0.06em; color: var(--ink-dim, #9aa0a6); }
+/* lethal puščica + tarča */
+#v2-arrow.lethal #v2-arrow-line { stroke: #ff5e4d; }
+#v2-arrow.lethal #ah path { fill: #ff5e4d; }
+.v2-champ.lethal-target { box-shadow: 0 0 0 2px #ff5e4d, 0 0 22px rgba(255,94,77,0.7) !important; }
+.v2-hero.lethal-target .v2-hero-ava { box-shadow: 0 0 0 2px #ff5e4d, 0 0 18px rgba(255,94,77,0.8) !important; }
+
+/* ---------------- Death poof (smrt šampiona) ---------------- */
+.v2-poof {
+  position: absolute; transform: translate(-50%, -50%); z-index: 8; pointer-events: none;
+  font-size: 30px; color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.7);
+  animation: poof 0.7s ease-out forwards;
+}
+@keyframes poof {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.5) rotate(-12deg); }
+  30%  { opacity: 1; transform: translate(-50%,-50%) scale(1.3) rotate(4deg); }
+  100% { opacity: 0; transform: translate(-50%,-90%) scale(0.9) rotate(0); }
+}
