@@ -33,7 +33,7 @@
 /* hero life */
 .v2-hero { display: flex; align-items: center; gap: 8px; min-width: 220px; }
 .v2-hero-name { font-family: "SF Mono", monospace; font-size: 12px; letter-spacing: 0.12em; color: var(--gold); white-space: nowrap; }
-.v2-hero-bar { position: relative; flex: 1; min-width: 130px; height: 16px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; border: 1px solid var(--panel-edge); }
+.v2-hero-bar { position: relative; width: 100%; min-width: 130px; height: 18px; flex: 0 0 auto; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; border: 1px solid var(--panel-edge); }
 .v2-hero-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c 60%, #ff6b5e); transition: width 0.4s ease; }
 .v2-hero-fill.low { background: linear-gradient(90deg, #7a1d16, #ff5e4d); animation: heroLow 1.2s ease-in-out infinite; }
 @keyframes heroLow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
@@ -80,7 +80,10 @@
 .v2-hpfill { height: 100%; background: linear-gradient(90deg, var(--good), #aef0c0); }
 .v2-hpfill.low { background: linear-gradient(90deg, var(--danger), #ffb0a8); }
 .v2-status { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; min-height: 14px; font-size: 11px; }
-.v2-kw { margin-left: auto; opacity: 0.9; }
+.v2-st { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 999px; font-size: 9.5px; font-weight: 600; line-height: 1.5; border: 1px solid transparent; }
+.v2-st.buff { background: rgba(94,201,122,0.16); border-color: rgba(94,201,122,0.5); color: #b6f0c6; }
+.v2-st.debuff { background: rgba(255,107,94,0.16); border-color: rgba(255,107,94,0.5); color: #ffc0b6; }
+.v2-kw { margin-left: auto; opacity: 0.9; display: inline-flex; gap: 2px; align-self: center; }
 
 /* hand */
 .v2-hand { display: flex; gap: 8px; align-items: flex-end; overflow-x: auto; padding: 6px 4px 12px; max-width: 100%; }
@@ -287,3 +290,52 @@
   background: rgba(255,255,255,0.06); border: 1px solid var(--panel-edge, rgba(255,255,255,0.14));
   font-family: "SF Mono", monospace; cursor: help;
 }
+
+/* ---------------- Enter-play animacija šampiona (ko karta pride v igro) ---------------- */
+.v2-champ.entering { animation: champEnter 0.5s cubic-bezier(.2,.9,.3,1.25); z-index: 3; }
+@keyframes champEnter {
+  0%   { opacity: 0; transform: translateY(-26px) scale(0.7) rotate(-4deg); }
+  55%  { opacity: 1; transform: translateY(2px) scale(1.08) rotate(1deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+.v2-champ.entering::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 6;
+  box-shadow: 0 0 0 2px var(--gold-bright, #ffd97a), 0 0 28px 4px var(--gold-bright, #ffd97a);
+  animation: champEnterGlow 0.6s ease-out forwards;
+}
+@keyframes champEnterGlow { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+
+/* hand karta: jasnejši "press" odziv ob igranju */
+.v2-handcard { position: relative; }
+.v2-handcard:active { transform: translateY(-2px) scale(0.97); }
+
+/* ---------------- Feel poteze: banner + hero damage flash ---------------- */
+.v2-turnbanner {
+  position: fixed; top: 38%; left: 0; right: 0; text-align: center; z-index: 540; pointer-events: none;
+  opacity: 0; transform: translateY(8px);
+}
+.v2-turnbanner.show { animation: turnBan 0.85s cubic-bezier(.2,.8,.2,1) forwards; }
+.v2-turnbanner.out { opacity: 0; transition: opacity 0.3s; }
+.v2-turnbanner span {
+  display: inline-block; font-family: "SF Mono", monospace; font-weight: 800; letter-spacing: 0.16em;
+  font-size: 30px; text-transform: uppercase; padding: 10px 30px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(8,8,16,0.85), rgba(8,8,16,0.6)); backdrop-filter: blur(3px);
+  border: 1px solid var(--panel-edge, rgba(255,255,255,0.15));
+}
+.v2-turnbanner.you span { color: var(--gold-bright, #ffd97a); box-shadow: 0 0 30px rgba(255,216,107,0.35), inset 0 0 18px rgba(255,216,107,0.12); }
+.v2-turnbanner.opp span { color: #ff8a7a; box-shadow: 0 0 30px rgba(255,107,94,0.3), inset 0 0 18px rgba(255,107,94,0.12); }
+@keyframes turnBan {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.94); }
+  18%  { opacity: 1; transform: translateY(0) scale(1.04); }
+  82%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-6px) scale(1); }
+}
+/* hero bar utrpi udarec v obraz */
+.v2-hero.hero-hurt .v2-hero-bar { animation: heroHurt 0.55s ease; }
+.v2-hero.hero-hurt .v2-hero-ava { animation: heroHurtAva 0.55s ease; }
+@keyframes heroHurt { 0%,100% { box-shadow: none; } 30% { box-shadow: 0 0 0 2px var(--danger), 0 0 18px var(--danger); } }
+@keyframes heroHurtAva { 0%,100% { transform: none; } 25% { transform: translateX(-4px) scale(1.05); } 60% { transform: translateX(3px); } }
+
+/* statusi (buff/curse) kot overlay na sliki šampiona — vedno vidni */
+.v2-champ-statusbar { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 6; display: flex; gap: 3px; flex-wrap: wrap; }
+.v2-champ-statusbar .v2-st { backdrop-filter: blur(2px); box-shadow: 0 1px 4px rgba(0,0,0,0.6); }

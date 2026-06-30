@@ -157,12 +157,26 @@ function animateStrike(attUid, targetEl, dmg, dodged) {
   lunge(attEl, targetEl);
   if (targetEl) {
     const c = elCenter(targetEl);
+    const isHero = targetEl.classList.contains("v2-hero");
     setTimeout(() => {
       shakeEl(targetEl);
+      if (isHero && !dodged && dmg > 0) { targetEl.classList.add("hero-hurt"); setTimeout(() => targetEl.classList.remove("hero-hurt"), 600); }
       if (dodged) flyDamage(c.x, c.y, 0, "dodge");
       else flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
     }, 130);
   }
+}
+// sweep banner ob menjavi poteze (feel)
+let turnBannerTimer;
+function showTurnBanner(text, cls) {
+  ensureFx();
+  const fx = document.getElementById("v2-fx");
+  const old = fx.querySelector(".v2-turnbanner"); if (old) old.remove();
+  const b = el("div", "v2-turnbanner " + (cls || ""), `<span>${text}</span>`);
+  fx.appendChild(b);
+  requestAnimationFrame(() => b.classList.add("show"));
+  clearTimeout(turnBannerTimer);
+  turnBannerTimer = setTimeout(() => { b.classList.add("out"); setTimeout(() => b.remove(), 350); }, 800);
 }
 // reveal karte, ki jo odigra nasprotnik (ali kdorkoli)
 function revealCard(d, label, done) {
@@ -203,6 +217,7 @@ let selAttacker = null, selAtkIndex = null; // izbira napada (tvoja poteza)
 let pendingPlay = null;  // {inst, need:'ally'|'enemy'} — čaka izbiro tarče za urok/relic
 let manaPick = null;     // {cost, lughAny, sel:[], onPaid} — ročna izbira mane
 let aiBusy = false;
+let seenChampUids = new Set(); // za "enter play" animacijo (vsak šampion se animira ob prvem prikazu)
 
 /* ---------------- SETUP ---------------- */
 function buildSetup() {
@@ -510,6 +525,7 @@ function runGameOver(won) {
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
 function showFirstPick() {
+  seenChampUids = new Set(); // nova bitka -> ponastavi enter animacije
   const you = G.players[0];
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
   // prikaži CELO roko: basic championi so izberljivi (bogata kartica), ostalo je info
@@ -518,7 +534,7 @@ function showFirstPick() {
     if (d.type === "Champion" && d.stage === "basic") {
       const node = champPreviewCard(d);
       node.classList.add("pickable");
-      node.addEventListener("click", () => { V2.chooseFirstChampion(inst.uid); $("#v2-pick").classList.add("hidden"); render(); });
+      node.addEventListener("click", () => { V2.chooseFirstChampion(inst.uid); $("#v2-pick").classList.add("hidden"); render(); showTurnBanner("Tvoja poteza", "you"); });
       wrap.appendChild(node);
     } else {
       wrap.appendChild(handInfoCard(d));
@@ -651,6 +667,7 @@ function boardChamp(c, owner, isYou) {
   const node = el("div", "v2-champ" + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : ""));
   node.dataset.uid = c.uid;
   node.dataset.owner = isYou ? "you" : "opp";
+  if (!seenChampUids.has(c.uid)) { node.classList.add("entering"); seenChampUids.add(c.uid); } // enter-play animacija (enkrat)
   node.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
   const canAtk = isYou && G.turn === 0 && !G.over && V2.canAttack(owner, c);
   if (canAtk) node.classList.add("ready");
@@ -659,15 +676,17 @@ function boardChamp(c, owner, isYou) {
   if (selAttacker && selAtkIndex != null && !isYou) node.classList.add("targetable");
   if (pendingPlay && ((pendingPlay.need === "ally" && isYou) || (pendingPlay.need === "enemy" && !isYou)))
     node.classList.add(pendingPlay.need === "enemy" ? "targetable" : "target-ally");
+  const stChips = statusChips(c);
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
       <span class="v2-champ-hp">${life}</span>
-      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}</div>
+      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}
+      ${stChips ? `<div class="v2-champ-statusbar">${stChips}</div>` : ""}</div>
     <div class="v2-champ-body">
       <div class="v2-champ-name" ${tipAttr(d.name, cardTipText(d))}>${d.name}</div>
       <div class="v2-hpbar"><div class="v2-hpfill ${pct <= 35 ? "low" : ""}" style="width:${pct}%"></div></div>
       ${atkRowsHtml(d, isYou ? owner : null)}
-      <div class="v2-status">${statusChips(c)}${kwMini(d)}${equipChips(c)}</div>
+      <div class="v2-status">${kwMini(d)}${equipChips(c)}</div>
     </div>`;
   node.addEventListener("click", () => onChampClick(c, owner, isYou));
   return node;
@@ -680,10 +699,17 @@ function atkRowsHtml(d, owner) {
     return `<div class="v2-atk${payable ? " ok" : ""}" ${tipAttr(a.name, atkTipText(a))}><span class="v2-atk-cost">${costHtml(a.cost)}</span><span class="v2-atk-dmg">${a.damage}</span></div>`;
   }).join("") + `</div>`;
 }
+const STATUS_BUFFS = ["blessing", "shield", "guard"];
+const STATUS_SHORT = { burn: "Ožig", freeze: "Zmrznjen", stun: "Omama", curse: "Prekletstvo", blessing: "Blagoslov", shield: "Shield", poison: "Strup", guard: "Garda" };
 function statusChips(c) {
   const s = c.status || {}; const out = [];
   const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
-  for (const k in map) if (s[k]) { const t = STATUS_TEXT[k] || [k, ""]; out.push(`<span class="v2-st" ${tipAttr(t[0], t[1])}>${map[k]}${typeof s[k] === "number" && s[k] > 1 ? s[k] : ""}</span>`); }
+  for (const k in map) if (s[k]) {
+    const t = STATUS_TEXT[k] || [k, ""];
+    const kind = STATUS_BUFFS.includes(k) ? "buff" : "debuff";
+    const n = (typeof s[k] === "number" && s[k] > 1) ? " " + s[k] : "";
+    out.push(`<span class="v2-st ${kind}" ${tipAttr(t[0], t[1])}>${map[k]} ${STATUS_SHORT[k] || k}${n}</span>`);
+  }
   return out.join("");
 }
 function kwIcon(kw, glyph) { const t = KEYWORD_TEXT[kw] || [kw, ""]; return `<span class="v2-kwi" ${tipAttr(t[0], t[1])}>${glyph}</span>`; }
@@ -865,13 +891,28 @@ function renderLog() {
 
 /* ---------------- HUMAN INTERACTION ---------------- */
 // plačaj cost: če ni izbire (untapped == cost) avtomatsko; sicer ročna izbira mane
+function kCombos(arr, k) {
+  const res = [];
+  (function rec(start, combo) {
+    if (combo.length === k) { res.push(combo.slice()); return; }
+    for (let i = start; i < arr.length; i++) { combo.push(arr[i]); rec(i + 1, combo); combo.pop(); }
+  })(0, []);
+  return res;
+}
 function payThen(cost, lughAny, onPaid) {
   const you = G.players[0];
   if (!V2.canPay(you, cost, lughAny)) { toast("Premalo mane."); return; }
   const untapped = you.mana.map((m, i) => i).filter(i => !you.mana[i].tapped);
+  // moraš porabiti vso netapnjeno mano -> samodejno
   if (untapped.length === cost.length) { onPaid(untapped); return; }
+  // sicer: če vse veljavne izbire pustijo ISTI preostanek tipov, je izbira nepomembna -> samodejno
+  const combos = kCombos(untapped, cost.length).filter(c => manaSelValid(c, cost, lughAny));
+  if (combos.length) {
+    const remSig = c => { const u = new Set(c); return you.mana.filter((m, i) => !m.tapped && !u.has(i)).map(m => m.type).sort().join("|"); };
+    const sigs = new Set(combos.map(remSig));
+    if (sigs.size === 1) { onPaid(combos[0]); return; } // npr. 2 enaki energiji & cena 2, ali edina veljavna izbira
+  }
   manaPick = { cost, lughAny, sel: [], onPaid };
-  selAttacker = selAttacker; // ohrani
   toast("Izberi mano za plačilo (" + cost.length + ").");
   render();
 }
@@ -981,6 +1022,7 @@ function endHumanTurn() {
 function runAiTurn() {
   if (G.over) { checkOver(); return; }
   aiBusy = true;
+  showTurnBanner("Poteza nasprotnika", "opp");
   const ai = G.players[1];
   const e = ai.hand.find(i => def(i).type === "Energy"); if (e) V2.playEnergy(ai, e);
   render();
@@ -1042,7 +1084,7 @@ function aiAbilities() {
 function aiAttack(queue) {
   if (G.over) { aiBusy = false; checkOver(); return; }
   const ai = G.players[1], you = G.players[0];
-  if (!queue.length) { V2.endTurn(); aiBusy = false; render(); checkOver(); if (!G.over) toast("Tvoja poteza."); return; }
+  if (!queue.length) { V2.endTurn(); aiBusy = false; render(); checkOver(); if (!G.over) showTurnBanner("Tvoja poteza", "you"); return; }
   const c = queue.shift();
   if (!V2.canAttack(ai, c)) { aiAttack(queue); return; }
   const best = aiBestAttack(c);

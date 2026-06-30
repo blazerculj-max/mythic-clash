@@ -148,7 +148,7 @@ const CARDS = {
       { name: "Venom Bite", cost: ["Nature"], damage: 20, effect: "poison", text: "The Defender is Poisoned." },
       { name: "Regrow Heads", cost: ["Nature", "Any"], damage: 40, effect: "heal20", text: "Hydra heals 20 HP." }
     ],
-    ability: { name: "Endless Heads", text: "At the end of your turn, Hydra heals 10 HP if it is your Active Champion." },
+    ability: { name: "Endless Heads", text: "At the end of your turn, Hydra heals 10 HP." },
     weakness: "Fire", resistance: "Nature", retreatCost: 2,
     flavorText: "Cut one head, two more arise.",
     deckTags: ["Olympus"]
@@ -159,7 +159,7 @@ const CARDS = {
     attacks: [
       { name: "Prophetic Whisper", cost: ["Wisdom"], damage: 10, effect: "draw1", text: "Draw a card." }
     ],
-    ability: { name: "Foresight", text: "When you play the Oracle of Delphi into reserve, draw a card." },
+    ability: { name: "Foresight", text: "When Oracle of Delphi enters play, draw a card." },
     weakness: "Trickery", resistance: "Wisdom", retreatCost: 1,
     flavorText: "She speaks the will of fate.",
     deckTags: ["Olympus"]
@@ -275,9 +275,9 @@ const CARDS = {
     attacks: [
       { name: "Legion Charge", cost: ["War"], damage: 40, effect: null, text: "Discipline made deadly." },
       { name: "March of Conquest", cost: ["War", "War"], damage: 60, effect: "reserveBuff",
-        text: "Deals 60 damage, +10 for each Champion in your reserve." }
+        text: "Deals 60 damage, +10 for each other Champion you control." }
     ],
-    ability: { name: "War Standard", text: "Your Roman Champions take -10 damage while you have 2+ Champions in reserve." },
+    ability: { name: "War Standard", text: "Your Roman Champions take -10 damage while you control 2+ other Champions." },
     weakness: "Wisdom", resistance: "War", retreatCost: 2,
     flavorText: "Rome marches behind him.",
     deckTags: ["Legion"]
@@ -301,7 +301,7 @@ const CARDS = {
       { name: "Founder's Blade", cost: ["War"], damage: 30, effect: null, text: "From him, an empire." },
       { name: "Eternal City", cost: ["War", "Wisdom"], damage: 60, effect: "selfShield", text: "This Champion gains Shield." }
     ],
-    ability: { name: "Rally", text: "When Romulus enters play, your reserve Champions heal 10 HP each." },
+    ability: { name: "Rally", text: "When Romulus enters play, your other Champions heal 10 HP each." },
     weakness: "Trickery", resistance: "War", retreatCost: 2,
     flavorText: "He drew the walls of a thousand years.",
     deckTags: ["Legion"]
@@ -313,7 +313,7 @@ const CARDS = {
       { name: "Shield Wall", cost: ["War"], damage: 20, effect: "selfShield", text: "Gains Shield." },
       { name: "Pila Volley", cost: ["War", "Any"], damage: 50, effect: null, text: "A storm of javelins." }
     ],
-    ability: { name: "Formation", text: "Takes -10 damage for each other Roman Champion in your reserve (max -20)." },
+    ability: { name: "Formation", text: "Takes -10 damage for each other Roman Champion you control (max -20)." },
     weakness: "Fire", resistance: "War", retreatCost: 1,
     flavorText: "One shield is weak. A wall is unbreakable.",
     deckTags: ["Legion"]
@@ -333,7 +333,7 @@ const CARDS = {
     id: "roman-janus", name: "Janus, Keeper of Gates", type: "Champion",
     pantheon: "Roman", rarity: "Rare", stage: "basic", hp: 90,
     attacks: [
-      { name: "Twin Faces", cost: ["Wisdom", "Any"], damage: 40, effect: "swapHint", text: "You may switch your Active with a reserve Champion." }
+      { name: "Twin Faces", cost: ["Wisdom", "Any"], damage: 40, effect: "swapHint", text: "Strikes from an unexpected, shifting angle." }
     ],
     ability: { name: "Threshold", text: "Retreating one of your Champions costs 1 less Energy." },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 1,
@@ -357,9 +357,9 @@ const CARDS = {
     pantheon: "Roman", rarity: "Uncommon", stage: "basic", hp: 70,
     attacks: [
       { name: "Guardian Bite", cost: ["Nature"], damage: 30, effect: null, text: "She protects the founders." },
-      { name: "Nurturing Howl", cost: ["Nature", "Any"], damage: 30, effect: "healReserve", text: "Your reserve Champions heal 20 HP each." }
+      { name: "Nurturing Howl", cost: ["Nature", "Any"], damage: 30, effect: "healReserve", text: "Your other Champions heal 20 HP each." }
     ],
-    ability: { name: "She-Wolf", text: "Your Roman Champions in reserve heal 10 HP at the end of your turn." },
+    ability: { name: "She-Wolf", text: "Your other Roman Champions heal 10 HP at the end of your turn." },
     weakness: "Fire", resistance: "Nature", retreatCost: 1,
     flavorText: "She raised an empire's first kings.",
     deckTags: ["Legion"]
@@ -409,7 +409,7 @@ const CARDS = {
       { name: "Healing Wind", cost: ["Sun"], damage: 20, effect: "healReserve", text: "Your Champions heal 20 HP each." },
       { name: "Wings of Magic", cost: ["Sun", "Wisdom"], damage: 50, effect: null, text: "Her wings shelter the worthy." }
     ],
-    ability: { name: "Renewal", text: "At the end of your turn, your Active Champion heals 10 HP." },
+    ability: { name: "Renewal", text: "At the end of your turn, this Champion heals 10 HP." },
     activated: { name: "Blessing of Life", cost: ["Any", "Any"], effect: "healBoard20", text: "Tapni + 2 mana: vsi tvoji šampioni +20 HP." },
     weakness: "Underworld", resistance: "Sun", retreatCost: 1,
     flavorText: "She gathered the scattered and made them whole.",
@@ -421,7 +421,7 @@ const CARDS = {
     attacks: [
       { name: "Crook and Flail", cost: ["Underworld", "Sun"], damage: 60, effect: null, text: "The king of the afterlife judges all." }
     ],
-    ability: { name: "Rebirth", text: "Once per game, when Osiris is defeated, return him to your reserve with 60 HP instead." },
+    ability: { name: "Rebirth", text: "Once per game, when Osiris is defeated, return him to play with 60 HP instead." },
     weakness: "Fire", resistance: "Underworld", retreatCost: 2,
     flavorText: "Death could not keep its king.",
     deckTags: ["Eternity"]
@@ -532,7 +532,7 @@ const CARDS = {
       { name: "Bloom", cost: ["Nature"], damage: 20, effect: "healReserve", text: "Your Champions heal 20 HP each." },
       { name: "Renewing Gale", cost: ["Nature", "Any"], damage: 40, effect: null, text: "Life returns to the land." }
     ],
-    ability: { name: "Spring's Promise", text: "At the end of your turn, your Active Champion heals 10 HP." },
+    ability: { name: "Spring's Promise", text: "At the end of your turn, this Champion heals 10 HP." },
     weakness: "Fire", resistance: "Nature", retreatCost: 1,
     flavorText: "She melts the grip of winter.",
     deckTags: ["Spirits"]
@@ -568,7 +568,7 @@ const CARDS = {
       { name: "Hex", cost: ["Trickery"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
       { name: "Cauldron Brew", cost: ["Trickery", "Nature"], damage: 50, effect: "poison", text: "The Defender is Poisoned." }
     ],
-    ability: { name: "Bone Hut", text: "When Baba Yaga is your Active Champion, your Oracle cards draw an extra card." },
+    ability: { name: "Bone Hut", text: "While Baba Yaga is on your board, your Oracle cards draw an extra card." },
     weakness: "Sun", resistance: "Trickery", retreatCost: 1,
     flavorText: "Her hut runs on chicken legs.",
     deckTags: ["Spirits"]
@@ -592,7 +592,7 @@ const CARDS = {
     pantheon: "Celtic", rarity: "Epic", stage: "basic", hp: 100,
     attacks: [
       { name: "Crow's Omen", cost: ["Trickery"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
-      { name: "Phantom Flight", cost: ["Trickery", "Moon"], damage: 50, effect: "swapHint", text: "You may switch your Active with a reserve Champion." }
+      { name: "Phantom Flight", cost: ["Trickery", "Moon"], damage: 50, effect: "swapHint", text: "Strikes from an unexpected, shifting angle." }
     ],
     ability: { name: "Foreteller of Doom", text: "When a Champion is defeated (yours or the enemy's), draw a card." },
     weakness: "Sun", resistance: "Trickery", retreatCost: 1,
@@ -606,7 +606,7 @@ const CARDS = {
       { name: "Sacred Fire", cost: ["Fire"], damage: 30, effect: null, text: "Flame of the hearth and forge." },
       { name: "Healing Flame", cost: ["Fire", "Nature"], damage: 40, effect: "heal20", text: "This Champion heals 20 HP." }
     ],
-    ability: { name: "Triple Flame", text: "At the end of your turn, your Active Champion heals 10 HP." },
+    ability: { name: "Triple Flame", text: "At the end of your turn, this Champion heals 10 HP." },
     weakness: "Frost", resistance: "Fire", retreatCost: 1,
     flavorText: "Poetry, healing, and the forge are hers.",
     deckTags: ["Spirits"]
@@ -644,7 +644,7 @@ const CARDS = {
       { name: "Staff Strike", cost: ["Nature"], damage: 20, effect: null, text: "Keeper of old knowledge." },
       { name: "Nature's Gift", cost: ["Nature", "Any"], damage: 20, effect: "draw2", text: "Draw 2 cards." }
     ],
-    ability: { name: "Grove Keeper", text: "When the Druid enters reserve, search is easier — draw a card." },
+    ability: { name: "Grove Keeper", text: "When the Druid enters play, draw a card." },
     weakness: "Fire", resistance: "Nature", retreatCost: 1,
     flavorText: "He reads the will of oak and stone.",
     deckTags: ["Spirits"]
@@ -722,7 +722,7 @@ const CARDS = {
   "relic-ankh": {
     id: "relic-ankh", name: "Ankh of Renewal", type: "Relic", pantheon: "Egyptian", rarity: "Uncommon",
     relicMode: "instant", effect: "healActive40",
-    text: "Your Active Champion heals 40 HP.",
+    text: "Heal a chosen ally Champion 40 HP.",
     flavorText: "The key of life itself."
   },
   "relic-druid-amulet": {
@@ -742,7 +742,7 @@ const CARDS = {
   "oracle-prophecy-war": {
     id: "oracle-prophecy-war", name: "Prophecy of War", type: "Oracle", pantheon: "Greek", rarity: "Uncommon",
     effect: "blessActive",
-    text: "Your Active Champion gains Blessing (+10 damage for 2 turns).",
+    text: "A chosen ally Champion gains Blessing (+15 damage for 2 turns).",
     flavorText: "The seers foretell a season of blood."
   },
   "oracle-blessing-ancestors": {
@@ -766,7 +766,7 @@ const CARDS = {
   "oracle-ritual-rebirth": {
     id: "oracle-ritual-rebirth", name: "Ritual of Rebirth", type: "Oracle", pantheon: "Egyptian", rarity: "Epic",
     effect: "healActive60",
-    text: "Your Active Champion heals 60 HP.",
+    text: "Heal a chosen ally Champion 60 HP.",
     flavorText: "From the ashes, the king returns."
   },
   "oracle-council-olympus": {
@@ -804,7 +804,7 @@ const CARDS = {
   "realm-forum": {
     id: "realm-forum", name: "Roman Forum", type: "Realm", pantheon: "Roman", rarity: "Rare",
     realmEffect: "reserveReduce10",
-    text: "Champions take -10 damage while their controller has 2+ Champions in reserve.",
+    text: "A player's Champions take -10 damage while that player controls 2+ Champions.",
     flavorText: "The beating heart of the empire."
   },
   "realm-duat": {
@@ -816,7 +816,7 @@ const CARDS = {
   "realm-grove": {
     id: "realm-grove", name: "Sacred Grove", type: "Realm", pantheon: "Slavic", rarity: "Rare",
     realmEffect: "natureHeal10",
-    text: "At the end of each turn, that player's Active Champion heals 10 HP.",
+    text: "At the end of each turn, that player's Champions each heal 10 HP.",
     flavorText: "Ancient trees remember the old gods."
   },
   "realm-frozen": {
