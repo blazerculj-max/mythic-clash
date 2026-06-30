@@ -20,7 +20,7 @@
 
   const START_LIFE = 120;   // heroj prenese več nebranjenih napadov (1 hit ni dovolj);
                             // kasneje lahko vsak heroj dobi svojo vrednost (deck/champion).
-  const BOARD_MAX = 3;
+  const BOARD_MAX = 6;
   const HAND_START = 7;
   let UID = 1;
 
@@ -61,6 +61,7 @@
   function weaponOf(c) { return c && c.weapon ? CARDS[c.weapon] : null; }
   function armorOf(c)  { return c && c.armor  ? CARDS[c.armor]  : null; }
   function equipGrants(c, kw) { const w = weaponOf(c), a = armorOf(c); return (!!w && w.grant === kw) || (!!a && a.grant === kw); }
+  function isTaunt(c) { return !!(def(c).taunt || equipGrants(c, "taunt")); } // "zid" — napasti ga moraš najprej
 
   const G = {
     players: [], turn: 0, turnCount: 1, log: [], over: false, winner: null,
@@ -195,6 +196,7 @@
     for (const c of p.board.slice()) {
       if (c.status.burn) { let d = 15; if (c.status.poison) d += 5; rawDamage(c, p, d, "Burn"); if (checkDeaths()) return; }
       if (c.status.poison) { rawDamage(c, p, 5 + 10 * c.status.poison, "Poison"); c.status.poison++; if (checkDeaths()) return; }
+      if (def(c).decay) { rawDamage(c, p, def(c).decay, "Razpad"); if (checkDeaths()) return; } // npr. berserk: vsak konec poteze izgubi HP
       if (c.status.blessing) { c.status.blessing--; if (c.status.blessing <= 0) delete c.status.blessing; }
       // Relikvija Druidic Amulet: +10 HP na koncu poteze
       if (c.relicEffect === "healEndTurn10") { c.damage = Math.max(0, c.damage - 10); }
@@ -519,45 +521,35 @@
     return c && !c.tapped && !c.sick && !c.status.stun;
   }
 
+  // ali ima branilec še žive Taunt branilce (zid)?
+  function tauntsOf(opp) { return opp.board.filter(c => isTaunt(c)); }
   // attacker napade; target = {kind:'champ', uid} | {kind:'face'}
   function attack(p, attackerUid, atkIndex, target, manaIdx) {
     if (G.over) return { ok: false };
-    if (G.pendingBlock) return { ok: false, msg: "Najprej razreši obrambo." };
     const att = p.board.find(c => c.uid === attackerUid);
     if (!att) return { ok: false };
     if (!canAttack(p, att)) return { ok: false, msg: "Ta šampion ne more napasti (tapnjen/sick/stun)." };
     const atk = def(att).attacks[atkIndex];
-    if (!atk) return { ok: false };
+    if (!atk || !(atk.damage > 0)) return { ok: false, msg: "Ta karta nima napada." };
     const lugh = def(att).id === "celtic-lugh";
     if (!canPay(p, atk.cost, lugh)) return { ok: false, msg: "Premalo mane za napad." };
 
+    const opp = oppOf(p);
+    const taunts = tauntsOf(opp);
+    // VALIDIRAJ tarčo PRED plačilom (Taunt zid)
+    let defn = null;
+    if (target && target.kind === "champ") {
+      defn = opp.board.find(c => c.uid === target.uid);
+      if (!defn) return { ok: false, msg: "Tarča ne obstaja." };
+      if (taunts.length && !isTaunt(defn)) return { ok: false, msg: "Najprej premagaj branilce (Taunt)." };
+    } else {
+      if (taunts.length) return { ok: false, msg: "Najprej premagaj branilce (Taunt)." };
+    }
     // plačaj + tapni napadalca
     if (!payCost(p, atk.cost, lugh, manaIdx)) return { ok: false, msg: "Izbrana mana ne pokrije cene." };
     att.tapped = true;
-
-    const opp = oppOf(p);
     const atkType = effType(atk);
-
-    if (target && target.kind === "champ") {
-      const defn = opp.board.find(c => c.uid === target.uid);
-      if (!defn) return { ok: false, msg: "Tarča ne obstaja." };
-      return resolveStrike(p, att, atk, atkType, opp, defn);
-    }
-
-    // FACE: če ima branilec netapnjenega šampiona -> možnost bloka
-    const blockers = opp.board.filter(c => !c.tapped);
-    if (blockers.length) {
-      if (opp.isAI) {
-        const blocker = aiChooseBlock(opp, att, atk);
-        if (blocker) { logMsg(opp.name + " prestreže z " + def(blocker).name + "."); return resolveStrike(p, att, atk, atkType, opp, blocker); }
-        return faceHit(p, att, atk, atkType, opp);
-      } else {
-        // človek brani: pripravi pending block (UI razreši)
-        G.pendingBlock = { attackerUid: att.uid, attackerOwnerIndex: G.players.indexOf(p), atkIndex, atkType };
-        logMsg(p.name + " napade obraz — " + opp.name + " lahko prestreže.");
-        return { ok: true, pending: true };
-      }
-    }
+    if (defn) return resolveStrike(p, att, atk, atkType, opp, defn);
     return faceHit(p, att, atk, atkType, opp);
   }
 
@@ -785,7 +777,7 @@
     summon, attack, resolveBlock, previewDamage, previewFace, canAttack, summonCostOf, manaCostOf,
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     chooseFirstChampion, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
-    BOARD_MAX, START_LIFE,
+    isTaunt, tauntsOf, BOARD_MAX, START_LIFE,
   };
   if (typeof module !== "undefined") module.exports = api;
   if (global) { global.V2 = api; }

@@ -872,6 +872,103 @@ const CARDS = {
     text: "Oklep. +25 HP in Trni: napadalec utrpi 10 škode ob vsakem udarcu nanj.",
     flavorText: "Skorja prastarih gozdov se brani sama."
   },
+
+  /* ====================== MINIONI (poceni osnovna bitja, 1 mana) ======================
+     Minion = poceni Champion (summonCost 1). Polnijo board, dajo krivuljo in
+     naredijo prave Champione redke. Vsak panteon ima svoje, z raznolikimi močmi.
+     Keywordi: taunt (zid — napasti ga moraš prej), charge (napade isti turn),
+     decay N (vsak konec poteze izgubi N HP), dodge, lifesteal.
+  -------------------------------------------------------------------------------- */
+  // GREEK
+  "minion-hoplite": {
+    id: "minion-hoplite", name: "Hoplite Guard", type: "Champion", minion: true,
+    pantheon: "Greek", rarity: "Common", stage: "basic", summonCost: 1, hp: 35, taunt: true,
+    attacks: [{ name: "Spear Wall", cost: ["War"], damage: 15, effect: null, text: "Drži linijo." }],
+    ability: { name: "Phalanx", text: "Taunt — nasprotnik mora najprej napasti tega branilca." },
+    weakness: "Fire", resistance: "War", flavorText: "Ščit ob ščit, kopje ob kopje.",
+  },
+  "minion-harpy": {
+    id: "minion-harpy", name: "Harpy Raider", type: "Champion", minion: true,
+    pantheon: "Greek", rarity: "Common", stage: "basic", summonCost: 1, hp: 20, charge: true,
+    attacks: [{ name: "Dive", cost: ["Sky"], damage: 20, effect: null, text: "Napade takoj." }],
+    ability: { name: "Naval (Charge)", text: "Lahko napade že v potezi priklica." },
+    weakness: "Sky", resistance: null, flavorText: "Pade z neba, preden jo vidiš.",
+  },
+  // NORSE
+  "minion-berserker": {
+    id: "minion-berserker", name: "Úlfheðinn Berserker", type: "Champion", minion: true,
+    pantheon: "Norse", rarity: "Common", stage: "basic", summonCost: 1, hp: 45, charge: true, decay: 15,
+    attacks: [{ name: "Frenzy", cost: ["War"], damage: 30, effect: null, text: "Besni takoj." }],
+    ability: { name: "Blood Frenzy", text: "Naval; a vsak konec poteze izgubi 15 HP (gori hitro)." },
+    weakness: "Sky", resistance: "War", flavorText: "Bojni bes ga žge od znotraj.",
+  },
+  "minion-shieldmaiden": {
+    id: "minion-shieldmaiden", name: "Shieldmaiden", type: "Champion", minion: true,
+    pantheon: "Norse", rarity: "Common", stage: "basic", summonCost: 1, hp: 40, taunt: true,
+    attacks: [{ name: "Shield Bash", cost: ["War"], damage: 15, effect: null, text: "Brani in udari." }],
+    ability: { name: "Hold the Line", text: "Taunt — varuje ostale in obraz." },
+    weakness: "Fire", resistance: "Frost", flavorText: "Pred njo se vojska ustavi.",
+  },
+  // ROMAN
+  "minion-legionnaire": {
+    id: "minion-legionnaire", name: "Legionary", type: "Champion", minion: true,
+    pantheon: "Roman", rarity: "Common", stage: "basic", summonCost: 1, hp: 40, taunt: true,
+    attacks: [{ name: "Gladius", cost: ["War"], damage: 15, effect: null, text: "Disciplinirani udarec." }],
+    ability: { name: "Testudo", text: "Taunt — formacija, ki ščiti zaledje." },
+    weakness: "Sky", resistance: "War", flavorText: "Sam navaden vojak — a nikoli sam.",
+  },
+  "minion-velite": {
+    id: "minion-velite", name: "Velite Skirmisher", type: "Champion", minion: true,
+    pantheon: "Roman", rarity: "Common", stage: "basic", summonCost: 1, hp: 20,
+    attacks: [{ name: "Javelin", cost: ["War"], damage: 20, effect: null, text: "Lahka pehota, hiter met." }],
+    weakness: "Fire", resistance: null, flavorText: "Vrže in zbeži.",
+  },
+  // EGYPTIAN
+  "minion-tomb-guard": {
+    id: "minion-tomb-guard", name: "Tomb Guardian", type: "Champion", minion: true,
+    pantheon: "Egyptian", rarity: "Common", stage: "basic", summonCost: 1, hp: 40, taunt: true,
+    attacks: [{ name: "Warding Strike", cost: ["Sun"], damage: 10, effect: null, text: "Varuje grobnico." }],
+    ability: { name: "Eternal Watch", text: "Taunt — straži obraz pred vsiljivci." },
+    weakness: "Underworld", resistance: "Sun", flavorText: "Že tisočletja ne zatisne očesa.",
+  },
+  "minion-scarab-swarm": {
+    id: "minion-scarab-swarm", name: "Scarab Swarm", type: "Champion", minion: true,
+    pantheon: "Egyptian", rarity: "Common", stage: "basic", summonCost: 1, hp: 25, lifesteal: true,
+    attacks: [{ name: "Devour", cost: ["Sun"], damage: 15, effect: null, text: "Roj, ki se hrani." }],
+    ability: { name: "Krvoses (Lifesteal)", text: "Ko zada škodo, se za toliko pozdravi." },
+    weakness: "Frost", resistance: null, flavorText: "Tisoč hroščev z eno lakoto.",
+  },
+  // SLAVIC
+  "minion-domovoi": {
+    id: "minion-domovoi", name: "Domovoi", type: "Champion", minion: true,
+    pantheon: "Slavic", rarity: "Common", stage: "basic", summonCost: 1, hp: 35, taunt: true,
+    attacks: [{ name: "Hearth Ward", cost: ["Nature"], damage: 10, effect: null, text: "Brani dom." }],
+    ability: { name: "House Spirit", text: "Taunt — duh ognjišča varuje družino." },
+    weakness: "Fire", resistance: "Nature", flavorText: "Skrit za pečjo, a vedno na straži.",
+  },
+  "minion-vila": {
+    id: "minion-vila", name: "Vila", type: "Champion", minion: true,
+    pantheon: "Slavic", rarity: "Common", stage: "basic", summonCost: 1, hp: 20, dodge: 0.3,
+    attacks: [{ name: "Whirl Dance", cost: ["Nature"], damage: 20, effect: null, text: "Vrtinči se v napad." }],
+    ability: { name: "Umik (Dodge)", text: "30% možnost, da se popolnoma izogne napadu." },
+    weakness: "Underworld", resistance: null, flavorText: "Gozdna vila, ki pleše z vetrom.",
+  },
+  // CELTIC
+  "minion-druid-acolyte": {
+    id: "minion-druid-acolyte", name: "Druid Acolyte", type: "Champion", minion: true,
+    pantheon: "Celtic", rarity: "Common", stage: "basic", summonCost: 1, hp: 25,
+    attacks: [{ name: "Staff Tap", cost: ["Nature"], damage: 5, effect: null, text: "Komaj kaj udari." }],
+    activated: { name: "Healing Touch", cost: ["Any"], effect: "healBoard20", text: "Tapni + 1 mana: vsi tvoji šampioni +20 HP." },
+    ability: { name: "Mender", text: "Skoraj brez napada — tu je za zdravljenje." },
+    weakness: "Trickery", resistance: "Nature", flavorText: "Moč je v koreninah, ne v meču.",
+  },
+  "minion-pixie": {
+    id: "minion-pixie", name: "Moonlit Pixie", type: "Champion", minion: true,
+    pantheon: "Celtic", rarity: "Common", stage: "basic", summonCost: 1, hp: 15, charge: true,
+    attacks: [{ name: "Moonbolt", cost: ["Moon"], damage: 20, effect: null, text: "Bliskovit napad." }],
+    ability: { name: "Naval (Charge)", text: "Lahko napade že v potezi priklica." },
+    weakness: "Sun", resistance: null, flavorText: "Iskra mesečine z želom.",
+  },
 };
 
 /* expose */

@@ -71,18 +71,20 @@
 .v2-mana.tapped { filter: grayscale(1) brightness(0.5); box-shadow: none; transform: rotate(90deg); }
 
 /* board */
-.v2-board-row { flex: 1; display: flex; gap: 10px; align-items: stretch; min-height: 0; }
+.v2-board-row { flex: 1; display: flex; gap: 8px; align-items: center; min-height: 0; overflow-x: auto; overflow-y: hidden; padding: 2px; }
+.v2-opp .v2-board-row { align-items: flex-start; }
+.v2-you .v2-board-row { align-items: flex-end; }
 .v2-empty { flex: 1; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--panel-edge); border-radius: var(--radius-sm); color: var(--ink-dim); font-size: 12px; font-style: italic; }
 .v2-opp .v2-empty { border-color: rgba(255,107,94,0.4); color: #ff9b8a; }
 
-.v2-champ { width: 150px; flex: 0 0 150px; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-sm); overflow: hidden; background: rgba(8,8,16,0.6); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.2s ease; position: relative; }
+.v2-champ { width: 132px; flex: 0 0 132px; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-sm); overflow: hidden; background: rgba(8,8,16,0.6); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.2s ease; position: relative; }
 .v2-champ:hover { transform: translateY(-2px); }
 .v2-champ.tapped { opacity: 0.55; transform: rotate(3deg); }
 .v2-champ.sick .v2-champ-art { filter: saturate(0.7) brightness(0.85); }
 .v2-champ.ready { box-shadow: 0 0 0 1px var(--good), 0 0 14px rgba(111,217,138,0.3); border-color: var(--good); }
 .v2-champ.selected-att { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 20px rgba(233,196,106,0.5); border-color: var(--gold-bright); }
 .v2-champ.targetable { box-shadow: 0 0 0 2px var(--danger), 0 0 18px rgba(255,107,94,0.5); border-color: var(--danger); cursor: crosshair; }
-.v2-champ-art { height: 92px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 30px; background: var(--c-grad); overflow: hidden; }
+.v2-champ-art { height: 76px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 30px; background: var(--c-grad); overflow: hidden; }
 .v2-champ-sym { position: relative; z-index: 0; }
 .v2-champ-hp { position: absolute; top: 5px; right: 6px; z-index: 5; font-size: 12px; font-weight: 700; background: rgba(0,0,0,0.6); padding: 1px 7px; border-radius: 999px; font-family: "SF Mono", monospace; }
 .v2-tag { position: absolute; top: 5px; left: 6px; z-index: 5; font-size: 12px; }
@@ -408,3 +410,42 @@
 /* nadgrajena karta v Pohodu (★) */
 .rdc-up { position: absolute; top: 4px; left: 4px; z-index: 5; color: var(--gold-bright, #ffd97a); font-size: 13px; text-shadow: 0 0 6px rgba(255,216,107,0.8); }
 .run-deckcard .rdc-n { color: inherit; }
+
+/* ---------------- Mana cona POD boardom (tappable energije) ---------------- */
+.v2-manazone { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 6px; margin-top: 4px;
+  border-top: 1px dashed var(--panel-edge); }
+.mz-lab { font-size: 10px; letter-spacing: 0.08em; color: var(--ink-dim); font-family: "SF Mono", monospace; }
+.mz-lab b { color: var(--good, #6fd98a); font-size: 12px; }
+.mz-lab.picking { color: #ffd97a; }
+.mz-cancel { background: rgba(255,107,94,0.15); border: 1px solid var(--danger); color: #ffb0a8; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 1px 7px; }
+.mz-pips { display: flex; gap: 6px; flex-wrap: wrap; }
+.mz-empty { font-size: 11px; color: var(--ink-dim); font-style: italic; }
+.v2-manacard { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  width: 34px; height: 42px; border-radius: 7px; font-size: 16px; cursor: default;
+  background: radial-gradient(circle at 40% 25%, color-mix(in srgb, var(--mc) 65%, white), var(--mc));
+  color: #06121f; border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 2px 6px rgba(0,0,0,0.45), 0 0 8px -2px var(--mc); transition: transform .15s, filter .2s, box-shadow .15s; }
+.v2-manacard small { font-size: 6px; letter-spacing: 0.04em; opacity: 0.85; text-transform: uppercase; font-weight: 700; }
+.v2-manacard.tapped { filter: grayscale(1) brightness(0.55); box-shadow: none; transform: rotate(12deg) scale(0.9); }
+.v2-manacard.selectable { cursor: pointer; }
+.v2-manacard.selectable:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px #ffd97a, 0 4px 12px rgba(0,0,0,0.5); }
+.v2-manacard.sel { outline: 2px solid #ffd97a; box-shadow: 0 0 0 2px #ffd97a, 0 0 12px rgba(255,216,107,0.6); transform: translateY(-3px); }
+.v2-manacard.just-tapped { animation: mcTap 0.42s ease; }
+@keyframes mcTap { 0% { transform: rotate(0) scale(1.1); filter: brightness(1.5); } 100% { transform: rotate(12deg) scale(0.9); filter: grayscale(1) brightness(0.55); } }
+.v2-manacard.just-added { animation: mcAdd 0.5s cubic-bezier(.2,.9,.3,1.4); }
+@keyframes mcAdd { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); } }
+
+/* taunt / decay / minion */
+.v2-tag.taunt { left: 6px; top: auto; bottom: 4px; right: auto; font-size: 13px; filter: drop-shadow(0 0 4px #7fb3ff); }
+.v2-tag.decay { left: auto; right: 6px; top: 28px; font-size: 10px; font-weight: 800; color: #c89bff; background: rgba(0,0,0,0.6); padding: 0 5px; border-radius: 999px; }
+.v2-champ.taunt { border-color: rgba(127,179,255,0.6); box-shadow: inset 0 0 0 2px rgba(127,179,255,0.25); }
+.v2-champ.taunt.ready { box-shadow: inset 0 0 0 2px rgba(127,179,255,0.3), 0 0 0 1px var(--good), 0 0 14px rgba(111,217,138,0.3); }
+.v2-champ.minion { opacity: 0.97; }
+.v2-champ.minion .v2-champ-name { font-size: 11px; }
+.v2-champ.blocked-target { opacity: 0.45; filter: grayscale(0.5); cursor: not-allowed; }
+
+/* Dnevnik (log) zložljiv */
+.log-panel h4 { user-select: none; display: flex; align-items: center; gap: 6px; }
+.log-panel h4::before { content: "▾"; font-size: 10px; transition: transform .15s; }
+.log-panel.collapsed h4::before { transform: rotate(-90deg); }
+.log-panel.collapsed .log-list { display: none; }
+.log-panel.collapsed { flex: 0 0 auto; }

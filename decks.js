@@ -42,6 +42,8 @@ const STARTER_DECKS = {
       "realm-olympus",
       // Oprema (orožje/oklep)
       "equip-spear-olympus", "equip-legion-aegis",
+      // Minioni (1 mana)
+      ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2),
     ],
   },
 
@@ -75,6 +77,8 @@ const STARTER_DECKS = {
       "realm-asgard",
       // Oprema (orožje/oklep)
       "equip-wolf-blade", "equip-jotun-hide",
+      // Minioni (1 mana)
+      ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2),
     ],
   },
 
@@ -109,6 +113,8 @@ const STARTER_DECKS = {
       "realm-duat",
       // Oprema (orožje/oklep)
       "equip-khopesh-ra", "equip-legion-aegis",
+      // Minioni (1 mana)
+      ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2),
     ],
   },
 
@@ -142,6 +148,8 @@ const STARTER_DECKS = {
       "realm-grove",
       // Oprema (orožje/oklep)
       "equip-bark-carapace", "equip-jotun-hide",
+      // Minioni (1 mana)
+      ...rep("minion-domovoi", 2), ...rep("minion-vila", 2),
     ],
   },
 
@@ -175,6 +183,8 @@ const STARTER_DECKS = {
       "realm-forum",
       // Oprema (orožje/oklep)
       "equip-legion-aegis", "equip-spear-olympus",
+      // Minioni (1 mana)
+      ...rep("minion-legionnaire", 2), ...rep("minion-velite", 2),
     ],
   },
 
@@ -209,6 +219,8 @@ const STARTER_DECKS = {
       "realm-grove",
       // Oprema (orožje/oklep)
       "equip-gaebolg", "equip-bark-carapace",
+      // Minioni (1 mana)
+      ...rep("minion-druid-acolyte", 2), ...rep("minion-pixie", 2),
     ],
   },
 };

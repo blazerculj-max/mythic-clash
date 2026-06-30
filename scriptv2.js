@@ -781,7 +781,7 @@ function deathPoof(x, y) {
 function fxManaChanges() {
   const you = G.players[0]; if (!you) { prevYouMana = []; return; }
   const cur = you.mana.map(m => m.tapped);
-  const pips = document.querySelectorAll('#v2-you .v2-mana');
+  const pips = document.querySelectorAll('#v2-you .v2-manacard');
   cur.forEach((tapped, i) => {
     const pip = pips[i]; if (!pip) return;
     if (i >= prevYouMana.length) { pip.classList.add("just-added"); setTimeout(() => pip.classList.remove("just-added"), 500); }
@@ -803,35 +803,68 @@ function heroBar(p) {
     </div>
   </div>`;
 }
+// kompaktna (read-only) mana vrstica za nasprotnika (v glavi)
 function manaRow(p) {
   const untap = p.mana.filter(m => !m.tapped).length;
-  const pips = p.mana.map((m, i) => {
+  const pips = p.mana.map(m => {
     const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
-    return `<span class="v2-mana ${m.tapped ? "tapped" : ""}" data-mi="${i}" ${tipAttr(m.type + " mana", m.tapped ? "Porabljena to potezo (odtapne se ob začetku tvoje poteze)." : "Na voljo za priklic / napade / efekte.")} style="--mc:${s.color}">${s.glyph}</span>`;
+    return `<span class="v2-mana ${m.tapped ? "tapped" : ""}" style="--mc:${s.color}">${s.glyph}</span>`;
   }).join("");
   return `<div class="v2-mana-row"><span class="v2-mana-lab">MANA <b>${untap}</b>/${p.mana.length}</span>${pips}</div>`;
+}
+// interaktivna cona energij POD tvojim boardom — klikni karte energij za plačilo
+function renderManaZone(you) {
+  const zone = el("div", "v2-manazone");
+  const untap = you.mana.filter(m => !m.tapped).length;
+  const picking = !!manaPick;
+  const lab = picking
+    ? `<span class="mz-lab picking">Tapni energije za plačilo: ${costHtml(manaPick.cost)} <b>${manaPick.sel.length}/${manaPick.cost.length}</b></span><button class="mz-cancel">✕</button>`
+    : `<span class="mz-lab">ENERGIJE <b>${untap}</b>/${you.mana.length}</span>`;
+  const pips = you.mana.map((m, i) => {
+    const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
+    const sel = picking && manaPick.sel.includes(i);
+    const cls = "v2-manacard" + (m.tapped ? " tapped" : "") + (sel ? " sel" : "") + (picking && (!m.tapped || sel) ? " selectable" : "");
+    return `<span class="${cls}" data-mi="${i}" style="--mc:${s.color}" ${tipAttr(m.type + " energija", m.tapped ? "Porabljena to potezo (odtapne se na začetku tvoje poteze)." : "Na voljo za priklic / napade / efekte.")}>${s.glyph}<small>${m.type}</small></span>`;
+  }).join("");
+  zone.innerHTML = `${lab}<div class="mz-pips">${pips || '<span class="mz-empty">— igraj energijo iz roke —</span>'}</div>`;
+  if (picking) {
+    const cx = zone.querySelector(".mz-cancel"); if (cx) cx.addEventListener("click", () => { manaPick = null; render(); });
+    zone.querySelectorAll(".v2-manacard").forEach(pip => pip.addEventListener("click", () => {
+      const i = +pip.dataset.mi;
+      if (you.mana[i].tapped && !manaPick.sel.includes(i)) return;
+      const k = manaPick.sel.indexOf(i); if (k >= 0) manaPick.sel.splice(k, 1); else manaPick.sel.push(i);
+      if (manaSelValid(manaPick.sel, manaPick.cost, manaPick.lughAny)) { const cb = manaPick.onPaid, idx = manaPick.sel.slice(); manaPick = null; cb(idx); }
+      else render();
+    }));
+  }
+  return zone;
 }
 
 function renderSide(container, p, isYou) {
   container.innerHTML = "";
   const head = el("div", "v2-head");
-  head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + manaRow(p);
-  container.appendChild(head);
-  // nasprotnikov lik = face tarča (klik med napadom)
-  if (!isYou) {
+  head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + (isYou ? "" : manaRow(p));
+  const row = el("div", "v2-board-row");
+  if (!p.board.length) row.appendChild(el("div", "v2-empty", isYou ? "Tvoj board je prazen" : "Brez branilcev — napadljiv obraz!"));
+  p.board.forEach(c => row.appendChild(boardChamp(c, p, isYou)));
+  // razpored: nasprotnik = glava zgoraj, board spodaj; ti = board zgoraj, cona energij, glava spodaj (ob roki)
+  if (isYou) {
+    container.appendChild(row);
+    container.appendChild(renderManaZone(p));
+    container.appendChild(head);
+  } else {
+    container.appendChild(head);
+    container.appendChild(row);
     const heroEl = head.querySelector(".v2-hero");
     if (heroEl) {
-      if (G.turn === 0 && !G.over && selAttacker && selAtkIndex != null) heroEl.classList.add("face-targetable");
+      const canFace = G.turn === 0 && !G.over && selAttacker && selAtkIndex != null && !V2.tauntsOf(p).length;
+      if (canFace) heroEl.classList.add("face-targetable");
       heroEl.addEventListener("click", () => {
         if (G.turn === 0 && !G.over && selAttacker && selAtkIndex != null) doAttack({ kind: "face" });
         else toast("Izberi svojega napadalca in napad, nato klikni nasprotnikov lik.");
       });
     }
   }
-  const row = el("div", "v2-board-row");
-  if (!p.board.length) row.appendChild(el("div", "v2-empty", isYou ? "Tvoj board je prazen" : "Brez branilcev — napadljiv obraz!"));
-  p.board.forEach(c => row.appendChild(boardChamp(c, p, isYou)));
-  container.appendChild(row);
 }
 
 function boardChamp(c, owner, isYou) {
@@ -839,7 +872,8 @@ function boardChamp(c, owner, isYou) {
   const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
   const life = c.maxHp - c.damage;
   const pct = Math.max(0, Math.round(life / c.maxHp * 100));
-  const node = el("div", "v2-champ" + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : ""));
+  const taunt = V2.isTaunt(c);
+  const node = el("div", "v2-champ" + (c.tapped ? " tapped" : "") + (c.sick ? " sick" : "") + (d.minion ? " minion" : "") + (taunt ? " taunt" : ""));
   node.dataset.uid = c.uid;
   node.dataset.owner = isYou ? "you" : "opp";
   if (!seenChampUids.has(c.uid)) { node.classList.add("entering"); seenChampUids.add(c.uid); } // enter-play animacija (enkrat)
@@ -847,8 +881,12 @@ function boardChamp(c, owner, isYou) {
   const canAtk = isYou && G.turn === 0 && !G.over && V2.canAttack(owner, c);
   if (canAtk) node.classList.add("ready");
   if (selAttacker === c.uid) node.classList.add("selected-att");
-  // targetable highlight (napad ali izbira tarče za urok/relic)
-  if (selAttacker && selAtkIndex != null && !isYou) node.classList.add("targetable");
+  // targetable highlight — pri Tauntu so napadljivi le Taunt branilci
+  if (selAttacker && selAtkIndex != null && !isYou) {
+    const oppTaunts = V2.tauntsOf(owner).length;
+    if (!oppTaunts || taunt) node.classList.add("targetable");
+    else node.classList.add("blocked-target");
+  }
   if (pendingPlay && ((pendingPlay.need === "ally" && isYou) || (pendingPlay.need === "enemy" && !isYou)))
     node.classList.add(pendingPlay.need === "enemy" ? "targetable" : "target-ally");
   const stChips = statusChips(c);
@@ -859,10 +897,12 @@ function boardChamp(c, owner, isYou) {
     const nextBonus = Math.min(c._comboCount * 10, 30);
     comboTag = `<span class="v2-tag combo" style="--mc:${es.color}" ${tipAttr("🔥 Combo ×" + c._comboCount, "Zaporedni " + c._comboType + " napadi. Naslednji " + c._comboType + " napad: +" + nextBonus + " škode.")}>🔥${c._comboCount}</span>`;
   }
+  const tauntTag = taunt ? `<span class="v2-tag taunt" ${tipAttr("🛡 Taunt (Zid)", "Nasprotnik mora najprej napasti tega branilca, preden lahko udari ostale ali obraz.")}>🛡</span>` : "";
+  const decayTag = d.decay ? `<span class="v2-tag decay" ${tipAttr("☠ Razpad " + d.decay + "/potezo", "Vsak konec poteze izgubi " + d.decay + " HP in sčasoma umre.")}>☠${d.decay}</span>` : "";
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
       <span class="v2-champ-hp">${life}</span>
-      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${comboTag}
+      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${tauntTag}${decayTag}${comboTag}
       ${stChips ? `<div class="v2-champ-statusbar">${stChips}</div>` : ""}</div>
     <div class="v2-champ-body">
       <div class="v2-champ-name" ${tipAttr(d.name, cardTipText(d))}>${d.name}</div>
@@ -960,30 +1000,9 @@ function renderActions() {
   if (G.turn !== 0) { panel.appendChild(el("div", "hint", "Nasprotnik je na potezi…")); return; }
   const you = G.players[0];
 
-  // ročna izbira mane
+  // ročna izbira mane -> sedaj v coni energij POD boardom
   if (manaPick) {
-    panel.appendChild(el("div", "hint", `Plačaj: ${costHtml(manaPick.cost)} — klikni katero mano porabiš (${manaPick.sel.length}/${manaPick.cost.length}).`));
-    const row = el("div", "v2-manapick");
-    you.mana.forEach((m, i) => {
-      if (m.tapped && !manaPick.sel.includes(i)) return;
-      const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
-      const b = el("button", "v2-mp" + (manaPick.sel.includes(i) ? " sel" : ""), `${s.glyph} ${m.type}`);
-      b.style.setProperty("--mc", s.color);
-      b.addEventListener("click", () => {
-        const k = manaPick.sel.indexOf(i);
-        if (k >= 0) manaPick.sel.splice(k, 1); else manaPick.sel.push(i);
-        render();
-      });
-      row.appendChild(b);
-    });
-    panel.appendChild(row);
-    const ok = manaSelValid(manaPick.sel, manaPick.cost, manaPick.lughAny);
-    const confirm = el("button", "action-btn end-turn", "Potrdi plačilo");
-    confirm.disabled = !ok;
-    confirm.addEventListener("click", () => { const cb = manaPick.onPaid, idx = manaPick.sel.slice(); manaPick = null; cb(idx); });
-    const cancel = el("button", "action-btn", "Prekliči");
-    cancel.addEventListener("click", () => { manaPick = null; render(); });
-    panel.appendChild(confirm); panel.appendChild(cancel);
+    panel.appendChild(el("div", "hint", `Tapni energije <b>pod svojim boardom</b> za plačilo: ${costHtml(manaPick.cost)}.`));
     return;
   }
 
@@ -1272,17 +1291,19 @@ function aiAttack(queue) {
   if (!V2.canAttack(ai, c)) { aiAttack(queue); return; }
   const best = aiBestAttack(c);
   if (!best) { aiAttack(queue); return; }
-  // tarča: ubij šampiona če moreš, sicer pritisni obraz
+  // tarča: spoštuj Taunt (zid) — sicer ubij šampiona če moreš, sicer pritisni obraz
   let target = { kind: "face" };
-  if (you.board.length) {
-    let bt = null, btDmg = -1;
-    you.board.forEach(t => { const pr = V2.previewDamage(c, ai, t, def(c).attacks[best.i]); if (pr && pr.dmg > btDmg) { btDmg = pr.dmg; bt = t; } });
+  const taunts = V2.tauntsOf(you);
+  const bestVs = pool => { let bt = null, btDmg = -1; pool.forEach(t => { const pr = V2.previewDamage(c, ai, t, def(c).attacks[best.i]); if (pr && pr.dmg > btDmg) { btDmg = pr.dmg; bt = t; } }); return { bt, btDmg }; };
+  if (taunts.length) {
+    const { bt } = bestVs(taunts); target = { kind: "champ", uid: bt.uid };
+  } else if (you.board.length) {
+    const { bt, btDmg } = bestVs(you.board);
     if (bt && btDmg >= (bt.maxHp - bt.damage)) target = { kind: "champ", uid: bt.uid };
-    else target = { kind: "face" }; // pritisk na obraz -> človek lahko blokira
   }
   const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("you");
   const res = V2.attack(ai, c.uid, best.i, target);
-  if (res && res.pending) { render(); showBlock(() => { render(); checkOver(); if (!G.over) setTimeout(() => aiAttack(queue), 450); else aiBusy = false; }); return; }
+  if (!res || !res.ok) { aiAttack(queue); return; }
   animateStrike(c.uid, targetEl, res.dmg, res.dodged);
   setTimeout(() => {
     render(); checkOver();
@@ -1338,6 +1359,13 @@ window.addEventListener("DOMContentLoaded", () => {
   initTooltips();
   buildSetup();
   $("#v2-end").addEventListener("click", endHumanTurn);
+  // Dnevnik: zložljiv, privzeto zaprt
+  const logPanel = document.querySelector(".log-panel");
+  if (logPanel) {
+    logPanel.classList.add("collapsed");
+    const h = logPanel.querySelector("h4");
+    if (h) { h.style.cursor = "pointer"; h.addEventListener("click", () => logPanel.classList.toggle("collapsed")); }
+  }
   document.addEventListener("mousemove", (e) => {
     arrowPos = { x: e.clientX, y: e.clientY };
     if (arrowActive()) { updateArrow(); updateDmgPreview(); }
