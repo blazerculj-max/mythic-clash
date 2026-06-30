@@ -897,8 +897,8 @@ const CARDS = {
   // NORSE
   "minion-berserker": {
     id: "minion-berserker", name: "Úlfheðinn Berserker", type: "Champion", minion: true,
-    pantheon: "Norse", rarity: "Common", stage: "basic", summonCost: 1, hp: 45, charge: true, decay: 15,
-    attacks: [{ name: "Frenzy", cost: ["War"], damage: 30, effect: null, text: "Besni takoj." }],
+    pantheon: "Norse", rarity: "Common", stage: "basic", summonCost: 1, hp: 40, charge: true, decay: 15,
+    attacks: [{ name: "Frenzy", cost: ["War"], damage: 25, effect: null, text: "Besni takoj." }],
     ability: { name: "Blood Frenzy", text: "Naval; a vsak konec poteze izgubi 15 HP (gori hitro)." },
     weakness: "Sky", resistance: "War", flavorText: "Bojni bes ga žge od znotraj.",
   },

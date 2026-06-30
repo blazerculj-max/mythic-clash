@@ -1019,6 +1019,7 @@ function renderActions() {
     const c = you.board.find(x => x.uid === selAttacker); const d = c ? def(c) : null;
     if (d) {
       panel.appendChild(el("div", "hint", `Napada: <b>${d.name}</b>. Izberi napad, nato tarčo.`));
+      if (V2.tauntsOf(G.players[1]).length) panel.appendChild(el("div", "hint taunt-hint", `🛡 Nasprotnik ima <b>zid (Taunt)</b> — najprej premagaj branilce z 🛡 (obraz in ostali so zaščiteni).`));
       d.attacks.forEach((atk, i) => {
         const can = V2.canPay(you, atk.cost, d.id === "celtic-lugh");
         const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : ""));
@@ -1321,24 +1322,7 @@ function aiBestAttack(c) {
   return best;
 }
 
-/* ---------------- BLOCK (človek brani) ---------------- */
-function showBlock(onDone) {
-  const pb = G.pendingBlock; if (!pb) { onDone(); return; }
-  const you = G.players[0];
-  const atk = def(G.players[pb.attackerOwnerIndex].board.find(c => c.uid === pb.attackerUid));
-  $("#v2-block-sub").innerHTML = `<b>${atk ? atk.name : "Napad"}</b> meri na tvoj obraz. Prestrežeš z netapnjenim šampionom ali sprejmeš škodo.`;
-  const wrap = $("#v2-block-choices"); wrap.innerHTML = "";
-  you.board.filter(c => !c.tapped).forEach(c => {
-    const d = def(c);
-    const b = el("button", "action-btn", `🛡 Prestreži z ${d.name} (❤${c.maxHp - c.damage})`);
-    b.addEventListener("click", () => { $("#v2-block").classList.add("hidden"); V2.resolveBlock(c.uid); onDone(); });
-    wrap.appendChild(b);
-  });
-  const take = el("button", "action-btn attack", "Sprejmi v obraz");
-  take.addEventListener("click", () => { $("#v2-block").classList.add("hidden"); V2.resolveBlock(null); onDone(); });
-  wrap.appendChild(take);
-  $("#v2-block").classList.remove("hidden");
-}
+/* obramba face poteka prek Taunt zidu (glej engine attack) — star blokirni modal je opuščen */
 
 /* ---------------- END / OVERLAY ---------------- */
 function checkOver() {
