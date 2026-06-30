@@ -135,6 +135,13 @@
 .v2-panel .action-panel { flex: 0 0 auto; max-height: 55%; overflow-y: auto; }
 .v2-panel .log-panel { flex: 1; min-height: 0; }
 .action-btn.attack.sel { background: rgba(255,107,94,0.18); border-color: var(--danger); }
+/* napadni gumbi: oznaka tarčni/basic, omejitev "le bitja", učinek ✦ */
+.action-btn.attack .atk-tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 1px 5px; border-radius: 7px; margin-left: 5px; vertical-align: middle; background: rgba(255,217,122,0.18); color: #ffd97a; border: 1px solid rgba(255,217,122,0.4); }
+.action-btn.attack .atk-tag.flex { background: rgba(160,180,200,0.16); color: #b9c6d6; border-color: rgba(160,180,200,0.35); }
+.action-btn.attack .atk-tag.nf { background: rgba(127,179,255,0.16); color: #9fc4ff; border-color: rgba(127,179,255,0.45); }
+.action-btn.attack .atk-fx { color: #8effc4; margin-left: 4px; font-size: 11px; }
+.action-btn.attack.has-fx { border-color: rgba(142,255,196,0.35); }
+.action-btn.attack.basic-atk { opacity: 0.95; }
 
 /* block modal */
 .v2-block-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

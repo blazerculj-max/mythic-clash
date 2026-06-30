@@ -61,7 +61,7 @@
   function weaponOf(c) { return c && c.weapon ? CARDS[c.weapon] : null; }
   function armorOf(c)  { return c && c.armor  ? CARDS[c.armor]  : null; }
   function equipGrants(c, kw) { const w = weaponOf(c), a = armorOf(c); return (!!w && w.grant === kw) || (!!a && a.grant === kw); }
-  function isTaunt(c) { return !!(def(c).taunt || equipGrants(c, "taunt")); } // "zid" — napasti ga moraš najprej
+  function isTaunt(c) { return !!(def(c).taunt || (c.status && c.status.taunt) || equipGrants(c, "taunt")); } // "zid" — napasti ga moraš najprej (status.taunt = začasni)
 
   /* ---------------- Sinergije (Faza 2) ----------------
      Bond = 3+ šampionov enega panteona na boardu (trajen bonus).
@@ -188,8 +188,9 @@
       }
       // freeze 50% odprave
       if (c.status.freeze && omenRoll()) { delete c.status.freeze; logMsg(def(c).name + " ni več zamrznjen."); }
-      // Guard drža poteče na začetku tvoje poteze
+      // Guard drža in začasni Taunt potečeta na začetku tvoje poteze
       if (c.status.guard) delete c.status.guard;
+      if (c.status.taunt) delete c.status.taunt;
     }
     if (!first) draw(p, 1);
     else logMsg(p.name + " začenja (brez vleke na prvi potezi).");
@@ -597,6 +598,7 @@
       if (!defn) return { ok: false, msg: "Tarča ne obstaja." };
       if (taunts.length && !isTaunt(defn)) return { ok: false, msg: "Najprej premagaj branilce (Taunt)." };
     } else {
+      if (atk.noFace) return { ok: false, msg: "Ta napad lahko cilja le bitja (ne obraza)." };
       if (taunts.length) return { ok: false, msg: "Najprej premagaj branilce (Taunt)." };
     }
     // plačaj + tapni napadalca
@@ -678,6 +680,7 @@
     if (def(att).lifesteal && dmg > 0) defn0heal(att, dmg);
     if (def(att).overload) att._overloadLock = (att._overloadLock || 0) + def(att).overload;
     logMsg(p.name + ": " + def(att).name + " udari OBRAZ za " + dmg + " (življenja " + opp.name + ": " + opp.life + ").");
+    applyAtkEffect(atk, att, p, null, opp); // lastni/podporni učinki veljajo tudi proti obrazu
     if (opp.life <= 0) { endGame(G.players.indexOf(p), opp.name + " je premagan (0 življenj)!"); }
     afterAction(p);
     return { ok: true, dmg, face: true };
@@ -686,15 +689,24 @@
   function applyAtkEffect(atk, att, attOwner, defn, defOwner) {
     if (!atk.effect) return;
     const e = atk.effect;
-    if (e === "burn") defn.status.burn = true;
-    else if (e === "freeze") defn.status.freeze = true;
-    else if (e === "poison") defn.status.poison = defn.status.poison || 1;
-    else if (e === "curse") defn.status.curse = true;
-    else if (e === "selfShield") att.status.shield = true;
+    // ciljni učinki (le ob udarcu na bitje; proti obrazu defn === null)
+    if (defn) {
+      if (e === "burn") { defn.status.burn = true; return; }
+      if (e === "freeze") { defn.status.freeze = true; return; }
+      if (e === "poison") { defn.status.poison = defn.status.poison || 1; return; }
+      if (e === "curse") { defn.status.curse = true; return; }
+    }
+    // lastni / podporni učinki (veljajo tudi proti obrazu)
+    if (e === "selfShield") { att.status.shield = true; logMsg(def(att).name + " dvigne Shield."); }
+    else if (e === "guardSelf") { att.status.guard = true; logMsg(def(att).name + " zavzame obrambno držo (−50% škode)."); }
+    else if (e === "tauntSelf") { att.status.taunt = true; logMsg(def(att).name + " prevzame Taunt (do tvoje naslednje poteze)."); }
+    else if (e === "healSelf20") { att.damage = Math.max(0, att.damage - 20); logMsg(def(att).name + " se pozdravi 20 HP."); }
+    else if (e === "healBoard15") { attOwner.board.forEach(c => c.damage = Math.max(0, c.damage - 15)); logMsg(attOwner.name + ": vsi šampioni +15 HP."); }
+    else if (e === "drawSelf") { draw(attOwner, 1); logMsg(attOwner.name + ": +1 karta (napad)."); }
     else if (e === "blessActive") att.status.blessing = Math.max(att.status.blessing || 0, 2);
     else if (e === "selfDamage20") { att.damage += 20; }
     else if (e === "selfDamage30") { att.damage += 30; }
-    // ostali efekti (draw, heal...) se migrirajo kasneje
+    // ostali efekti (draw...) se migrirajo kasneje
   }
 
   /* ---------------- keywords (onEnter / onDefeat) ---------------- */
@@ -755,13 +767,15 @@
 
   /* ---------------- AI ---------------- */
   function aiHp(c) { return c.maxHp - c.damage; }
-  function aiBestAtk(c, owner, target) {
+  function aiBestAtk(c, owner, target, face) {
     let best = null;
     (def(c).attacks || []).forEach((atk, i) => {
+      if (face && atk.noFace) return; // proti obrazu preskoči napade, ki smejo le na bitja
       if (!canPay(owner, atk.cost, def(c).id === "celtic-lugh")) return;
       const pr = target ? previewDamage(c, owner, target, atk) : null;
       const dmg = pr ? pr.dmg : (atk.damage || 0);
-      if (!best || dmg > best.dmg) best = { atk, i, dmg };
+      const score = dmg + (atk.effect ? 0.5 : 0); // ob enaki škodi imej raje napad z učinkom
+      if (!best || score > best.score) best = { atk, i, dmg, score };
     });
     return best;
   }
@@ -873,25 +887,21 @@
     });
     // 2c) odigraj uroke (removal/AoE/burst/vlek/heal) — pred napadom, da počistiš blokerje
     steps.push(() => aiPlaySpells(p, opp));
-    // 3) napadi z vsemi pripravljenimi
+    // 3) napadi z vsemi pripravljenimi (spoštuj Taunt in noFace napade)
     steps.push(() => {
       for (const c of p.board.slice()) {
         if (G.over) break;
         if (!canAttack(p, c)) continue;
-        // tarča: lethal na board, sicer face če varno/lethal, sicer najboljši matchup
         const targets = opp.board.slice();
-        let chosen = null, chosenTarget = null;
-        // poskusi face če nima blokerjev
-        const best = aiBestAtk(c, p, targets[0] || c);
-        if (!best) continue;
-        if (!targets.length) { attack(p, c.uid, best.i, { kind: "face" }); continue; }
-        // izberi tarčo z najboljšo škodo / lethal
-        let bt = null, btDmg = -1;
-        targets.forEach(t => { const pr = previewDamage(c, p, t, def(c).attacks[best.i]); if (pr && pr.dmg > btDmg) { btDmg = pr.dmg; bt = t; } });
-        // če lahko ubije tarčo -> napadi tarčo; sicer pritisni face (hibrid)
-        if (bt && btDmg >= aiHp(bt)) attack(p, c.uid, best.i, { kind: "champ", uid: bt.uid });
-        else if (diff !== "easy" && opp.life <= btDmg + 5) attack(p, c.uid, best.i, { kind: "face" });
-        else attack(p, c.uid, best.i, { kind: "champ", uid: bt.uid });
+        const faceAtk = aiBestAtk(c, p, null, true); // najboljši napad, ki sme v obraz (preskoči noFace)
+        if (!targets.length) { if (faceAtk) attack(p, c.uid, faceAtk.i, { kind: "face" }); continue; }
+        // proti bitjem: izberi tarčo + napad (vključno z noFace) z najboljšo škodo
+        let bt = null, btAtk = null, btDmg = -1;
+        targets.forEach(t => { const a = aiBestAtk(c, p, t, false); if (a && a.dmg > btDmg) { btDmg = a.dmg; bt = t; btAtk = a; } });
+        if (btAtk && bt && btDmg >= aiHp(bt)) attack(p, c.uid, btAtk.i, { kind: "champ", uid: bt.uid });       // lethal na bitje
+        else if (faceAtk && diff !== "easy" && opp.life <= faceAtk.dmg + 5) attack(p, c.uid, faceAtk.i, { kind: "face" }); // skoraj-lethal pritisk
+        else if (btAtk) attack(p, c.uid, btAtk.i, { kind: "champ", uid: bt.uid });
+        else if (faceAtk) attack(p, c.uid, faceAtk.i, { kind: "face" });
       }
     });
     let k = 0;

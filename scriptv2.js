@@ -90,6 +90,10 @@ const EFFECT_TEXT = {
   burnEnemy: "Nasprotnikov šampion gori.", freezeEnemy: "Nasprotnikov šampion zamrzne (+20% škode).",
   dmgEnemy30: "Zada 30 škode nasprotnikovemu šampionu.",
   healSelf30: "Ta šampion +30 HP.", healBoard20: "Vsi tvoji šampioni +20 HP.",
+  healSelf20: "Ta šampion +20 HP.", healBoard15: "Vsi tvoji šampioni +15 HP.",
+  tauntSelf: "Ta šampion prevzame Taunt (zid) do tvoje naslednje poteze.",
+  guardSelf: "Obrambna drža: −50% prejete škode do tvoje naslednje poteze.",
+  drawSelf: "Potegneš 1 karto.",
   shieldSelf: "Ta šampion dobi Shield (−20 naslednji udarec).",
   guard: "Obrambna drža: −50% prejete škode do naslednje poteze.",
   blessSelf: "Ta šampion dobi Blagoslov.",
@@ -1262,11 +1266,14 @@ function renderActions() {
       if (V2.tauntsOf(G.players[1]).length) panel.appendChild(el("div", "hint taunt-hint", `🛡 Nasprotnik ima <b>zid (Taunt)</b> — najprej premagaj branilce z 🛡 (obraz in ostali so zaščiteni).`));
       d.attacks.forEach((atk, i) => {
         const can = V2.canPay(you, atk.cost, d.id === "celtic-lugh");
-        const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : ""));
-        b.innerHTML = `${atk.name} <span class="ab-cost">${atk.damage} dmg · ${costHtml(atk.cost)}</span>`;
+        const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : "") + (atk.basic ? " basic-atk" : "") + (atk.effect || atk.noFace ? " has-fx" : ""));
+        const tag = atk.basic ? `<span class="atk-tag flex">katerakoli ⬡</span>` : `<span class="atk-tag">tarčni</span>`;
+        const restrict = atk.noFace ? `<span class="atk-tag nf">le bitja</span>` : "";
+        const fx = atk.effect && EFFECT_TEXT[atk.effect] ? `<span class="atk-fx">✦</span>` : "";
+        b.innerHTML = `${atk.name} ${tag}${restrict}${fx} <span class="ab-cost">${atk.damage} dmg · ${costHtml(atk.cost)}</span>`;
         b.disabled = !can;
         b.setAttribute("data-tip-title", atk.name); b.setAttribute("data-tip", atkTipText(atk));
-        b.addEventListener("click", () => { selAtkIndex = i; toast("Klikni nasprotnikovega šampiona ali NJEGOV OBRAZ."); render(); });
+        b.addEventListener("click", () => { selAtkIndex = i; toast(atk.noFace ? "Klikni nasprotnikovega ŠAMPIONA (ta napad ne gre v obraz)." : "Klikni nasprotnikovega šampiona ali NJEGOV OBRAZ."); render(); });
         panel.appendChild(b);
       });
       // aktivirana (obrambna/utility) sposobnost — namesto napada
@@ -1284,8 +1291,8 @@ function renderActions() {
       const cancel = el("button", "action-btn", "Prekliči");
       cancel.addEventListener("click", () => { selAttacker = null; selAtkIndex = null; render(); });
       panel.appendChild(cancel);
-      // gumb za napad na obraz (če je izbran napad)
-      if (selAtkIndex != null) {
+      // gumb za napad na obraz (če je izbran napad, ki sme v obraz)
+      if (selAtkIndex != null && !(d.attacks[selAtkIndex] && d.attacks[selAtkIndex].noFace)) {
         const face = el("button", "action-btn attack", "⚔ Napadi OBRAZ nasprotnika");
         face.addEventListener("click", () => doAttack({ kind: "face" }));
         panel.appendChild(face);
@@ -1434,6 +1441,7 @@ function doAttack(target) {
   const you = G.players[0];
   const c = you.board.find(x => x.uid === selAttacker); if (!c) return;
   const atk = def(c).attacks[selAtkIndex];
+  if (target.kind === "face" && atk && atk.noFace) { toast("Ta napad lahko cilja le bitja, ne obraza."); return; }
   const attUid = selAttacker, atkIdx = selAtkIndex;
   payThen(atk.cost, def(c).id === "celtic-lugh", idx => {
     const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("opp");
@@ -1527,20 +1535,38 @@ function aiAttack(queue) {
   if (!queue.length) { V2.endTurn(); aiBusy = false; render(); checkOver(); if (!G.over) showTurnBanner("Tvoja poteza", "you"); return; }
   const c = queue.shift();
   if (!V2.canAttack(ai, c)) { aiAttack(queue); return; }
-  const best = aiBestAttack(c);
-  if (!best) { aiAttack(queue); return; }
-  // tarča: spoštuj Taunt (zid) — sicer ubij šampiona če moreš, sicer pritisni obraz
-  let target = { kind: "face" };
   const taunts = V2.tauntsOf(you);
-  const bestVs = pool => { let bt = null, btDmg = -1; pool.forEach(t => { const pr = V2.previewDamage(c, ai, t, def(c).attacks[best.i]); if (pr && pr.dmg > btDmg) { btDmg = pr.dmg; bt = t; } }); return { bt, btDmg }; };
+  const faceAtk = aiBestAttack(c, true); // najboljši napad, ki sme v obraz (preskoči noFace)
+  // poišči najboljšo (tarča, napad) kombinacijo v bazenu bitij — dovoli noFace napade
+  const bestVsPool = pool => {
+    let bt = null, bi = null, btDmg = -1, btScore = -1;
+    pool.forEach(t => {
+      (def(c).attacks || []).forEach((atk, i) => {
+        if (!V2.canPay(ai, atk.cost, def(c).id === "celtic-lugh")) return;
+        const pr = V2.previewDamage(c, ai, t, atk);
+        const dmg = pr ? pr.dmg : (atk.damage || 0);
+        const score = dmg + (atk.effect ? 0.5 : 0); // ob enaki škodi raje napad z učinkom
+        if (score > btScore) { btScore = score; btDmg = dmg; bt = t; bi = i; }
+      });
+    });
+    return { bt, bi, btDmg };
+  };
+  let target = null, atkIdx = null;
   if (taunts.length) {
-    const { bt } = bestVs(taunts); target = { kind: "champ", uid: bt.uid };
+    const { bt, bi } = bestVsPool(taunts);
+    if (bt != null) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; }
   } else if (you.board.length) {
-    const { bt, btDmg } = bestVs(you.board);
-    if (bt && btDmg >= (bt.maxHp - bt.damage)) target = { kind: "champ", uid: bt.uid };
+    const { bt, bi, btDmg } = bestVsPool(you.board);
+    if (bt && btDmg >= (bt.maxHp - bt.damage)) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; } // lethal na bitje
+    else if (faceAtk && you.life <= faceAtk.dmg + 5) { target = { kind: "face" }; atkIdx = faceAtk.i; } // skoraj-lethal pritisk
+    else if (bt) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; }
+    else if (faceAtk) { target = { kind: "face" }; atkIdx = faceAtk.i; }
+  } else if (faceAtk) {
+    target = { kind: "face" }; atkIdx = faceAtk.i;
   }
+  if (target == null || atkIdx == null) { aiAttack(queue); return; }
   const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("you");
-  const res = V2.attack(ai, c.uid, best.i, target);
+  const res = V2.attack(ai, c.uid, atkIdx, target);
   if (!res || !res.ok) { aiAttack(queue); return; }
   animateStrike(c.uid, targetEl, res.dmg, res.dodged);
   setTimeout(() => {
@@ -1549,12 +1575,15 @@ function aiAttack(queue) {
     setTimeout(() => aiAttack(queue), 350);
   }, 320);
 }
-function aiBestAttack(c) {
+function aiBestAttack(c, face) {
   const ai = G.players[1];
   let best = null;
   (def(c).attacks || []).forEach((atk, i) => {
+    if (face && atk.noFace) return; // proti obrazu preskoči napade, ki smejo le na bitja
     if (!V2.canPay(ai, atk.cost, def(c).id === "celtic-lugh")) return;
-    if (!best || (atk.damage || 0) > (best.dmg || 0)) best = { i, dmg: atk.damage || 0 };
+    const dmg = atk.damage || 0;
+    const score = dmg + (atk.effect ? 0.5 : 0); // ob enaki škodi raje napad z učinkom
+    if (!best || score > best.score) best = { i, dmg, score };
   });
   return best;
 }
