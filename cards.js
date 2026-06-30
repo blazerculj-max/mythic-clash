@@ -688,6 +688,12 @@ const CARDS = {
   "energy-sun":        { id: "energy-sun",        name: "Sun Energy",        type: "Energy", pantheon: null, rarity: "Common", energyType: "Sun",        flavorText: "The eye of the day." },
   "energy-moon":       { id: "energy-moon",       name: "Moon Energy",       type: "Energy", pantheon: null, rarity: "Common", energyType: "Moon",        flavorText: "The lantern of the night." },
 
+  /* ---- DUAL ENERGIJE (pol/pol — plačajo eno OD dveh tipov). Redke, ne preveč! ---- */
+  "energy-dual-skywar":     { id: "energy-dual-skywar",     name: "Stormfront",   type: "Energy", pantheon: null, rarity: "Rare", energyTypes: ["Sky", "War"],     flavorText: "Nebo in jeklo, združena." },
+  "energy-dual-sunmoon":    { id: "energy-dual-sunmoon",    name: "Eclipse",      type: "Energy", pantheon: null, rarity: "Rare", energyTypes: ["Sun", "Moon"],    flavorText: "Dan in noč v enem trenutku." },
+  "energy-dual-firenature": { id: "energy-dual-firenature", name: "Wildgrowth",   type: "Energy", pantheon: null, rarity: "Rare", energyTypes: ["Fire", "Nature"], flavorText: "Plamen, ki rodi nov gozd." },
+  "energy-dual-frostwar":   { id: "energy-dual-frostwar",   name: "Winter March", type: "Energy", pantheon: null, rarity: "Rare", energyTypes: ["Frost", "War"],   flavorText: "Pohod skozi led in kri." },
+
   /* ====================== RELIC ====================== */
   "relic-thunderbolt": {
     id: "relic-thunderbolt", name: "Thunderbolt Shard", type: "Relic", pantheon: "Greek", rarity: "Rare",
@@ -968,6 +974,23 @@ const CARDS = {
     attacks: [{ name: "Moonbolt", cost: ["Moon"], damage: 20, effect: null, text: "Bliskovit napad." }],
     ability: { name: "Naval (Charge)", text: "Lahko napade že v potezi priklica." },
     weakness: "Sun", resistance: null, flavorText: "Iskra mesečine z želom.",
+  },
+  // MANA DORKI (le nekaj — tapnejo za energijo namesto napada)
+  "minion-oracle-adept": {
+    id: "minion-oracle-adept", name: "Oracle Adept", type: "Champion", minion: true,
+    pantheon: "Greek", rarity: "Uncommon", stage: "basic", summonCost: 1, hp: 20,
+    attacks: [{ name: "Quarterstaff", cost: ["Wisdom"], damage: 10, effect: null, text: "Šibak udarec." }],
+    activated: { name: "Channel", cost: [], effect: "rampAny", text: "Tapni (brez mane): dodaj 1 NEVTRALNO energijo to potezo." },
+    ability: { name: "Mana Dork", text: "Tapni za +1 energijo — pospeši svoj tempo." },
+    weakness: "Fire", resistance: "Wisdom", flavorText: "Kanal za moč prerokb.",
+  },
+  "minion-grove-sprite": {
+    id: "minion-grove-sprite", name: "Grove Sprite", type: "Champion", minion: true,
+    pantheon: "Celtic", rarity: "Uncommon", stage: "basic", summonCost: 1, hp: 20,
+    attacks: [{ name: "Thorn Flick", cost: ["Nature"], damage: 10, effect: null, text: "Komaj opazen udarec." }],
+    activated: { name: "Wellspring", cost: [], effect: "rampNature", text: "Tapni (brez mane): dodaj 1 NATURE energijo to potezo." },
+    ability: { name: "Mana Dork", text: "Tapni za +1 Nature energijo." },
+    weakness: "Fire", resistance: "Nature", flavorText: "Duh, ki točí sok življenja.",
   },
 
   /* ====================== NAPADALNI UROKI (spelle) ======================

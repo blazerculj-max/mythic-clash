@@ -422,13 +422,17 @@ function deckPantheonCounts(list) {
   return c;
 }
 function deckEnergyCounts(list) {
-  const c = {}; list.forEach(id => { const d = CARDS[id]; if (d && d.type === "Energy" && d.energyType) c[d.energyType] = (c[d.energyType] || 0) + 1; });
+  const c = {}; list.forEach(id => {
+    const d = CARDS[id]; if (!d || d.type !== "Energy") return;
+    if (d.energyTypes) { const k = d.energyTypes.join("/"); c[k] = (c[k] || 0) + 1; }
+    else if (d.energyType) c[d.energyType] = (c[d.energyType] || 0) + 1;
+  });
   return c;
 }
 // katere KONKRETNE energije karta potrebuje (iz cen napadov / energyType)
 function cardEnergyTypes(id) {
   const d = CARDS[id]; const out = new Set(); if (!d) return out;
-  if (d.type === "Energy") { if (d.energyType) out.add(d.energyType); return out; }
+  if (d.type === "Energy") { if (d.energyTypes) d.energyTypes.forEach(t => out.add(t)); else if (d.energyType) out.add(d.energyType); return out; }
   if (d.type === "Champion") (d.attacks || []).forEach(a => (a.cost || []).forEach(c => { if (c && c !== "Any") out.add(c); }));
   if (d.energyType && d.energyType !== "Any") out.add(d.energyType);
   return out;
@@ -1016,11 +1020,18 @@ function heroBar(p) {
   </div>`;
 }
 // kompaktna (read-only) mana vrstica za nasprotnika (v glavi)
+// pogled mana žetona: dual (dva glyph-a), nevtralna (✦), navadna
+function manaTokenView(m) {
+  if (m.types) { const a = ENERGY_STYLE[m.types[0]] || {}, b = ENERGY_STYLE[m.types[1]] || {}; return { glyph: (a.glyph || "✦") + (b.glyph || "✦"), color: a.color || "#cfcfcf", color2: b.color || "#cfcfcf", dual: true, label: m.types.join("/") }; }
+  if (m.type === "Any") return { glyph: "✦", color: "#cfcfcf", dual: false, label: "Nevtralna" + (m.temp ? " ⏱" : "") };
+  const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
+  return { glyph: s.glyph, color: s.color, dual: false, label: m.type };
+}
 function manaRow(p) {
   const untap = p.mana.filter(m => !m.tapped).length;
   const pips = p.mana.map(m => {
-    const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
-    return `<span class="v2-mana ${m.tapped ? "tapped" : ""}" style="--mc:${s.color}">${s.glyph}</span>`;
+    const v = manaTokenView(m);
+    return `<span class="v2-mana ${m.tapped ? "tapped" : ""} ${v.dual ? "dual" : ""}" style="--mc:${v.color}">${v.glyph}</span>`;
   }).join("");
   return `<div class="v2-mana-row"><span class="v2-mana-lab">MANA <b>${untap}</b>/${p.mana.length}</span>${pips}</div>`;
 }
@@ -1044,10 +1055,12 @@ function renderManaZone(you) {
     ? `<span class="mz-lab picking">Tapni energije za plačilo: ${costHtml(manaPick.cost)} <b>${manaPick.sel.length}/${manaPick.cost.length}</b></span><button class="mz-cancel">✕</button>`
     : `<span class="mz-lab">ENERGIJE <b>${untap}</b>/${you.mana.length}</span>`;
   const pips = you.mana.map((m, i) => {
-    const s = ENERGY_STYLE[m.type] || { color: "#888", glyph: "✦" };
+    const v = manaTokenView(m);
     const sel = picking && manaPick.sel.includes(i);
-    const cls = "v2-manacard" + (m.tapped ? " tapped" : "") + (sel ? " sel" : "") + (picking && (!m.tapped || sel) ? " selectable" : "");
-    return `<span class="${cls}" data-mi="${i}" style="--mc:${s.color}" ${tipAttr(m.type + " energija", m.tapped ? "Porabljena to potezo (odtapne se na začetku tvoje poteze)." : "Na voljo za priklic / napade / efekte.")}>${s.glyph}<small>${m.type}</small></span>`;
+    const cls = "v2-manacard" + (m.tapped ? " tapped" : "") + (sel ? " sel" : "") + (v.dual ? " dual" : "") + (picking && (!m.tapped || sel) ? " selectable" : "");
+    const tip = m.types ? "Dual energija — plača za " + m.types.join(" ali ") + "." : (m.type === "Any" ? "Nevtralna energija — plača katerikoli tip." : "Na voljo za priklic / napade / efekte.");
+    const style = `--mc:${v.color}` + (v.color2 ? `;--mc2:${v.color2}` : "");
+    return `<span class="${cls}" data-mi="${i}" style="${style}" ${tipAttr(v.label + " energija", m.tapped ? "Porabljena to potezo." : tip)}>${v.glyph}<small>${m.types ? m.types[0].slice(0, 3) + "/" + m.types[1].slice(0, 3) : (m.type === "Any" ? "ANY" : m.type)}</small></span>`;
   }).join("");
   zone.innerHTML = `${lab}<div class="mz-pips">${pips || '<span class="mz-empty">— igraj energijo iz roke —</span>'}</div>`;
   if (picking) {
@@ -1347,14 +1360,7 @@ function payThen(cost, lughAny, onPaid) {
   render();
 }
 function manaSelValid(sel, cost, lughAny) {
-  const you = G.players[0];
-  if (sel.length !== cost.length) return false;
-  const pool = sel.map(i => you.mana[i]).filter(m => m && !m.tapped).map(m => m.type);
-  if (pool.length !== cost.length) return false;
-  const specific = cost.filter(c => c !== "Any"); const anyN = cost.filter(c => c === "Any").length;
-  const tmp = pool.slice();
-  for (const need of specific) { let k = tmp.indexOf(need); if (k < 0 && lughAny && tmp.length) k = 0; if (k < 0) return false; tmp.splice(k, 1); }
-  return tmp.length === anyN;
+  return V2.canPaySelection(G.players[0], sel, cost, lughAny); // podpira dual / nevtralno mano
 }
 
 function onHandClick(inst) {

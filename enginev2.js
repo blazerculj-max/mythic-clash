@@ -231,6 +231,7 @@
     if (hasBond(p, "Egyptian")) synHeal += 15;
     if (hasAlliance(p, "sunring")) synHeal += 10;
     if (synHeal) { p.board.forEach(c => c.damage = Math.max(0, c.damage - synHeal)); logMsg(p.name + ": Sinergija — šampioni +" + synHeal + " HP."); }
+    p.mana = p.mana.filter(m => !m.temp); // začasna (dork) mana izgine ob koncu poteze
   }
 
   /* ---------------- mana ---------------- */
@@ -239,55 +240,55 @@
     const d = def(energyInst); if (d.type !== "Energy") return { ok: false };
     const i = p.hand.indexOf(energyInst); if (i < 0) return { ok: false };
     p.hand.splice(i, 1);
-    p.mana.push({ type: d.energyType, tapped: false });
+    if (d.energyTypes) p.mana.push({ type: d.energyTypes[0], types: d.energyTypes.slice(), tapped: false }); // dual
+    else p.mana.push({ type: d.energyType, tapped: false });
     p.playedEnergyThisTurn = true;
-    logMsg(p.name + " igra energijo: " + d.energyType + " (mana " + p.mana.length + ").");
+    logMsg(p.name + " igra energijo: " + (d.energyTypes ? d.energyTypes.join("/") : d.energyType) + " (mana " + p.mana.length + ").");
     return { ok: true };
   }
-  // ali lahko plačaš cost iz NETAPNJENE mane (brez tapanja)
-  function canPay(p, cost, lughAny) {
-    const pool = p.mana.filter(m => !m.tapped).map(m => m.type);
+  // ali mana žeton pokrije določeno potrebo (podpira dual + "Any" wildcard + Lugh)
+  function manaMatches(m, need, lughAny) {
+    if (need === "Any") return true;
+    if (m.type === "Any" || (m.types && m.types.includes("Any"))) return true; // nevtralna (dork)
+    if (m.type === need && !m.types) return true;
+    if (m.types && m.types.includes(need)) return true;
+    return !!lughAny;
+  }
+  function manaFlex(m) { return m.type === "Any" ? 3 : (m.types ? 2 : 1); } // manj fleksibilno = nižje
+  // razporedi izbrano mano na cost; vrne array uporabljenih žetonov ali null
+  function assignMana(poolObjs, cost, lughAny) {
     const specific = cost.filter(c => c !== "Any");
     const anyN = cost.filter(c => c === "Any").length;
-    const tmp = pool.slice();
+    const used = new Set();
     for (const need of specific) {
-      let idx = tmp.indexOf(need);
-      if (idx < 0 && lughAny && tmp.length) idx = 0;
-      if (idx < 0) return false; tmp.splice(idx, 1);
+      const cands = poolObjs.filter(m => !used.has(m) && manaMatches(m, need, lughAny)).sort((a, b) => manaFlex(a) - manaFlex(b));
+      if (!cands.length) return null;
+      used.add(cands[0]);
     }
-    return tmp.length >= anyN;
+    const rest = poolObjs.filter(m => !used.has(m)).sort((a, b) => manaFlex(a) - manaFlex(b));
+    if (rest.length < anyN) return null;
+    for (let k = 0; k < anyN; k++) used.add(rest[k]);
+    return [...used];
   }
-  // plača (tapne) cost; vrne true/false
+  function canPay(p, cost, lughAny) { return !!assignMana(p.mana.filter(m => !m.tapped), cost, lughAny); }
   function payMana(p, cost, lughAny) {
-    if (!canPay(p, cost, lughAny)) return false;
-    const untapped = p.mana.filter(m => !m.tapped);
-    const specific = cost.filter(c => c !== "Any");
-    const anyN = cost.filter(c => c === "Any").length;
-    for (const need of specific) {
-      let m = untapped.find(x => !x.tapped && x.type === need);
-      if (!m && lughAny) m = untapped.find(x => !x.tapped);
-      m.tapped = true;
-    }
-    let cnt = 0;
-    for (const m of untapped) { if (cnt >= anyN) break; if (!m.tapped) { m.tapped = true; cnt++; } }
-    return true;
+    const sel = assignMana(p.mana.filter(m => !m.tapped), cost, lughAny);
+    if (!sel) return false; sel.forEach(m => m.tapped = true); return true;
   }
-  // plača z IZBRANIMI mana indeksi (ročna izbira); validira, da pokrijejo cost
+  // plača z IZBRANIMI mana indeksi (ročna izbira)
   function paySpecific(p, indices, cost, lughAny) {
     const chosen = (indices || []).map(i => p.mana[i]).filter(m => m && !m.tapped);
     if (chosen.length !== cost.length) return false;
-    const pool = chosen.map(m => m.type);
-    const specific = cost.filter(c => c !== "Any");
-    const anyN = cost.filter(c => c === "Any").length;
-    const tmp = pool.slice();
-    for (const need of specific) {
-      let idx = tmp.indexOf(need);
-      if (idx < 0 && lughAny && tmp.length) idx = 0;
-      if (idx < 0) return false; tmp.splice(idx, 1);
-    }
-    if (tmp.length !== anyN) return false;
-    chosen.forEach(m => m.tapped = true);
-    return true;
+    const sel = assignMana(chosen, cost, lughAny);
+    if (!sel || sel.length !== cost.length) return false;
+    chosen.forEach(m => m.tapped = true); return true;
+  }
+  // validacija ročne izbire brez tapanja (za UI)
+  function canPaySelection(p, indices, cost, lughAny) {
+    const chosen = (indices || []).map(i => p.mana[i]).filter(m => m && !m.tapped);
+    if (chosen.length !== cost.length) return false;
+    const sel = assignMana(chosen, cost, lughAny);
+    return !!(sel && sel.length === cost.length);
   }
   // plača cost: ročno (manaIdx) ali samodejno
   function payCost(p, cost, lughAny, manaIdx) {
@@ -350,6 +351,10 @@
       case "shieldSelf": c.status.shield = true; logMsg(def(c).name + " dvigne Shield."); break;
       case "guard": c.status.guard = true; logMsg(def(c).name + " zavzame obrambno držo (−50% škode)."); break;
       case "blessSelf": c.status.blessing = Math.max(c.status.blessing || 0, 2); logMsg(def(c).name + " dobi Blessing."); break;
+      // mana dork: tapni -> dodaj 1 začasno energijo (velja le to potezo)
+      case "rampAny": p.mana.push({ type: "Any", tapped: false, temp: true }); logMsg(def(c).name + ": +1 nevtralna energija (to potezo)."); break;
+      case "rampNature": p.mana.push({ type: "Nature", tapped: false, temp: true }); logMsg(def(c).name + ": +1 Nature energija (to potezo)."); break;
+      case "rampSun": p.mana.push({ type: "Sun", tapped: false, temp: true }); logMsg(def(c).name + ": +1 Sun energija (to potezo)."); break;
       default: logMsg("(sposobnost " + e + " še ni v v2)"); break;
     }
     return { ok: true };
@@ -821,12 +826,26 @@
     })();
   }
 
+  // Vsak champion dobi univerzalni "Basic Strike" (1 katerakoli energija, manjša škoda).
+  // Specialni napadi ostanejo s svojo specifično energijo. (Enkratna augmentacija CARDS.)
+  function ensureBasicAttacks() {
+    if (!CARDS) return;
+    for (const id in CARDS) {
+      const d = CARDS[id];
+      if (d.type !== "Champion" || d._basic) continue;
+      d._basic = true;
+      const dmg = d.minion ? 10 : 15;
+      d.attacks = [{ name: "Basic Strike", cost: ["Any"], damage: dmg, effect: null, basic: true, text: "Osnovni napad — stane 1 katerokoli energijo." }, ...(d.attacks || [])];
+    }
+  }
+  ensureBasicAttacks();
+
   /* ---------------- exports ---------------- */
   const api = {
-    G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana,
+    G, startGame, beginTurn, endTurn, draw, playEnergy, canPay, payMana, canPaySelection,
     summon, attack, resolveBlock, previewDamage, previewFace, canAttack, summonCostOf, manaCostOf,
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
-    keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
+    keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll, ensureBasicAttacks,
     isTaunt, tauntsOf, synergyOf, synergyLabels, HERO_POWERS, BOARD_MAX, START_LIFE,
   };
   if (typeof module !== "undefined") module.exports = api;

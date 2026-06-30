@@ -557,3 +557,10 @@
 .energy-pick:hover { transform: translateY(-2px); border-color: var(--mc); box-shadow: 0 0 10px -2px var(--mc); }
 .energy-pick.has { border-color: var(--mc); background: color-mix(in srgb, var(--mc) 14%, transparent); }
 .energy-pick b { margin-left: auto; min-width: 18px; text-align: center; color: var(--good, #6fd98a); font-size: 14px; }
+
+/* dual / nevtralna mana žetoni */
+.v2-manacard.dual { background: linear-gradient(125deg, var(--mc) 0 48%, var(--mc2, var(--mc)) 52% 100%); }
+.v2-mana.dual { background: linear-gradient(125deg, var(--mc) 0 48%, var(--mc2, var(--mc)) 52% 100%); }
+.v2-manacard small { white-space: nowrap; }
+/* osnovni napad (basic strike) — diskreten */
+.action-btn.attack.basic, .v2-atk.basic { opacity: 0.92; }

@@ -46,6 +46,8 @@ const STARTER_DECKS = {
       ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2),
       // Napadalni uroki
       ...rep("spell-lightning-bolt", 2), "spell-divine-wrath",
+      // Dual energija + mana dork (zmerno)
+      "energy-dual-skywar", "minion-oracle-adept",
     ],
   },
 
@@ -83,6 +85,8 @@ const STARTER_DECKS = {
       ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2),
       // Napadalni uroki
       "spell-mjolnir", ...rep("spell-frost-nova", 1),
+      // Dual energija
+      "energy-dual-frostwar",
     ],
   },
 
@@ -121,6 +125,8 @@ const STARTER_DECKS = {
       ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2),
       // Napadalni uroki
       ...rep("spell-solar-flare", 2),
+      // Dual energija
+      "energy-dual-sunmoon",
     ],
   },
 
@@ -158,6 +164,8 @@ const STARTER_DECKS = {
       ...rep("minion-domovoi", 2), ...rep("minion-vila", 2),
       // Napadalni uroki
       ...rep("spell-fireball", 2),
+      // Dual energija
+      "energy-dual-firenature",
     ],
   },
 
@@ -195,6 +203,8 @@ const STARTER_DECKS = {
       ...rep("minion-legionnaire", 2), ...rep("minion-velite", 2),
       // Napadalni uroki
       ...rep("spell-javelin", 2),
+      // Dual energija
+      "energy-dual-skywar",
     ],
   },
 
@@ -233,6 +243,8 @@ const STARTER_DECKS = {
       ...rep("minion-druid-acolyte", 2), ...rep("minion-pixie", 2),
       // Napadalni uroki
       ...rep("spell-archer-volley", 2),
+      // Dual energija + mana dork
+      "energy-dual-sunmoon", "minion-grove-sprite",
     ],
   },
 };
