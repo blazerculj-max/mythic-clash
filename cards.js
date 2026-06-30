@@ -969,6 +969,59 @@ const CARDS = {
     ability: { name: "Naval (Charge)", text: "Lahko napade že v potezi priklica." },
     weakness: "Sun", resistance: null, flavorText: "Iskra mesečine z želom.",
   },
+
+  /* ====================== NAPADALNI UROKI (spelle) ======================
+     Oracle karte, ki zadajo škodo: en cilj, ves nasprotnikov board (AoE) ali obraz.
+     Stanejo generično mano (ne potrebujejo specifične energije).
+  ------------------------------------------------------------------------- */
+  "spell-javelin": {
+    id: "spell-javelin", name: "Javelin Strike", type: "Oracle", pantheon: "Roman", rarity: "Common",
+    manaCost: 1, effect: "dmgEnemy25",
+    text: "Zada 25 škode izbranemu nasprotnikovemu šampionu.",
+    flavorText: "Hiter met, ki najde rego v oklepu."
+  },
+  "spell-lightning-bolt": {
+    id: "spell-lightning-bolt", name: "Lightning Bolt", type: "Oracle", pantheon: "Greek", rarity: "Uncommon",
+    manaCost: 2, effect: "dmgEnemy30",
+    text: "Zada 30 škode izbranemu nasprotnikovemu šampionu.",
+    flavorText: "Strela z jasnega — naravnost v tarčo."
+  },
+  "spell-fireball": {
+    id: "spell-fireball", name: "Fireball", type: "Oracle", pantheon: "Slavic", rarity: "Rare",
+    manaCost: 3, effect: "fireball40burn",
+    text: "Zada 40 škode izbranemu šampionu in ga zažge (Ožig).",
+    flavorText: "Krogla ognja, ki gori še dolgo po udarcu."
+  },
+  "spell-mjolnir": {
+    id: "spell-mjolnir", name: "Mjölnir Strike", type: "Oracle", pantheon: "Norse", rarity: "Epic",
+    manaCost: 3, effect: "boltStun50",
+    text: "Thorovo kladivo: 50 škode in Omama izbranemu šampionu.",
+    flavorText: "Grom udari, preden zaslišiš tresk."
+  },
+  "spell-archer-volley": {
+    id: "spell-archer-volley", name: "Archer Volley", type: "Oracle", pantheon: "Celtic", rarity: "Uncommon",
+    manaCost: 2, effect: "aoe15",
+    text: "Zada 15 škode VSEM nasprotnikovim šampionom.",
+    flavorText: "Nebo potemni od puščic."
+  },
+  "spell-solar-flare": {
+    id: "spell-solar-flare", name: "Solar Flare", type: "Oracle", pantheon: "Egyptian", rarity: "Rare",
+    manaCost: 2, effect: "aoe20",
+    text: "Zada 20 škode vsem nasprotnikovim šampionom.",
+    flavorText: "Sončni izbruh sežge vse pred seboj."
+  },
+  "spell-frost-nova": {
+    id: "spell-frost-nova", name: "Frost Nova", type: "Oracle", pantheon: "Norse", rarity: "Rare",
+    manaCost: 3, effect: "aoe15freeze",
+    text: "Zada 15 škode in zmrzne VSE nasprotnikove šampione.",
+    flavorText: "Mraz, ki ustavi celo vojsko."
+  },
+  "spell-divine-wrath": {
+    id: "spell-divine-wrath", name: "Divine Wrath", type: "Oracle", pantheon: "Greek", rarity: "Uncommon",
+    manaCost: 2, effect: "faceDmg25",
+    text: "Zada 25 škode naravnost nasprotnikovemu HEROJU (obraz).",
+    flavorText: "Bes bogov ne pozna ščitov."
+  },
 };
 
 /* expose */

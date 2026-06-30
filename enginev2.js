@@ -18,8 +18,8 @@
   const CARDS = global.CARDS;
   const STARTER_DECKS = global.STARTER_DECKS;
 
-  const START_LIFE = 120;   // heroj prenese več nebranjenih napadov (1 hit ni dovolj);
-                            // kasneje lahko vsak heroj dobi svojo vrednost (deck/champion).
+  const START_LIFE = 150;   // z odprtim startom (prazen board), 6-board swarmom in napadalnimi
+                            // uroki je 150 boljši — boardi se razvijejo, burst ne konča igre v 2 potezah.
   const BOARD_MAX = 6;
   const HAND_START = 7;
   let UID = 1;
@@ -298,8 +298,9 @@
   function cardNeedsTarget(d) {
     if (d.type === "Champion") return null;
     if (d.type === "Realm") return null;
-    const ENEMY = ["curseEnemy", "dmgEnemy30", "burnEnemy", "freezeEnemy"];
+    const ENEMY = ["curseEnemy", "dmgEnemy30", "dmgEnemy25", "dmgEnemy40", "fireball40burn", "boltStun50", "burnEnemy", "freezeEnemy"];
     const ALLY = ["healActive60", "healActive40", "blessActive"];
+    // aoe* in faceDmg25 ne potrebujejo tarče (prizadenejo ves board / obraz)
     const e = d.effect;
     if (d.type === "Relic" && d.relicMode === "attach") return "ally";
     if (d.type === "Equipment") return "ally";
@@ -417,6 +418,15 @@
       case "burnEnemy": if (enemy) { enemy.status.burn = true; logMsg(def(enemy).name + " gori."); } break;
       case "freezeEnemy": if (enemy) { enemy.status.freeze = true; logMsg(def(enemy).name + " zamrznjen."); } break;
       case "dmgEnemy30": if (enemy) { rawDamage(enemy, opp, 30, "urok"); checkDeaths(); } break;
+      // ---- napadalni uroki (Faza: spelle) ----
+      case "dmgEnemy25": if (enemy) { rawDamage(enemy, opp, 25, "Kopje"); checkDeaths(); } break;
+      case "dmgEnemy40": if (enemy) { rawDamage(enemy, opp, 40, "Ognjena krogla"); checkDeaths(); } break;
+      case "fireball40burn": if (enemy) { rawDamage(enemy, opp, 40, "Ognjena krogla"); enemy.status.burn = true; checkDeaths(); } break;
+      case "boltStun50": if (enemy) { rawDamage(enemy, opp, 50, "Mjölnir"); enemy.status.stun = true; checkDeaths(); } break;
+      case "aoe15": opp.board.slice().forEach(c => rawDamage(c, opp, 15, "Salva")); logMsg(p.name + ": Salva — 15 vsem nasprotnikovim šampionom."); checkDeaths(); break;
+      case "aoe20": opp.board.slice().forEach(c => rawDamage(c, opp, 20, "Sončni izbruh")); logMsg(p.name + ": 20 vsem nasprotnikovim šampionom."); checkDeaths(); break;
+      case "aoe15freeze": opp.board.slice().forEach(c => { rawDamage(c, opp, 15, "Zmrzal"); c.status.freeze = true; }); logMsg(p.name + ": Zmrzal — 15 + zmrznitev vsem."); checkDeaths(); break;
+      case "faceDmg25": opp.life -= 25; logMsg(p.name + ": urok udari OBRAZ za 25 (življenja " + opp.name + ": " + opp.life + ")."); if (opp.life <= 0) endGame(G.players.indexOf(p), opp.name + " je premagan z urokom!"); break;
       default: logMsg("(učinek " + key + " še ni v v2)"); break;
     }
   }
@@ -817,7 +827,7 @@
     summon, attack, resolveBlock, previewDamage, previewFace, canAttack, summonCostOf, manaCostOf,
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll,
-    isTaunt, tauntsOf, synergyOf, synergyLabels, BOARD_MAX, START_LIFE,
+    isTaunt, tauntsOf, synergyOf, synergyLabels, HERO_POWERS, BOARD_MAX, START_LIFE,
   };
   if (typeof module !== "undefined") module.exports = api;
   if (global) { global.V2 = api; }

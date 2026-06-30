@@ -265,6 +265,11 @@ let aiBusy = false;
 let seenChampUids = new Set(); // za "enter play" animacijo (vsak šampion se animira ob prvem prikazu)
 
 /* ---------------- SETUP ---------------- */
+function heroPowerBlurb(pantheon) {
+  const hp = V2.HERO_POWERS && (V2.HERO_POWERS[pantheon] || V2.HERO_POWERS.Greek);
+  if (!hp) return "";
+  return `<div class="deck-hp" ${tipAttr("★ " + hp.name, hp.text)}>★ ${hp.name} <span class="deck-hp-cost">⬡${hp.cost}</span></div>`;
+}
 function setupInner(html) { const w = document.querySelector("#v2-setup .v2-setup-inner"); w.innerHTML = html; return w; }
 function setupHeader(sub) {
   return `<span class="eyebrow">Wars of Pantheons · Arena v2</span>
@@ -298,7 +303,7 @@ function showPremade() {
     const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
     return `<button class="deck-card" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
       <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
-      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div></button>`;
+      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div>${heroPowerBlurb(d.pantheon)}</button>`;
   }).join("");
   const w = setupInner(`${setupHeader("Hitra igra — izberi deck.")}
     <button class="rules-toggle" id="back-menu" style="align-self:flex-start">← Nazaj</button>
@@ -496,10 +501,10 @@ function openRunStart() {
     const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
     return `<button class="deck-card run-pick" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
       <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
-      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div></button>`;
+      <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div>${heroPowerBlurb(d.pantheon)}</button>`;
   }).join("");
   const s = showRunScreen(`
-    <header class="run-head"><div><span class="eyebrow">Roguelike pohod</span><h2 class="run-title">Izberi začetni deck</h2></div>
+    <header class="run-head"><div><span class="eyebrow">Roguelike kampanja</span><h2 class="run-title">Izberi začetni deck</h2></div>
       <button class="rules-toggle" id="run-back">← Nazaj</button></header>
     <p class="run-sub">Začneš z majhnim jedrom (~14 kart) izbranega panteona. Po vsaki zmagi draftaš karto — če dodaš novo energijo, dobiš tudi ustrezno mano. Gradi okrog enega panteona za moč, ali mešaj za fleksibilnost. Poraz konča pohod.</p>
     <div class="deck-grid run-decks">${cards}</div>`);
@@ -521,22 +526,22 @@ function openArenaStart() {
     const st = PANTHEON_STYLE[d.pantheon] || { symbol: "✦", grad: ["#333", "#555"] };
     return `<button class="deck-card run-pick" data-deck="${d.id}" style="--deck-grad:linear-gradient(160deg,${st.grad[0]},${st.grad[1]})">
       <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
-      <h3>${d.name}</h3><div class="deck-style">Hero: ${d.pantheon}</div><div class="deck-blurb">Določi tvojega heroja (Hero Power). Draftaš lahko karte vseh panteonov.</div></button>`;
+      <h3>${d.name}</h3><div class="deck-blurb">Draftaš lahko karte vseh panteonov.</div>${heroPowerBlurb(d.pantheon)}</button>`;
   }).join("");
   const s = showRunScreen(`
     <header class="run-head"><div><span class="eyebrow">Arena</span><h2 class="run-title">Izberi svojega heroja</h2></div>
       <button class="rules-toggle" id="run-back">← Nazaj</button></header>
-    <p class="run-sub">Panteon določi tvojega heroja in Hero Power. Nato draftaš 30 kart (3 na izbiro). Energije se dodajo samodejno. Igraš do <b>3 porazov</b>; po vsaki zmagi izbereš nagrado.</p>
+    <p class="run-sub">Panteon določi tvojega heroja in <b>Hero Power</b> (prikazan na vsaki kartici). Nato draftaš 30 kart (3 na izbiro), na koncu pa izbereš svoje energije. Igraš do <b>3 porazov</b>; po vsaki zmagi izbereš nagrado.</p>
     <div class="deck-grid run-decks">${cards}</div>`);
   s.querySelector("#run-back").addEventListener("click", backToMenu);
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startArena(b.dataset.deck)));
 }
 function startArena(coreDeckId) {
-  RUN = { mode: "arena", deckId: coreDeckId, deck: [], draftLeft: ARENA_PICKS, heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, wins: 0, losses: 0, upgrades: {} };
+  RUN = { mode: "arena", deckId: coreDeckId, deck: [], draftLeft: ARENA_PICKS, energyDone: false, energyPick: {}, heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, wins: 0, losses: 0, upgrades: {} };
   saveRun(); showArenaDraft();
 }
 function showArenaDraft() {
-  if (RUN.draftLeft <= 0) { fillArenaEnergy(); saveRun(); showRunMap(); return; }
+  if (RUN.draftLeft <= 0) return showArenaEnergyPick();
   const pool = randomCardPool();
   const offers = []; let guard = 0;
   while (offers.length < 3 && guard++ < 200) { const id = pool[(Math.random() * pool.length) | 0]; if (!offers.includes(id)) offers.push(id); }
@@ -558,6 +563,37 @@ function showArenaDraft() {
   s.querySelectorAll(".reward-card").forEach((b, i) => b.addEventListener("click", () => { RUN.deck.push(offers[i]); RUN.draftLeft--; saveRun(); showArenaDraft(); }));
 }
 function fillArenaEnergy() { RUN.deck.push(...energyFor(RUN.deck, 0.5)); }
+// na koncu drafta: izberi svoje energije (10–16), da deck ni samo energij
+function showArenaEnergyPick() {
+  const MIN = 10, MAX = 16;
+  RUN.energyPick = RUN.energyPick || {};
+  const chosen = RUN.energyPick;
+  const total = Object.values(chosen).reduce((a, b) => a + b, 0);
+  const need = {}; RUN.deck.forEach(id => cardEnergyTypes(id).forEach(t => need[t] = (need[t] || 0) + 1));
+  const rec = Object.keys(need).sort((a, b) => need[b] - need[a]).map(t => { const s = ENERGY_STYLE[t] || {}; return `<span class="aff-chip" style="--mc:${s.color}">${s.glyph} ${t} ×${need[t]}</span>`; }).join("") || "<i>—</i>";
+  const types = (typeof ENERGY_TYPES !== "undefined" ? ENERGY_TYPES : Object.keys(ENERGY_STYLE).filter(k => k !== "Any"));
+  const btns = types.map(t => { const s = ENERGY_STYLE[t] || {}; const c = chosen[t] || 0; return `<button class="energy-pick ${c ? "has" : ""}" data-t="${t}" style="--mc:${s.color}">${s.glyph} ${t} <b>${c}</b></button>`; }).join("");
+  const s = showRunScreen(`
+    <header class="run-head"><div><span class="eyebrow">Arena · energije</span><h2 class="run-title">Izberi energije (${total}/${MAX})</h2></div></header>
+    <p class="run-sub">Tvoje karte največ rabijo: ${rec}. Dodaj <b>${MIN}–${MAX}</b> energij. Klik = +1, desni klik = −1. (Tako deck ni samo energije — preostanek so tvoje karte.)</p>
+    <div class="energy-pick-grid">${btns}</div>
+    <div class="run-foot">
+      <button class="rules-toggle" id="ep-auto">Samodejno priporočilo</button>
+      <button class="rules-toggle" id="ep-clear">Počisti</button>
+      <button class="btn-primary" id="ep-go" ${total >= MIN ? "" : "disabled"}>Potrdi (${total})</button>
+    </div>`);
+  s.querySelectorAll(".energy-pick").forEach(b => {
+    b.addEventListener("click", () => { const t = b.dataset.t; if (Object.values(chosen).reduce((a, c) => a + c, 0) >= MAX) { toast("Največ " + MAX + " energij."); return; } chosen[t] = (chosen[t] || 0) + 1; saveRun(); showArenaEnergyPick(); });
+    b.addEventListener("contextmenu", e => { e.preventDefault(); const t = b.dataset.t; if (chosen[t] > 0) { chosen[t]--; saveRun(); showArenaEnergyPick(); } });
+  });
+  s.querySelector("#ep-auto").addEventListener("click", () => { RUN.energyPick = {}; fillArenaEnergy(); finalizeArenaEnergy(); });
+  s.querySelector("#ep-clear").addEventListener("click", () => { RUN.energyPick = {}; saveRun(); showArenaEnergyPick(); });
+  s.querySelector("#ep-go").addEventListener("click", () => {
+    Object.keys(chosen).forEach(t => { for (let i = 0; i < chosen[t]; i++) { const e = energyCardFor(t); if (e) RUN.deck.push(e); } });
+    finalizeArenaEnergy();
+  });
+}
+function finalizeArenaEnergy() { RUN.energyDone = true; RUN.energyPick = {}; saveRun(); showRunMap(); }
 
 function showRunMap() {
   if (RUN.mode === "arena") return showArenaMap();
@@ -590,6 +626,7 @@ function showRunMap() {
 }
 function showArenaMap() {
   if (RUN.draftLeft > 0) return showArenaDraft();
+  if (!RUN.energyDone) return showArenaEnergyPick();
   const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
   const over = RUN.losses >= 3;
   const hearts = "❤".repeat(3 - RUN.losses) + "🖤".repeat(RUN.losses);

@@ -44,6 +44,8 @@ const STARTER_DECKS = {
       "equip-spear-olympus", "equip-legion-aegis",
       // Minioni (1 mana)
       ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2),
+      // Napadalni uroki
+      ...rep("spell-lightning-bolt", 2), "spell-divine-wrath",
     ],
   },
 
@@ -79,6 +81,8 @@ const STARTER_DECKS = {
       "equip-wolf-blade", "equip-jotun-hide",
       // Minioni (1 mana)
       ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2),
+      // Napadalni uroki
+      "spell-mjolnir", ...rep("spell-frost-nova", 1),
     ],
   },
 
@@ -115,6 +119,8 @@ const STARTER_DECKS = {
       "equip-khopesh-ra", "equip-legion-aegis",
       // Minioni (1 mana)
       ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2),
+      // Napadalni uroki
+      ...rep("spell-solar-flare", 2),
     ],
   },
 
@@ -150,6 +156,8 @@ const STARTER_DECKS = {
       "equip-bark-carapace", "equip-jotun-hide",
       // Minioni (1 mana)
       ...rep("minion-domovoi", 2), ...rep("minion-vila", 2),
+      // Napadalni uroki
+      ...rep("spell-fireball", 2),
     ],
   },
 
@@ -185,6 +193,8 @@ const STARTER_DECKS = {
       "equip-legion-aegis", "equip-spear-olympus",
       // Minioni (1 mana)
       ...rep("minion-legionnaire", 2), ...rep("minion-velite", 2),
+      // Napadalni uroki
+      ...rep("spell-javelin", 2),
     ],
   },
 
@@ -221,6 +231,8 @@ const STARTER_DECKS = {
       "equip-gaebolg", "equip-bark-carapace",
       // Minioni (1 mana)
       ...rep("minion-druid-acolyte", 2), ...rep("minion-pixie", 2),
+      // Napadalni uroki
+      ...rep("spell-archer-volley", 2),
     ],
   },
 };
