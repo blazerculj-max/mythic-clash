@@ -34,6 +34,24 @@
     Celtic:   { name: "Moon Mend",       cost: 1, kind: "heroHeal",   value: 18, text: "Heroj dobi +18 življenja (poceni)." },
   };
 
+  // ARTEFAKTI — trajni run-modifikatorji (StS relikvije / Balatro jokerji). Veljajo cel run.
+  // hook: battleStart | turnStart | onHeal | onKill | passive(computeDamage). scale=true -> Balatro multiplikativni motor.
+  const ARTIFACTS = {
+    "art-aegis":      { name: "Aegisov pulz",   icon: "🛡", rarity: "common", hook: "turnStart", desc: "Na začetku tvoje poteze vsi tvoji šampioni dobijo Shield." },
+    "art-runestone":  { name: "Runski kamen",   icon: "🔷", rarity: "common", hook: "turnStart", desc: "Vsako potezo dobiš +1 nevtralno (Any) energijo." },
+    "art-warhorn":    { name: "Bojni rog",      icon: "📯", rarity: "common", hook: "passive",   desc: "Vsi tvoji napadi zadajo +5 škode." },
+    "art-oracle-eye": { name: "Orakeljsko oko", icon: "👁", rarity: "common", hook: "battleStart", desc: "Vsako bitko začneš z 2 dodatnima kartama." },
+    "art-thiefglove": { name: "Tatova rokavica",icon: "🧤", rarity: "uncommon", hook: "onKill",  desc: "Ko premagaš nasprotnikovega šampiona, potegneš karto." },
+    "art-healtotem":  { name: "Zdravilni totem",icon: "🪬", rarity: "uncommon", hook: "turnStart", desc: "Na začetku poteze tvoj najbolj poškodovan šampion +15 HP." },
+    "art-vampirefang":{ name: "Vampirski zob",  icon: "🦇", rarity: "uncommon", hook: "passive",  desc: "Vsi tvoji napadi imajo Krvoses (zdraviš se za zadano škodo)." },
+    // --- Balatro motorji (skalirajo ČEZ bitko) ---
+    "art-warmblood":  { name: "Vrela kri",      icon: "🩸", rarity: "rare", scale: true, hook: "onHeal", desc: "Vsakič ko se kaj tvojega pozdravi, +3 TRAJNE škode do konca bitke." },
+    "art-bloodtax":   { name: "Krvni davek",    icon: "💀", rarity: "rare", scale: true, hook: "onKill", desc: "Vsak premagan nasprotnik ti da +5 TRAJNE škode do konca bitke." },
+    "art-sunaltar":   { name: "Sončni oltar",   icon: "🌞", rarity: "rare", scale: true, hook: "passive", desc: "Tvoji Sun napadi zadajo ×1.5 škode." },
+    "art-momentum":   { name: "Momentum jedro", icon: "🌀", rarity: "rare", scale: true, hook: "passive", desc: "Vsak zaporedni napad v potezi je +5 močnejši (ponastavi se vsako potezo)." },
+    "art-glasscannon":{ name: "Steklen top",    icon: "💥", rarity: "rare", hook: "battleStart", desc: "Tvoji napadi +15 škode, a vsako bitko začneš s −30 življenja. Tveganje." },
+  };
+
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function omenRoll() { return Math.random() < 0.5; }
   function def(inst) { return CARDS[inst.cardId]; }
@@ -195,6 +213,7 @@
     if (!first) draw(p, 1);
     else logMsg(p.name + " začenja (brez vleke na prvi potezi).");
     if (!first && hasBond(p, "Greek")) { draw(p, 1); logMsg(p.name + ": Greek Bond (Modrost) — +1 karta."); } // Greek Bond
+    artTurnStart(p); // Artefakti: turnStart (Aegis, Runski kamen, Zdravilni totem, Momentum reset)
   }
   function draw(p, n) {
     for (let i = 0; i < n; i++) {
@@ -231,7 +250,7 @@
     let synHeal = 0;
     if (hasBond(p, "Egyptian")) synHeal += 15;
     if (hasAlliance(p, "sunring")) synHeal += 10;
-    if (synHeal) { p.board.forEach(c => c.damage = Math.max(0, c.damage - synHeal)); logMsg(p.name + ": Sinergija — šampioni +" + synHeal + " HP."); }
+    if (synHeal) { p.board.forEach(c => c.damage = Math.max(0, c.damage - synHeal)); logMsg(p.name + ": Sinergija — šampioni +" + synHeal + " HP."); artHeal(p); }
     p.mana = p.mana.filter(m => !m.temp); // začasna (dork) mana izgine ob koncu poteze
   }
 
@@ -347,8 +366,8 @@
     c.tapped = true;
     const e = d.activated.effect;
     switch (e) {
-      case "healSelf30": c.damage = Math.max(0, c.damage - 30); logMsg(def(c).name + " se pozdravi 30 HP."); break;
-      case "healBoard20": p.board.forEach(x => x.damage = Math.max(0, x.damage - 20)); logMsg(p.name + ": vsi šampioni +20 HP."); break;
+      case "healSelf30": c.damage = Math.max(0, c.damage - 30); logMsg(def(c).name + " se pozdravi 30 HP."); artHeal(p); break;
+      case "healBoard20": p.board.forEach(x => x.damage = Math.max(0, x.damage - 20)); logMsg(p.name + ": vsi šampioni +20 HP."); artHeal(p); break;
       case "shieldSelf": c.status.shield = true; logMsg(def(c).name + " dvigne Shield."); break;
       case "guard": c.status.guard = true; logMsg(def(c).name + " zavzame obrambno držo (−50% škode)."); break;
       case "blessSelf": c.status.blessing = Math.max(c.status.blessing || 0, 2); logMsg(def(c).name + " dobi Blessing."); break;
@@ -388,6 +407,7 @@
     } else if (hpw.kind === "heroHeal") {
       p.life = Math.min(p.maxLife, p.life + hpw.value);
       logMsg(p.name + ": Hero Power — heroj +" + hpw.value + " (življenja " + p.life + ").");
+      artHeal(p);
     } else if (hpw.kind === "shieldAll") {
       p.board.forEach(c => c.status.shield = true);
       logMsg(p.name + ": Hero Power — vsi šampioni dobijo Shield.");
@@ -415,9 +435,9 @@
     switch (key) {
       case "draw3": draw(p, 3); break;
       case "draw2": case "draw2attach": draw(p, 2); break;
-      case "healActive60": if (ally) { ally.damage = Math.max(0, ally.damage - 60); logMsg(def(ally).name + " +60 HP."); } break;
-      case "healActive40": if (ally) { ally.damage = Math.max(0, ally.damage - 40); logMsg(def(ally).name + " +40 HP."); } break;
-      case "healReserve30": p.board.forEach(c => c.damage = Math.max(0, c.damage - 30)); logMsg(p.name + ": vsi šampioni +30 HP."); break;
+      case "healActive60": if (ally) { ally.damage = Math.max(0, ally.damage - 60); logMsg(def(ally).name + " +60 HP."); artHeal(p); } break;
+      case "healActive40": if (ally) { ally.damage = Math.max(0, ally.damage - 40); logMsg(def(ally).name + " +40 HP."); artHeal(p); } break;
+      case "healReserve30": p.board.forEach(c => c.damage = Math.max(0, c.damage - 30)); logMsg(p.name + ": vsi šampioni +30 HP."); artHeal(p); break;
       case "blessActive": if (ally) { ally.status.blessing = Math.max(ally.status.blessing || 0, 2); logMsg(def(ally).name + " dobi Blessing."); } break;
       case "shieldAll": p.board.forEach(c => c.status.shield = true); logMsg(p.name + ": vsi dobijo Shield."); break;
       case "curseEnemy": if (enemy) { enemy.status.curse = true; logMsg(def(enemy).name + " je preklet."); } break;
@@ -485,6 +505,47 @@
     return { ok: true };
   }
 
+  /* ---------------- Artefakti (run modifikatorji) ---------------- */
+  function hasArt(p, id) { return !!(p && p.artifacts && p.artifacts.indexOf(id) >= 0); }
+  function artAtkFlat(p, atkType) {
+    let b = 0;
+    if (hasArt(p, "art-warhorn")) b += 5;
+    if (hasArt(p, "art-glasscannon")) b += 15;
+    if (p.artBonus) b += (p.artBonus.atkFlat || 0);           // Vrela kri + Krvni davek (skalira)
+    if (hasArt(p, "art-momentum")) b += (p._atkChain || 0) * 5; // Momentum: zaporedni napadi
+    return b;
+  }
+  function artAtkMult(p, atkType) {
+    let m = 1;
+    if (hasArt(p, "art-sunaltar") && atkType === "Sun") m *= 1.5; // Sončni oltar
+    return m;
+  }
+  function artHeal(p) { // ko se nekaj tvojega pozdravi
+    if (hasArt(p, "art-warmblood")) { p.artBonus = p.artBonus || { atkFlat: 0 }; p.artBonus.atkFlat += 3; logMsg(p.name + ": Vrela kri — +3 trajne škode (ta boj)."); }
+  }
+  function artKill(p) { // p je premagal nasprotnikovega šampiona
+    if (!p) return;
+    if (hasArt(p, "art-thiefglove")) { draw(p, 1); logMsg(p.name + ": Tatova rokavica — vlek karte."); }
+    if (hasArt(p, "art-bloodtax")) { p.artBonus = p.artBonus || { atkFlat: 0 }; p.artBonus.atkFlat += 5; logMsg(p.name + ": Krvni davek — +5 trajne škode (ta boj)."); }
+  }
+  function artTurnStart(p) {
+    if (!p.artifacts || !p.artifacts.length) { p._atkChain = 0; return; }
+    if (hasArt(p, "art-runestone")) { p.mana.push({ type: "Any", tapped: false, temp: true }); logMsg(p.name + ": Runski kamen — +1 energija."); }
+    if (hasArt(p, "art-aegis")) { p.board.forEach(c => c.status.shield = true); if (p.board.length) logMsg(p.name + ": Aegisov pulz — Shield vsem."); }
+    if (hasArt(p, "art-healtotem") && p.board.length) {
+      const c = p.board.slice().sort((a, b) => b.damage - a.damage)[0];
+      if (c && c.damage > 0) { c.damage = Math.max(0, c.damage - 15); logMsg(p.name + ": Zdravilni totem — " + def(c).name + " +15 HP."); }
+    }
+    p._atkChain = 0; // Momentum se ponastavi vsako potezo
+  }
+  // klic ob začetku bitke (run nastavi p.artifacts, nato to)
+  function artBattleStart(p) {
+    p.artBonus = { atkFlat: 0 }; p._atkChain = 0;
+    if (!p.artifacts || !p.artifacts.length) return;
+    if (hasArt(p, "art-oracle-eye")) { draw(p, 2); logMsg(p.name + ": Orakeljsko oko — +2 karti."); }
+    if (hasArt(p, "art-glasscannon")) { p.life = Math.max(1, p.life - 30); logMsg(p.name + ": Steklen top — −30 življenja, a +15 škode."); }
+  }
+
   /* ---------------- combat ---------------- */
   function effType(atk) { return (atk.cost || []).find(c => c !== "Any") || null; }
 
@@ -516,6 +577,7 @@
       if (atkType0 === "War" && hasAlliance(atkOwner, "warhost")) { dmg += 15; parts.push("VOJNA"); }        // Norse+Roman
       if ((atkType0 === "Sky" || atkType0 === "Sun") && hasAlliance(atkOwner, "sunsky")) { dmg += 10; parts.push("SONCE"); } // Greek+Egyptian
       if (hasBond(atkOwner, "Slavic")) { const s = defender.status || {}; if (s.burn || s.freeze || s.stun || s.curse || s.poison) { dmg += 15; parts.push("KLETEV"); } } // Slavic Bond
+      const af = artAtkFlat(atkOwner, atkType0); if (af) { dmg += af; parts.push("ARTEFAKT"); } // Artefakti (Bojni rog, Vrela kri, Momentum ...)
     }
     // Sinergije — obramba
     if (dOwner && hasBond(dOwner, "Roman")) { dmg -= 10; parts.push("FORMACIJA"); }                          // Roman Bond
@@ -528,6 +590,7 @@
       if (dd.weakness === atkType) { mult *= 1.5; parts.push("WEAK"); }
       else if (dd.resistance === atkType) { mult *= 0.6; parts.push("RESIST"); }
     }
+    if (atkOwner) { const am = artAtkMult(atkOwner, atkType0); if (am !== 1) { mult *= am; parts.push("OLTAR"); } } // Sončni oltar ×1.5
     if (defender.status.freeze) mult *= (atkOwner && hasAlliance(atkOwner, "winter")) ? 1.4 : 1.2;           // Norse+Slavic
     if (defender.status.stun) mult *= 1.1;
     if (defender.status.guard) { mult *= 0.5; parts.push("GUARD"); } // obrambna drža −50%
@@ -562,8 +625,10 @@
     if (att.status.blessing) dmg += 15;
     if (att.status.curse) dmg -= 15;
     const w = weaponOf(att); if (w && w.atkBonus) dmg += w.atkBonus;
+    if (attOwner) { const af = artAtkFlat(attOwner, atkType); if (af) { dmg += af; parts.push("ARTEFAKT"); } }
     const heavy = (atk.cost || []).length >= 3;
     let mult = 1;
+    if (attOwner) { const am = artAtkMult(attOwner, atkType); if (am !== 1) { mult *= am; parts.push("OLTAR"); } }
     if (fo) { mult *= 1.3; parts.push("FAVOR"); }
     else if (heavy) { mult *= 1.15; parts.push("OMEN?"); }
     dmg = Math.round((dmg * mult) / 5) * 5 + cb.bonus;
@@ -643,7 +708,8 @@
     }
     if (r.dmg > 0) { defn.damage += r.dmg; p.stats.damageDealt += r.dmg; }
     if (defn.status.shield && r.dmg > 0 && !(weaponOf(att) && weaponOf(att).grant === "pierce")) delete defn.status.shield;
-    if ((def(att).lifesteal || equipGrants(att, "lifesteal")) && r.dmg > 0) { defn0heal(att, r.dmg); }
+    if ((def(att).lifesteal || equipGrants(att, "lifesteal") || hasArt(p, "art-vampirefang")) && r.dmg > 0) { defn0heal(att, r.dmg); artHeal(p); }
+    p._atkChain = (p._atkChain || 0) + 1; // Momentum jedro
     // Trni (oklep): branilec vrne škodo napadalcu
     const dArm = armorOf(defn);
     if (dArm && dArm.thorns && r.dmg > 0) {
@@ -670,14 +736,17 @@
     if (att.status.blessing) dmg += 15;
     if (att.status.curse) dmg -= 15;
     const wF = weaponOf(att); if (wF && wF.atkBonus) dmg += wF.atkBonus; // orožje šteje tudi proti obrazu
+    dmg += artAtkFlat(p, atkType); // Artefakti (Bojni rog, Vrela kri, Momentum ...)
     let mult = 1;
+    mult *= artAtkMult(p, atkType); // Sončni oltar
     if (forceOmen) mult *= 1.3; else if (heavy && omen === true) mult *= 1.3; else if (heavy && omen == null) mult *= 1.15;
     dmg = Math.round((dmg * mult) / 5) * 5 + cb.bonus;
     if (dmg < 0) dmg = 0;
     att._comboType = atkType; att._comboCount = cb.count;
     if (heavy && !forceOmen && omen === false) p.favor = Math.min(3, p.favor + 1);
     opp.life -= dmg; p.stats.damageDealt += dmg;
-    if (def(att).lifesteal && dmg > 0) defn0heal(att, dmg);
+    if ((def(att).lifesteal || hasArt(p, "art-vampirefang")) && dmg > 0) { defn0heal(att, dmg); artHeal(p); }
+    p._atkChain = (p._atkChain || 0) + 1; // Momentum jedro
     if (def(att).overload) att._overloadLock = (att._overloadLock || 0) + def(att).overload;
     logMsg(p.name + ": " + def(att).name + " udari OBRAZ za " + dmg + " (življenja " + opp.name + ": " + opp.life + ").");
     applyAtkEffect(atk, att, p, null, opp); // lastni/podporni učinki veljajo tudi proti obrazu
@@ -700,8 +769,8 @@
     if (e === "selfShield") { att.status.shield = true; logMsg(def(att).name + " dvigne Shield."); }
     else if (e === "guardSelf") { att.status.guard = true; logMsg(def(att).name + " zavzame obrambno držo (−50% škode)."); }
     else if (e === "tauntSelf") { att.status.taunt = true; logMsg(def(att).name + " prevzame Taunt (do tvoje naslednje poteze)."); }
-    else if (e === "healSelf20") { att.damage = Math.max(0, att.damage - 20); logMsg(def(att).name + " se pozdravi 20 HP."); }
-    else if (e === "healBoard15") { attOwner.board.forEach(c => c.damage = Math.max(0, c.damage - 15)); logMsg(attOwner.name + ": vsi šampioni +15 HP."); }
+    else if (e === "healSelf20") { att.damage = Math.max(0, att.damage - 20); logMsg(def(att).name + " se pozdravi 20 HP."); artHeal(attOwner); }
+    else if (e === "healBoard15") { attOwner.board.forEach(c => c.damage = Math.max(0, c.damage - 15)); logMsg(attOwner.name + ": vsi šampioni +15 HP."); artHeal(attOwner); }
     else if (e === "drawSelf") { draw(attOwner, 1); logMsg(attOwner.name + ": +1 karta (napad)."); }
     else if (e === "blessActive") att.status.blessing = Math.max(att.status.blessing || 0, 2);
     else if (e === "selfDamage20") { att.damage += 20; }
@@ -756,6 +825,7 @@
     owner.discard.push(champ);
     const i = owner.board.indexOf(champ); if (i >= 0) owner.board.splice(i, 1);
     const killer = oppOf(owner); killer.kills++; killer.stats.kills++;
+    artKill(killer); // Artefakti: Tatova rokavica / Krvni davek
     if (def(champ).onDefeat) { logMsg(def(champ).name + " — Poslednji dih!"); applyKwEffect(def(champ).onDefeat, champ, owner); }
   }
 
@@ -935,6 +1005,7 @@
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll, ensureBasicAttacks,
     isTaunt, tauntsOf, synergyOf, synergyLabels, HERO_POWERS, BOARD_MAX, START_LIFE,
+    ARTIFACTS, artBattleStart, hasArt,
   };
   if (typeof module !== "undefined") module.exports = api;
   if (global) { global.V2 = api; }

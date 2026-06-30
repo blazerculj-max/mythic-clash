@@ -249,7 +249,7 @@ function updateDmgPreview() {
   if (!pv || !target) { hideDmgPreview(); return; }
   document.querySelectorAll(".lethal-target").forEach(e => e.classList.remove("lethal-target"));
   const p = ensureDmgPrev();
-  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15" };
+  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15", ARTEFAKT: "ARTEFAKT ⚔", OLTAR: "SONČNI OLTAR ×1.5" };
   const parts = (pv.parts || []).filter(x => lab[x]);
   p.className = "v2-dmgprev" + (lethal ? " lethal" : "");
   p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
@@ -520,7 +520,7 @@ function openRunStart() {
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startRun(b.dataset.deck)));
 }
 function startRun(deckId) {
-  RUN = { mode: "campaign", deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {} };
+  RUN = { mode: "campaign", deckId, deck: runStarterDeck(deckId), heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, upgrades: {}, artifacts: [] };
   saveRun(); showRunMap();
 }
 function backToMenu() { hideRun(); $("#v2-setup").classList.remove("hidden"); showMainMenu(); }
@@ -545,7 +545,7 @@ function openArenaStart() {
   s.querySelectorAll(".run-pick").forEach(b => b.addEventListener("click", () => startArena(b.dataset.deck)));
 }
 function startArena(coreDeckId) {
-  RUN = { mode: "arena", deckId: coreDeckId, deck: [], draftLeft: ARENA_PICKS, energyDone: false, energyPick: {}, heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, wins: 0, losses: 0, upgrades: {} };
+  RUN = { mode: "arena", deckId: coreDeckId, deck: [], draftLeft: ARENA_PICKS, energyDone: false, energyPick: {}, heroLife: V2.START_LIFE, champHpBonus: 0, handBonus: 0, favorStart: 0, stage: 0, wins: 0, losses: 0, upgrades: {}, artifacts: [] };
   saveRun(); showArenaDraft();
 }
 function showArenaDraft() {
@@ -621,6 +621,7 @@ function showRunMap() {
       ❤ Heroj: <b>${RUN.heroLife}</b> · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)
       ${RUN.champHpBonus ? ` · 🛡 Šampioni +${RUN.champHpBonus} HP` : ""}${RUN.handBonus ? ` · ✋ +${RUN.handBonus} karta` : ""}${RUN.favorStart ? ` · 🔮 +${RUN.favorStart} Naklonjenost` : ""}
     </div>
+    ${artStripHtml()}
     ${affinityHtml(RUN.deck)}
     <div class="run-ladder">${ladder}</div>
     <div class="run-foot">
@@ -643,6 +644,7 @@ function showArenaMap() {
     <header class="run-head"><div><span class="eyebrow">Arena · ${RUN.wins} zmag</span><h2 class="run-title">${over ? "🏟️ Arena končana" : "Arena"}</h2></div>
       <button class="rules-toggle" id="run-quit">Opusti</button></header>
     <div class="run-statline">🏆 Zmage: <b>${RUN.wins}</b> · Življenja runa: ${hearts} · 🃏 Deck: <b>${RUN.deck.length}</b> (${champs} šampionov)</div>
+    ${artStripHtml()}
     ${affinityHtml(RUN.deck)}
     <div class="run-foot">
       <button class="rules-toggle" id="run-deckbtn">Poglej deck</button>
@@ -698,17 +700,31 @@ function genRewards() {
   ];
   const c1 = pick(onColor.length ? onColor : all);
   let c2 = pick(all); let g = 0; while (c2 === c1 && g++ < 6) c2 = pick(all);
+  const artOffer = randomArtifactOffer();
   // nadgradnja championa je na voljo le, če imaš šampiona; sicer običajni upgrade
   const hasChamp = RUN.deck.some(id => (CARDS[id] || {}).type === "Champion");
   const pool = hasChamp ? upgrades : upgrades.filter(u => u.t !== "upgradeCard");
   const up = () => pool[(Math.random() * pool.length) | 0];
   // Arena: 2 naključni izbiri (lahko 2 karti, 2 upgrada ali mešano); Kampanja: karta + karta + upgrade
   if (RUN.mode === "arena") {
-    const bag = [{ t: "card", id: c1, tag: "Karta" }, { t: "card", id: c2, tag: "Karta" }, up(), up()];
+    const bag = [{ t: "card", id: c1, tag: "Karta" }, { t: "card", id: c2, tag: "Karta" }, up()];
+    if (artOffer) bag.push(artOffer); else bag.push(up());
     for (let i = bag.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[bag[i], bag[j]] = [bag[j], bag[i]]; }
     return bag.slice(0, 2);
   }
-  return [{ t: "card", id: c1, tag: "V tvojem slogu" }, { t: "card", id: c2, tag: "Divja karta" }, up()];
+  // Kampanja: karta v slogu + divja karta + (artefakt ~55% sicer nadgradnja)
+  const third = (artOffer && Math.random() < 0.55) ? artOffer : up();
+  return [{ t: "card", id: c1, tag: "V tvojem slogu" }, { t: "card", id: c2, tag: "Divja karta" }, third];
+}
+function randomArtifactOffer() {
+  const owned = new Set(RUN.artifacts || []);
+  const pool = Object.keys(V2.ARTIFACTS).filter(id => !owned.has(id));
+  if (!pool.length) return null;
+  return { t: "artifact", id: pool[(Math.random() * pool.length) | 0] };
+}
+function artStripHtml() {
+  const a = RUN.artifacts || []; if (!a.length) return "";
+  return `<div class="run-arts">` + a.map(id => { const A = V2.ARTIFACTS[id]; return A ? `<span class="run-art" ${tipAttr(A.icon + " " + A.name, A.desc)}>${A.icon}</span>` : ""; }).join("") + `</div>`;
 }
 function showReward(rewards) {
   rewards = rewards || genRewards();
@@ -723,6 +739,13 @@ function showReward(rewards) {
         <div class="rw-tag">${r.tag || "Dodaj karto"}</div>
         <div class="rdc-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="rdc-x">${cost}</span></div>
         <div class="rdc-n">${d.name}</div><div class="rdc-m">${d.type}${d.type === "Champion" ? " · ❤" + d.hp : ""}</div>${atks}</button>`;
+    }
+    if (r.t === "artifact") {
+      const A = V2.ARTIFACTS[r.id];
+      return `<button class="reward-card artifact" data-r="artifact" ${tipAttr(A.icon + " " + A.name, A.desc)}>
+        <div class="rw-tag">Artefakt · ${A.rarity}${A.scale ? " · ⚙ motor" : ""}</div>
+        <div class="rw-art-ic">${A.icon}</div>
+        <div class="rdc-n">${A.name}</div><div class="rw-up-desc">${A.desc}</div></button>`;
     }
     return `<button class="reward-card upgrade" data-r="${r.t}">
       <div class="rw-tag">Nadgradnja</div>
@@ -748,6 +771,7 @@ function applyReward(r) {
   if (r.t === "favor") { RUN.favorStart += 1; saveRun(); showRunMap(); return; }
   if (r.t === "remove") { showRunDeck(true); return; }
   if (r.t === "upgradeCard") { showUpgradePicker(); return; }
+  if (r.t === "artifact") { RUN.artifacts = RUN.artifacts || []; RUN.artifacts.push(r.id); saveRun(); toast("Artefakt: " + V2.ARTIFACTS[r.id].icon + " " + V2.ARTIFACTS[r.id].name); showRunMap(); return; }
 }
 
 /* ---------------- Nadgradnja kart (per-champion, trajno v runu) ---------------- */
@@ -845,6 +869,7 @@ function runLaunch() {
   you.favor = Math.min(3, RUN.favorStart || 0);
   if (RUN.champHpBonus) [...you.deck, ...you.hand].forEach(i => { if (def(i).type === "Champion") i.maxHp += RUN.champHpBonus; });
   for (let k = 0; k < (RUN.handBonus || 0); k++) { if (you.deck.length) you.hand.push(you.deck.pop()); }
+  you.artifacts = (RUN.artifacts || []).slice(); V2.artBattleStart(you); // Artefakti runa
   runActive = true;
   hideRun(); $("#v2-setup").classList.add("hidden"); $("#v2-game").classList.remove("hidden");
   showFirstPick();
@@ -1080,6 +1105,11 @@ function renderManaZone(you) {
   return zone;
 }
 
+function artBattleStrip(p) {
+  if (!p.artifacts || !p.artifacts.length) return "";
+  const bonus = p.artBonus && p.artBonus.atkFlat ? `<span class="art-bonus" ${tipAttr("Skalirana škoda", "Artefakt-motorji so do zdaj v tej bitki dodali +" + p.artBonus.atkFlat + " škode vsem napadom.")}>+${p.artBonus.atkFlat}⚔</span>` : "";
+  return `<div class="v2-arts">` + p.artifacts.map(id => { const A = V2.ARTIFACTS[id]; return A ? `<span class="v2-art${A.scale ? " scale" : ""}" ${tipAttr(A.icon + " " + A.name, A.desc)}>${A.icon}</span>` : ""; }).join("") + bonus + `</div>`;
+}
 function renderSide(container, p, isYou) {
   container.innerHTML = "";
   const row = el("div", "v2-board-row");
@@ -1090,7 +1120,7 @@ function renderSide(container, p, isYou) {
     container.appendChild(row);
     const footer = el("div", "v2-you-footer");
     const hb = el("div", "v2-head");
-    hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p);
+    hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p) + artBattleStrip(p);
     footer.appendChild(hb);
     footer.appendChild(renderManaZone(p));
     container.appendChild(footer);
