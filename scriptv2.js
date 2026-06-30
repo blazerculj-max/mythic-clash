@@ -142,11 +142,28 @@ function findChampEl(uid) { return document.querySelector(`.v2-champ[data-uid="$
 function heroElOf(side) { return document.querySelector(`.v2-${side} .v2-hero`); }
 function flyDamage(x, y, dmg, kind) {
   ensureFx();
-  const n = el("div", "v2-fd " + (kind || ""));
+  const size = dmg >= 50 ? " crit" : dmg >= 30 ? " big" : "";
+  const n = el("div", "v2-fd " + (kind || "") + size);
   n.textContent = kind === "heal" ? "+" + dmg : (dmg > 0 ? "-" + dmg : "0");
-  n.style.left = x + "px"; n.style.top = y + "px";
+  // rahel naključni zamik, da se zaporedni številki ne prekrijeta
+  n.style.left = (x + (Math.random() * 22 - 11)) + "px"; n.style.top = y + "px";
   document.getElementById("v2-fx").appendChild(n);
   setTimeout(() => n.remove(), 1100);
+}
+// blisk ob udarcu (Balatro/HS impact)
+function impactBurst(x, y, big) {
+  ensureFx();
+  const n = el("div", "v2-impact" + (big ? " big" : ""));
+  n.style.left = x + "px"; n.style.top = y + "px";
+  document.getElementById("v2-fx").appendChild(n);
+  setTimeout(() => n.remove(), 480);
+}
+// tresenje zaslona (bojišča) ob močnem udarcu / udarcu v heroja
+function shakeScreen(big) {
+  const f = document.querySelector(".v2-field"); if (!f) return;
+  f.classList.remove("v2-shake", "v2-shake-big"); void f.offsetWidth;
+  f.classList.add(big ? "v2-shake-big" : "v2-shake");
+  setTimeout(() => f.classList.remove("v2-shake", "v2-shake-big"), big ? 440 : 320);
 }
 function shakeEl(e) { if (!e) return; e.classList.remove("v2-hit"); void e.offsetWidth; e.classList.add("v2-hit"); setTimeout(() => e.classList.remove("v2-hit"), 450); }
 function lunge(attEl, targetEl) {
@@ -168,8 +185,11 @@ function animateStrike(attUid, targetEl, dmg, dodged) {
     setTimeout(() => {
       shakeEl(targetEl);
       if (isHero && !dodged && dmg > 0) { targetEl.classList.add("hero-hurt"); setTimeout(() => targetEl.classList.remove("hero-hurt"), 600); }
-      if (dodged) flyDamage(c.x, c.y, 0, "dodge");
-      else flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
+      if (dodged) { flyDamage(c.x, c.y, 0, "dodge"); }
+      else {
+        flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
+        if (dmg > 0) { impactBurst(c.x, c.y, dmg >= 40); shakeScreen(isHero || dmg >= 50); }
+      }
     }, 130);
   }
 }
@@ -1383,7 +1403,7 @@ function renderHand() {
       <div class="v2-hc-body"><div class="v2-hc-name">${d.name}</div>
       <div class="v2-hc-meta">${d.type === "Equipment" ? (d.slot === "armor" ? "Oklep" : "Orožje") : d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
       ${d.type === "Champion" ? atkRowsHtml(d, null) : ""}</div>`;
-    node.addEventListener("click", () => onHandClick(inst));
+    node.addEventListener("pointerdown", (e) => startHandDrag(inst, node, e));
     h.appendChild(node);
   });
   $("#v2-hand").classList.toggle("dim", G.turn !== 0 || G.over);
@@ -1535,6 +1555,112 @@ function payThen(cost, lughAny, onPaid) {
 }
 function manaSelValid(sel, cost, lughAny) {
   return V2.canPaySelection(G.players[0], sel, cost, lughAny); // podpira dual / nevtralno mano
+}
+
+/* ---------------- DRAG-TO-PLAY (Hearthstone-style) ---------------- */
+let dragState = null;
+function startHandDrag(inst, node, e) {
+  if (e.button != null && e.button !== 0) return;            // samo levi gumb
+  if (G.turn !== 0 || G.over || manaPick || pendingPlay) { return; }
+  e.preventDefault();
+  dragState = { inst, node, x0: e.clientX, y0: e.clientY, dragging: false, ghost: null, need: V2.cardNeedsTarget(def(inst)) };
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragUp, { once: true });
+}
+function onDragMove(e) {
+  const ds = dragState; if (!ds) return;
+  if (!ds.dragging) {
+    if (Math.hypot(e.clientX - ds.x0, e.clientY - ds.y0) < 8) return; // prag
+    beginDrag();
+  }
+  if (ds.ghost) { ds.ghost.style.left = e.clientX + "px"; ds.ghost.style.top = e.clientY + "px"; }
+  updateDropHover(e.clientX, e.clientY);
+}
+function beginDrag() {
+  const ds = dragState; const d = def(ds.inst);
+  ds.dragging = true;
+  const r = ds.node.getBoundingClientRect();
+  const g = ds.node.cloneNode(true);
+  g.className = "v2-handcard v2-drag-ghost rar-" + (d.rarity || "Common").toLowerCase();
+  g.style.cssText = "";
+  g.style.setProperty("--rar", ds.node.style.getPropertyValue("--rar"));
+  g.style.setProperty("--rar-glow", ds.node.style.getPropertyValue("--rar-glow"));
+  g.style.setProperty("--c-grad", ds.node.style.getPropertyValue("--c-grad"));
+  g.style.width = r.width + "px";
+  document.body.appendChild(g);
+  ds.ghost = g;
+  ds.node.classList.add("dragging-src");
+  document.body.classList.add("v2-dragging");
+  // označi spustne cone
+  if (ds.need === "enemy") document.querySelectorAll('.v2-champ[data-owner="opp"]').forEach(c => c.classList.add("drop-ok"));
+  else if (ds.need === "ally") document.querySelectorAll('.v2-champ[data-owner="you"]').forEach(c => c.classList.add("drop-ok"));
+  else { const f = document.querySelector(".v2-field"); if (f) f.classList.add("drop-zone"); }
+}
+function updateDropHover(x, y) {
+  const ds = dragState; if (!ds || !ds.dragging) return;
+  document.querySelectorAll(".drop-hot").forEach(e => e.classList.remove("drop-hot"));
+  if (ds.ghost) ds.ghost.style.visibility = "hidden";
+  const under = document.elementFromPoint(x, y);
+  if (ds.ghost) ds.ghost.style.visibility = "";
+  if (!under) return;
+  if (ds.need) {
+    const champEl = under.closest(".v2-champ");
+    if (champEl && ((ds.need === "enemy" && champEl.dataset.owner === "opp") || (ds.need === "ally" && champEl.dataset.owner === "you")))
+      champEl.classList.add("drop-hot");
+  } else {
+    const f = under.closest(".v2-field"); if (f) f.classList.add("drop-hot");
+  }
+}
+function onDragUp(e) {
+  window.removeEventListener("pointermove", onDragMove);
+  const ds = dragState; dragState = null;
+  if (!ds) return;
+  const wasDrag = ds.dragging;
+  cleanupDrag(ds);
+  if (!wasDrag) { onHandClick(ds.inst); return; }            // ni se premaknilo -> klik
+  dropPlay(ds.inst, e.clientX, e.clientY);
+}
+function cleanupDrag(ds) {
+  if (ds.ghost) ds.ghost.remove();
+  if (ds.node) ds.node.classList.remove("dragging-src");
+  document.body.classList.remove("v2-dragging");
+  document.querySelectorAll(".drop-zone, .drop-hot, .drop-ok").forEach(e => e.classList.remove("drop-zone", "drop-hot", "drop-ok"));
+}
+// spusti karto na (x,y): določi cono/tarčo in odigraj (uporabi obstoječo logiko)
+function dropPlay(inst, x, y) {
+  const you = G.players[0]; const d = def(inst);
+  if (G.turn !== 0 || G.over || manaPick) return;
+  const under = document.elementFromPoint(x, y);
+  const overField = !!(under && under.closest(".v2-field"));
+  const champEl = under && under.closest(".v2-champ");
+  if (d.type === "Energy") {
+    if (!overField && !(under && under.closest(".v2-manazone"))) { toast("Spusti energijo na bojišče."); return; }
+    const r = V2.playEnergy(you, inst); if (!r.ok && r.msg) toast(r.msg); render(); return;
+  }
+  if (d.type === "Champion") {
+    if (!overField) return;                                  // spuščeno mimo -> prekliči tiho
+    if (d.stage !== "basic") { toast("Ascension karte ne moreš priklicati."); return; }
+    if (you.board.length >= V2.BOARD_MAX) { toast("Board je poln."); return; }
+    const cost = Array.from({ length: V2.summonCostOf(d) }, () => "Any");
+    payThen(cost, false, idx => { const r = V2.summon(you, inst, idx); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    return;
+  }
+  if (["Oracle", "Relic", "Realm", "Equipment"].includes(d.type)) {
+    const need = V2.cardNeedsTarget(d);
+    if (need) {
+      let targetUid = null;
+      if (champEl && ((need === "enemy" && champEl.dataset.owner === "opp") || (need === "ally" && champEl.dataset.owner === "you")))
+        targetUid = Number(champEl.dataset.uid);
+      if (targetUid == null) { toast(need === "enemy" ? "Spusti na NASPROTNIKOVEGA šampiona." : "Spusti na SVOJEGA šampiona."); return; }
+      const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
+      payThen(cost, false, idx => { const r = V2.playCard(you, inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+      return;
+    }
+    if (!overField) return;
+    const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    return;
+  }
 }
 
 function onHandClick(inst) {
