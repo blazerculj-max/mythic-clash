@@ -794,18 +794,22 @@
       if (e === "freeze") { defn.status.freeze = true; return; }
       if (e === "poison") { defn.status.poison = defn.status.poison || 1; return; }
       if (e === "curse") { defn.status.curse = true; return; }
+      if (e === "stunOmen") { if (omenRoll()) { defn.status.stun = (defn.status.stun || 0) + 1; logMsg(def(defn).name + " je OMAMLJEN (ugoden Omen)!"); } else { logMsg(def(att).name + ": Omen ni ugoden — brez omame."); } return; }
     }
     // lastni / podporni učinki (veljajo tudi proti obrazu)
     if (e === "selfShield") { att.status.shield = true; logMsg(def(att).name + " dvigne Shield."); }
     else if (e === "guardSelf") { att.status.guard = true; logMsg(def(att).name + " zavzame obrambno držo (−50% škode)."); }
     else if (e === "tauntSelf") { att.status.taunt = true; logMsg(def(att).name + " prevzame Taunt (do tvoje naslednje poteze)."); }
-    else if (e === "healSelf20") { att.damage = Math.max(0, att.damage - 20); logMsg(def(att).name + " se pozdravi 20 HP."); artHeal(attOwner); }
+    else if (e === "healSelf20" || e === "heal20") { att.damage = Math.max(0, att.damage - 20); logMsg(def(att).name + " se pozdravi 20 HP."); artHeal(attOwner); }
     else if (e === "healBoard15") { attOwner.board.forEach(c => c.damage = Math.max(0, c.damage - 15)); logMsg(attOwner.name + ": vsi šampioni +15 HP."); artHeal(attOwner); }
-    else if (e === "drawSelf") { draw(attOwner, 1); logMsg(attOwner.name + ": +1 karta (napad)."); }
-    else if (e === "blessActive") att.status.blessing = Math.max(att.status.blessing || 0, 2);
+    else if (e === "healReserve") { attOwner.board.forEach(c => c.damage = Math.max(0, c.damage - 20)); logMsg(attOwner.name + ": vsi šampioni +20 HP."); artHeal(attOwner); }
+    else if (e === "drawSelf" || e === "draw1") { draw(attOwner, 1); logMsg(attOwner.name + ": +1 karta."); }
+    else if (e === "draw2") { draw(attOwner, 2); logMsg(attOwner.name + ": +2 karti."); }
+    else if (e === "reserveBuff") { attOwner.board.forEach(c => c.status.blessing = Math.max(c.status.blessing || 0, 2)); logMsg(attOwner.name + ": vsi šampioni dobijo Blagoslov (+15 škode)."); }
+    else if (e === "blessActive") { att.status.blessing = Math.max(att.status.blessing || 0, 2); logMsg(def(att).name + " dobi Blagoslov."); }
     else if (e === "selfDamage20") { att.damage += 20; }
     else if (e === "selfDamage30") { att.damage += 30; }
-    // ostali efekti (draw...) se migrirajo kasneje
+    else if (e === "swapHint") { /* zgolj flavor (menjava mesta) — brez mehanskega učinka */ }
   }
 
   /* ---------------- keywords (onEnter / onDefeat) ---------------- */

@@ -246,16 +246,26 @@ function revealCard(d, label, done) {
   const card = el("div", "v2-reveal-card");
   card.style.setProperty("--c-grad", st ? `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})` : "linear-gradient(160deg,#23233a,#3a3a52)");
   let glyph = st ? st.symbol : (ENERGY_STYLE[d.energyType] ? ENERGY_STYLE[d.energyType].glyph : (d.type === "Relic" ? "⚜" : d.type === "Oracle" ? "📜" : d.type === "Realm" ? "🏛" : "✦"));
+  // opis učinka, da vidiš KAJ karta naredi
+  let desc = "";
+  if (d.type === "Champion") {
+    const sig = (d.attacks || []).find(a => a.effect && !a.basic);
+    desc = d.ability ? `${d.ability.name}: ${d.ability.text}` : (sig ? sig.text : "");
+  } else {
+    desc = d.text || (typeof EFFECT_TEXT !== "undefined" ? EFFECT_TEXT[d.effect] : "") || "";
+  }
+  const cost = d.type === "Champion" ? `⬡${V2.summonCostOf(d)}` : (d.type === "Energy" ? "+energija" : `⬡${V2.manaCostOf(d)}`);
   card.innerHTML = `<div class="v2-reveal-label">${label || "Nasprotnik igra"}</div>
-    <div class="v2-reveal-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span></div>
+    <div class="v2-reveal-art">${artImg(d, "card-art-img")}<span class="card-art-glyph">${glyph}</span><span class="v2-reveal-cost">${cost}</span></div>
     <div class="v2-reveal-name">${d.name}</div>
-    <div class="v2-reveal-meta">${d.type}${d.type === "Champion" ? " · ❤" + d.hp : ""}</div>`;
+    <div class="v2-reveal-meta">${d.type}${d.type === "Champion" ? " · ❤" + d.hp : ""}${d.pantheon ? " · " + d.pantheon : ""}</div>
+    ${desc ? `<div class="v2-reveal-desc">${desc}</div>` : ""}`;
   const wrap = el("div", "v2-reveal");
   wrap.appendChild(card);
   document.getElementById("v2-fx").appendChild(wrap);
   requestAnimationFrame(() => wrap.classList.add("show"));
-  setTimeout(() => { wrap.classList.remove("show"); wrap.classList.add("out"); }, 1000);
-  setTimeout(() => { wrap.remove(); if (done) done(); }, 1350);
+  setTimeout(() => { wrap.classList.remove("show"); wrap.classList.add("out"); }, 1500); // dlje, da se prebere
+  setTimeout(() => { wrap.remove(); if (done) done(); }, 1900);
 }
 // puščica: posodobi glede na stanje + kazalec
 let arrowPos = { x: 0, y: 0 };
@@ -1823,7 +1833,7 @@ function aiSummon() {
     const boardPan = {}; ai.board.forEach(x => { const p = def(x).pantheon; if (p) boardPan[p] = (boardPan[p] || 0) + 1; });
     affordable.sort((a, b) => ((boardPan[def(b).pantheon] || 0) - (boardPan[def(a).pantheon] || 0)) || (V2.summonCostOf(def(b)) - V2.summonCostOf(def(a))));
     const c = affordable[0];
-    if (c) { const dd = def(c); revealCard(dd, "Nasprotnik prikliče", () => { V2.summon(ai, c); render(); setTimeout(aiSummon, 350); }); return; }
+    if (c) { const dd = def(c); revealCard(dd, "Nasprotnik prikliče", () => { V2.summon(ai, c); render(); setTimeout(aiSummon, 550); }); return; }
   }
   setTimeout(aiSpells, 400);
 }
@@ -1846,7 +1856,7 @@ function aiSpells() {
     if (need === "enemy") targetUid = (you.board[0] || {}).uid;
     else if (need === "ally") targetUid = (ai.board.slice().sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0] || {}).uid;
     const dd = def(inst);
-    revealCard(dd, "Nasprotnik igra", () => { if (dd.type === "Oracle") SFX.play("spell"); V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 300); });
+    revealCard(dd, "Nasprotnik igra", () => { if (dd.type === "Oracle") SFX.play("spell"); V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 550); });
     return; // morda še en
   }
   setTimeout(aiAbilities, 400);
@@ -1869,7 +1879,7 @@ function aiAbilities() {
     (x.maxHp - x.damage) / x.maxHp < 0.55 &&
     ["healSelf30", "guard", "shieldSelf", "healBoard20"].includes(def(x).activated.effect));
   if (c) { V2.activateAbility(ai, c.uid); render(); setTimeout(aiAbilities, 500); return; }
-  setTimeout(() => aiAttack(ai.board.filter(x => V2.canAttack(ai, x))), 450);
+  setTimeout(() => aiAttack(ai.board.filter(x => V2.canAttack(ai, x))), 650);
 }
 function aiAttack(queue) {
   if (G.over) { aiBusy = false; checkOver(); return; }
@@ -1914,8 +1924,8 @@ function aiAttack(queue) {
   setTimeout(() => {
     render(); checkOver();
     if (G.over) { aiBusy = false; return; }
-    setTimeout(() => aiAttack(queue), 350);
-  }, 320);
+    setTimeout(() => aiAttack(queue), 600); // rahlo počasneje, da se vidi vsak napad
+  }, 340);
 }
 function aiBestAttack(c, face) {
   const ai = G.players[1];
