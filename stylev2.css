@@ -798,3 +798,33 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
   60%  { transform: scale(1.28); opacity: 1; filter: brightness(1.6); }
   100% { transform: scale(1); filter: brightness(1); }
 }
+
+/* ===================================================================
+   MANA V DESNEM PANELU + VEČJI KRISTALI + CARD-DRAW ANIMACIJA
+=================================================================== */
+/* mana plošča v desnem stolpcu (vedno vidna, je roka ne prekriva) */
+.mana-panel { border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 12px; flex: 0 0 auto; }
+.mana-panel h4 { font-size: 12px; letter-spacing: 0.14em; color: var(--gold); font-family: "SF Mono", monospace; margin-bottom: 10px; text-transform: uppercase; }
+.mana-panel .v2-manazone { border-top: none; margin: 0; padding: 0; display: block; }
+.mana-panel .mz-lab { display: block; margin-bottom: 8px; }
+.mana-panel .mz-cancel { float: right; }
+/* večji kristali, razporejeni v mrežo */
+.mana-panel .mz-pips { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
+.mana-panel .v2-manacard { width: 100%; height: 56px; font-size: 22px; border-radius: 10px; }
+.mana-panel .v2-manacard small { font-size: 9px; margin-top: 1px; }
+.mana-panel .v2-manacard.selectable:hover { transform: translateY(-3px) scale(1.05); }
+.mana-panel .mz-empty { grid-column: 1 / -1; }
+
+/* responsiven (ozek zaslon): mana plošča gre v vrsto z ostalimi */
+@media (max-width: 760px) {
+  .mana-panel .mz-pips { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); }
+  .mana-panel .v2-manacard { height: 46px; font-size: 18px; }
+}
+
+/* CARD DRAW: nova karta zleti iz decka (desno-spodaj) v svoje mesto v roki */
+.v2-handcard.drawn { animation: cardDraw .46s cubic-bezier(.18,.7,.3,1.15) backwards; animation-delay: calc(var(--draw-i, 0) * 70ms); }
+@keyframes cardDraw {
+  0%   { opacity: 0; transform: translate(360px, 120px) rotate(22deg) scale(.45); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(var(--fan-y, 0)) rotate(var(--fan-rot, 0deg)) scale(1); }
+}

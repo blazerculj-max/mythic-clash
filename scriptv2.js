@@ -288,6 +288,8 @@ let pendingPlay = null;  // {inst, need:'ally'|'enemy'} — čaka izbiro tarče 
 let manaPick = null;     // {cost, lughAny, sel:[], onPaid} — ročna izbira mane
 let aiBusy = false;
 let seenChampUids = new Set(); // za "enter play" animacijo (vsak šampion se animira ob prvem prikazu)
+let seenHandUids = new Set();   // za "card draw" animacijo (vsaka karta zleti v roko ob prvem prikazu)
+let firstHandRender = true;     // prvi render bitke -> brez deal-in animacije (mulligan to že prikaže)
 
 /* ---------------- SETUP ---------------- */
 function heroPowerBlurb(pantheon) {
@@ -1051,7 +1053,7 @@ function runGameOver(won) {
 
 /* ---------------- FIRST CHAMPION PICK ---------------- */
 function showFirstPick() {
-  seenChampUids = new Set(); lastChampFx = {}; prevYouMana = []; // nova bitka -> ponastavi FX sledenje
+  seenChampUids = new Set(); lastChampFx = {}; prevYouMana = []; seenHandUids = new Set(); firstHandRender = true; // nova bitka -> ponastavi FX sledenje
   const you = G.players[0];
   const titleEl = document.querySelector("#v2-pick .mull-title"); if (titleEl) titleEl.textContent = "Mulligan — obdrži ali zameši roko";
   const subEl = document.querySelector("#v2-pick .mull-sub"); if (subEl) subEl.innerHTML = "Začneš s <b>praznim boardom</b> — vse igraš iz roke. Prvi mulligan je zastonj, vsak naslednji poteguje 1 karto manj.";
@@ -1131,6 +1133,7 @@ function render() {
   renderSide($("#v2-you"), G.players[0], true);
   renderHand();
   renderActions();
+  renderManaPanel();
   renderLog();
   $("#v2-turn").innerHTML = G.over ? "" : `Poteza ${G.turnCount} · na potezi: <b>${G.turn === 0 ? "Ti" : "Nasprotnik"}</b>`;
   $("#v2-end").style.display = (G.turn === 0 && !G.over) ? "" : "none";
@@ -1171,7 +1174,7 @@ function deathPoof(x, y) {
 function fxManaChanges() {
   const you = G.players[0]; if (!you) { prevYouMana = []; return; }
   const cur = you.mana.map(m => m.tapped);
-  const pips = document.querySelectorAll('#v2-you .v2-manacard');
+  const pips = document.querySelectorAll('#v2-mana .v2-manacard');
   cur.forEach((tapped, i) => {
     const pip = pips[i]; if (!pip) return;
     if (i >= prevYouMana.length) { pip.classList.add("just-added"); setTimeout(() => pip.classList.remove("just-added"), 500); }
@@ -1220,7 +1223,13 @@ function synergyChips(p) {
     return `<span class="v2-synchip ${l.kind === "bond" ? "syn-bond" : "syn-ally"}" ${tipAttr((l.kind === "bond" ? "⚡ Bond: " : "🤝 ") + l.name, l.text)}>${ic} ${l.name}</span>`;
   }).join("") + `</div>`;
 }
-// interaktivna cona energij POD tvojim boardom — klikni karte energij za plačilo
+// mana cona v desnem panelu (vedno vidna, ne prekrita z roko)
+function renderManaPanel() {
+  const host = $("#v2-mana"); if (!host || !G.players[0]) return;
+  host.innerHTML = "";
+  host.appendChild(renderManaZone(G.players[0]));
+}
+// interaktivna cona energij — klikni karte energij za plačilo
 function renderManaZone(you) {
   const zone = el("div", "v2-manazone");
   const untap = you.mana.filter(m => !m.tapped).length;
@@ -1267,8 +1276,7 @@ function renderSide(container, p, isYou) {
     const hb = el("div", "v2-head");
     hb.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p) + artBattleStrip(p);
     footer.appendChild(hb);
-    footer.appendChild(renderManaZone(p));
-    container.appendChild(footer);
+    container.appendChild(footer); // mana cona je zdaj v desnem panelu (#v2-mana), da je ne prekriva roka
   } else {
     const head = el("div", "v2-head");
     head.innerHTML = heroBar(p) + `<div class="v2-meta">Deck ${p.deck.length} · Roka ${p.hand.length}</div>` + synergyChips(p) + manaRow(p);
@@ -1380,6 +1388,7 @@ function renderHand() {
   const you = G.players[0];
   const h = $("#v2-hand"); h.innerHTML = "";
   const n = you.hand.length, center = (n - 1) / 2;
+  let drawIdx = 0; // zaporedje na novo vlečenih kart (za zamik animacije)
   you.hand.forEach((inst, idx) => {
     const d = def(inst);
     const st = d.pantheon ? PANTHEON_STYLE[d.pantheon] : null;
@@ -1403,9 +1412,15 @@ function renderHand() {
       <div class="v2-hc-body"><div class="v2-hc-name">${d.name}</div>
       <div class="v2-hc-meta">${d.type === "Equipment" ? (d.slot === "armor" ? "Oklep" : "Orožje") : d.type}${d.type === "Champion" ? " ❤" + d.hp : ""}</div>
       ${d.type === "Champion" ? atkRowsHtml(d, null) : ""}</div>`;
+    // card-draw animacija: nove karte (še neviden uid) zletijo iz decka v roko
+    if (inst.uid != null && !seenHandUids.has(inst.uid)) {
+      seenHandUids.add(inst.uid);
+      if (!firstHandRender) { node.classList.add("drawn"); node.style.setProperty("--draw-i", drawIdx++); }
+    }
     node.addEventListener("pointerdown", (e) => startHandDrag(inst, node, e));
     h.appendChild(node);
   });
+  firstHandRender = false; // od zdaj naprej animiramo le na novo vlečene karte
   $("#v2-hand").classList.toggle("dim", G.turn !== 0 || G.over);
 }
 function isPlayable(inst) {
