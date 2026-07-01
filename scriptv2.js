@@ -97,6 +97,8 @@ const EFFECT_TEXT = {
   drawSelf: "Potegneš 1 karto.",
   shieldSelf: "Ta šampion dobi Shield (−20 naslednji udarec).",
   guard: "Obrambna drža: −50% prejete škode do naslednje poteze.",
+  fortify: "Tapni: dobi Taunt (do naslednje poteze) + Shield. Zabetoniraj se.",
+  evolve: "Tapni: +1 urjenje. Pri 3/3 se šampion razvije v močnejšo verzijo.",
   blessSelf: "Ta šampion dobi Blagoslov.",
   dmgPlus20: "Pritrjeni šampion zada +20 škode.", dmgReduce20: "Pritrjeni šampion prejme −20 škode.",
   healEndTurn10: "Pritrjeni šampion se ob koncu poteze pozdravi 10 HP.",
@@ -856,7 +858,7 @@ function showRunDeck(removeMode) {
 // nagrade po zmagi
 function randomCardPool() {
   // igrljive karte (brez energij, ascension in nadgrajenih klonov)
-  return Object.values(CARDS).filter(d => d.type !== "Energy" && d.stage !== "ascended" && !d.upgraded).map(d => d.id);
+  return Object.values(CARDS).filter(d => d.type !== "Energy" && d.stage !== "ascended" && !d.upgraded && !d.evolveOnly).map(d => d.id);
 }
 function genRewards() {
   const all = randomCardPool();
@@ -1373,11 +1375,12 @@ function boardChamp(c, owner, isYou) {
   }
   const tauntTag = taunt ? `<span class="v2-tag taunt" ${tipAttr("🛡 Taunt (Zid)", "Nasprotnik mora najprej napasti tega branilca, preden lahko udari ostale ali obraz.")}>🛡</span>` : "";
   const decayTag = d.decay ? `<span class="v2-tag decay" ${tipAttr("☠ Razpad " + d.decay + "/potezo", "Vsak konec poteze izgubi " + d.decay + " HP in sčasoma umre.")}>☠${d.decay}</span>` : "";
+  const evolveTag = d.evolve ? `<span class="v2-tag evolve" ${tipAttr("⬆ Evolucija " + (c._evolve || 0) + "/" + d.evolve.need, "Uri (Train) " + d.evolve.need + "×, da se razvije v " + (d.evolve.name || "močnejšo verzijo") + ".")}>⬆${c._evolve || 0}/${d.evolve.need}</span>` : "";
   node.innerHTML = `
     <div class="v2-champ-art">${artImg(d, "champ-art-img")}<span class="v2-champ-sym">${st.symbol}</span>
       <span class="v2-champ-gem atk" ${tipAttr("Napad", "Najmočnejši napad tega šampiona.")}>${atkVal}</span>
       <span class="v2-champ-hp v2-champ-gem hp${life <= c.maxHp * 0.35 ? " low" : ""}">${life}</span>
-      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${tauntTag}${decayTag}${comboTag}
+      ${c.sick ? `<span class="v2-tag sick">💤</span>` : ""}${c.tapped ? `<span class="v2-tag tap">↻</span>` : ""}${tauntTag}${decayTag}${evolveTag}${comboTag}
       ${stChips ? `<div class="v2-champ-statusbar">${stChips}</div>` : ""}</div>
     <div class="v2-champ-body">
       <div class="v2-champ-name" ${tipAttr(d.name, cardTipText(d))}>${d.name}</div>

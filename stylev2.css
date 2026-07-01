@@ -837,3 +837,7 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
   display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.5); transition: transform .12s, box-shadow .15s, border-color .15s; }
 .mc-sound-btn:hover { transform: scale(1.08); border-color: var(--gold-bright); box-shadow: 0 4px 18px rgba(0,0,0,0.6), 0 0 12px rgba(255,217,122,0.35); }
 .mc-sound-btn.muted { color: var(--ink-dim); filter: grayscale(0.5); }
+
+/* Evolve napredek tag + Fortify/aktivacije */
+.v2-tag.evolve { background: rgba(186,142,255,0.9); color: #1a0b2e; box-shadow: 0 0 8px rgba(186,142,255,0.5); font-weight: 800; }
+.action-btn.ability { position: relative; }

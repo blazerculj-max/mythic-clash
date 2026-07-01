@@ -376,9 +376,30 @@
       case "rampAny": p.mana.push({ type: "Any", tapped: false, temp: true }); logMsg(def(c).name + ": +1 nevtralna energija (to potezo)."); break;
       case "rampNature": p.mana.push({ type: "Nature", tapped: false, temp: true }); logMsg(def(c).name + ": +1 Nature energija (to potezo)."); break;
       case "rampSun": p.mana.push({ type: "Sun", tapped: false, temp: true }); logMsg(def(c).name + ": +1 Sun energija (to potezo)."); break;
+      // FORTIFY: utrdi se — dobi Taunt (do naslednje poteze) + Shield
+      case "fortify": c.status.taunt = true; c.status.shield = true; logMsg(def(c).name + " se UTRDI — Taunt + Shield."); break;
+      // EVOLVE: naberi urjenje; pri d.evolve.need se transformira v močnejšo verzijo
+      case "evolve": {
+        const ev = d.evolve || { need: 3 };
+        c._evolve = (c._evolve || 0) + 1;
+        if (c._evolve >= (ev.need || 3) && ev.into) { transformChamp(p, c, ev.into); }
+        else logMsg(def(c).name + " se uri (" + c._evolve + "/" + (ev.need || 3) + ").");
+        break;
+      }
       default: logMsg("(sposobnost " + e + " še ni v v2)"); break;
     }
     return { ok: true };
+  }
+  // transformacija (Evolve): zamenja karto v močnejšo, prenese poškodbo (+ manjši heal ob evoluciji)
+  function transformChamp(owner, c, intoId) {
+    const nd = CARDS[intoId]; if (!nd) { logMsg("(Evolucija: tarča " + intoId + " manjka)"); return; }
+    const armorBonus = (armorOf(c) && armorOf(c).hpBonus) ? armorOf(c).hpBonus : 0;
+    const dmgBefore = c.damage;
+    c.cardId = intoId; c.type = nd.type;
+    c.maxHp = (nd.hp || 60) + armorBonus;
+    c.damage = Math.max(0, Math.min(dmgBefore - 20, c.maxHp)); // ob evoluciji +20 HP
+    c._evolve = 0; c._evolved = true;
+    logMsg("⚡ EVOLUCIJA! Postane " + nd.name + " (" + nd.hp + " HP).");
   }
 
   /* ---------------- Hero Power (1× na potezo) ---------------- */
@@ -827,6 +848,12 @@
       case "stunEnemy": if (enemy) enemy.status.stun = (enemy.status.stun || 0) + 1; break;
       case "curseEnemy": if (enemy) enemy.status.curse = true; break;
       case "shieldSelf": if (source) source.status.shield = true; break;
+      // bogatejši Klic ob vstopu (battlecry)
+      case "healBoard": owner.board.forEach(x => x.damage = Math.max(0, x.damage - (v || 15))); artHeal(owner); break;
+      case "buffBoard": owner.board.forEach(x => x.status.blessing = Math.max(x.status.blessing || 0, 2)); break;
+      case "damageAll": opp.board.slice().forEach(x => rawDamage(x, opp, v || 15, "Klic")); checkDeaths(); break;
+      case "shieldBoard": owner.board.forEach(x => x.status.shield = true); break;
+      case "tauntSelf": if (source) source.status.taunt = true; break;
     }
   }
   function onEnter(p, inst) {

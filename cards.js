@@ -69,7 +69,8 @@ const CARDS = {
       { name: "Thunder Judgment", cost: ["Sky", "Sky", "Any"], damage: 80, effect: "stunOmen",
         text: "Omen Roll. On a Favorable Omen, the Defending Champion is Stunned." }
     ],
-    ability: { name: "Storm Authority", text: "Sky attacks from your Greek Champions deal +10 damage." },
+    ability: { name: "Storm Authority", text: "Klic ob vstopu: 20 škode nasprotnikovemu šampionu (strela ob prihodu)." },
+    onEnter: { kind: "damageEnemy", value: 20 },
     weakness: "Frost", resistance: "Sky", retreatCost: 2,
     flavorText: "The sky bends before his will.",
     deckTags: ["Olympus"]
@@ -123,7 +124,8 @@ const CARDS = {
         text: "Omen Roll. On a Favorable Omen, the Defender is Stunned." },
       { name: "Serpent Lash", cost: ["Trickery", "War"], damage: 50, effect: null, text: "Her hair strikes like vipers." }
     ],
-    ability: { name: "Stone Curse", text: "When Medusa is attacked, Omen Roll: on Favorable Omen the attacker becomes Cursed." },
+    ability: { name: "Stone Curse", text: "Klic ob vstopu: nasprotnikov šampion je OMAMLJEN (pogled v kamen)." },
+    onEnter: { kind: "stunEnemy" },
     weakness: "Sun", resistance: "Trickery", retreatCost: 1,
     flavorText: "Meet her eyes and become eternal.",
     deckTags: ["Olympus"]
@@ -135,7 +137,9 @@ const CARDS = {
       { name: "Sky Dash", cost: ["Sky"], damage: 30, effect: null, text: "Swift as the wind." },
       { name: "Hoof Storm", cost: ["Sky", "Any"], damage: 50, effect: null, text: "A flurry from above." }
     ],
-    ability: { name: "Free Flight", text: "Pegasus has no retreat cost." },
+    ability: { name: "Free Flight", text: "Pegasus has no retreat cost. Uri ga 3× (Evolve) → Celestial Pegasus." },
+    activated: { name: "Train", cost: [], effect: "evolve", text: "Tapni: +1 urjenje. Pri 3/3 se razvije v Celestial Pegasus." },
+    evolve: { need: 3, into: "champ-pegasus-celestial", name: "Celestial Pegasus" },
     charge: true,
     weakness: "Frost", resistance: "Sky", retreatCost: 0,
     flavorText: "Born of sea foam and lightning.",
@@ -199,7 +203,8 @@ const CARDS = {
       { name: "Gungnir Cast", cost: ["Sky", "Wisdom"], damage: 60, effect: null, text: "His spear never misses." },
       { name: "Raven's Knowledge", cost: ["Wisdom"], damage: 20, effect: "draw2", text: "Draw 2 cards." }
     ],
-    ability: { name: "All-Father", text: "Once per turn, you may pay 1 HP (10 damage to Odin) to draw a card." },
+    ability: { name: "All-Father", text: "Klic ob vstopu: potegneš karto (modrost Vseočeta)." },
+    onEnter: { kind: "draw", value: 1 },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 2,
     flavorText: "He gave an eye for the secrets of the worlds.",
     deckTags: ["Ragnarok"]
@@ -249,7 +254,9 @@ const CARDS = {
       { name: "Spear Dive", cost: ["War"], damage: 30, effect: null, text: "From the sky she descends." },
       { name: "Carry the Fallen", cost: ["Sky", "War"], damage: 50, effect: null, text: "For Valhalla." }
     ],
-    ability: { name: "Battle Hymn", text: "Your other Norse Champions take -10 damage from attacks." },
+    ability: { name: "Battle Hymn", text: "Uri jo 3× (Evolve) → Valkyrie Queen." },
+    activated: { name: "Train", cost: [], effect: "evolve", text: "Tapni: +1 urjenje. Pri 3/3 se razvije v Valkyrie Queen." },
+    evolve: { need: 3, into: "champ-valkyrie-queen", name: "Valkyrie Queen" },
     weakness: "Frost", resistance: "Sky", retreatCost: 1,
     flavorText: "She decides who feasts in Valhalla.",
     deckTags: ["Ragnarok"]
@@ -277,7 +284,8 @@ const CARDS = {
       { name: "March of Conquest", cost: ["War", "War"], damage: 60, effect: "reserveBuff",
         text: "Deals 60 damage, +10 for each other Champion you control." }
     ],
-    ability: { name: "War Standard", text: "Your Roman Champions take -10 damage while you control 2+ other Champions." },
+    ability: { name: "War Standard", text: "Klic ob vstopu: vsi tvoji šampioni dobijo Blagoslov (+15 škode)." },
+    onEnter: { kind: "buffBoard" },
     weakness: "Wisdom", resistance: "War", retreatCost: 2,
     flavorText: "Rome marches behind him.",
     deckTags: ["Legion"]
@@ -301,7 +309,9 @@ const CARDS = {
       { name: "Founder's Blade", cost: ["War"], damage: 30, effect: null, text: "From him, an empire." },
       { name: "Eternal City", cost: ["War", "Wisdom"], damage: 60, effect: "selfShield", text: "This Champion gains Shield." }
     ],
-    ability: { name: "Rally", text: "When Romulus enters play, your other Champions heal 10 HP each." },
+    ability: { name: "Rally", text: "Klic ob vstopu: tvoji šampioni +10 HP. Fortify: tapni za Taunt+Shield." },
+    onEnter: { kind: "healBoard", value: 10 },
+    activated: { name: "Fortify", cost: ["Any"], effect: "fortify", text: "Tapni + 1 energija: dobi Taunt (do naslednje poteze) in Shield." },
     weakness: "Trickery", resistance: "War", retreatCost: 2,
     flavorText: "He drew the walls of a thousand years.",
     deckTags: ["Legion"]
@@ -373,7 +383,8 @@ const CARDS = {
       { name: "Sun Flare", cost: ["Sun"], damage: 40, effect: null, text: "The desert burns at noon." },
       { name: "Solar Wrath", cost: ["Sun", "Sun", "Any"], damage: 100, effect: "burn", text: "The Defender is Burned." }
     ],
-    ability: { name: "Dawn's Authority", text: "Your Egyptian Champions' Sun attacks deal +10 damage." },
+    ability: { name: "Dawn's Authority", text: "Klic ob vstopu: 20 škode nasprotnikovemu šampionu (sončni žarek)." },
+    onEnter: { kind: "damageEnemy", value: 20 },
     weakness: "Underworld", resistance: "Sun", retreatCost: 2,
     flavorText: "He sails the sky in his solar barge.",
     deckTags: ["Eternity"]
@@ -457,7 +468,8 @@ const CARDS = {
       { name: "Riddle's Toll", cost: ["Wisdom"], damage: 20, effect: "draw1", text: "Draw a card." },
       { name: "Desert Guardian", cost: ["Wisdom", "Sun"], damage: 60, effect: null, text: "Answer wrongly and perish." }
     ],
-    ability: { name: "Ancient Wisdom", text: "Your Oracle cards cost nothing extra and you may play one more per turn." },
+    ability: { name: "Ancient Wisdom", text: "Fortify: tapni za Taunt+Shield — nepremagljiv stražar ugank." },
+    activated: { name: "Fortify", cost: ["Any"], effect: "fortify", text: "Tapni + 1 energija: dobi Taunt (do naslednje poteze) in Shield." },
     weakness: "Underworld", resistance: "Wisdom", retreatCost: 2,
     flavorText: "What walks on four legs, then two, then three?",
     deckTags: ["Eternity"]
@@ -495,7 +507,8 @@ const CARDS = {
       { name: "Coil Crush", cost: ["Underworld"], damage: 30, effect: null, text: "He drags you down." },
       { name: "Cattle of the Dead", cost: ["Underworld", "Nature"], damage: 60, effect: "curse", text: "The Defender is Cursed." }
     ],
-    ability: { name: "Underworld Lord", text: "Veles takes -10 damage from Sky attacks." },
+    ability: { name: "Underworld Lord", text: "Klic ob vstopu: nasprotnikov šampion je PREKLET (−15 škode)." },
+    onEnter: { kind: "curseEnemy" },
     weakness: "Sky", resistance: "Underworld", retreatCost: 2,
     flavorText: "Eternal rival of the thunder god.",
     deckTags: ["Spirits"]
@@ -544,7 +557,8 @@ const CARDS = {
       { name: "Tangling Roots", cost: ["Nature"], damage: 30, effect: "freeze", text: "The Defender is Frozen (rooted)." },
       { name: "Wild Maze", cost: ["Nature", "Trickery"], damage: 50, effect: null, text: "You will wander forever." }
     ],
-    ability: { name: "Master of the Wood", text: "While a Nature Realm is active, Leshy takes -10 damage." },
+    ability: { name: "Master of the Wood", text: "Fortify: tapni za Taunt+Shield — gozd se zapre." },
+    activated: { name: "Fortify", cost: ["Any"], effect: "fortify", text: "Tapni + 1 energija: dobi Taunt (do naslednje poteze) in Shield." },
     weakness: "Fire", resistance: "Nature", retreatCost: 2,
     flavorText: "He is as tall as the trees, or as small as a blade of grass.",
     deckTags: ["Spirits"]
@@ -582,7 +596,8 @@ const CARDS = {
       { name: "Antler Charge", cost: ["Nature"], damage: 40, effect: null, text: "Lord of wild things." },
       { name: "Wild Growth", cost: ["Nature", "Any"], damage: 60, effect: "healReserve", text: "Your Champions heal 20 HP each." }
     ],
-    ability: { name: "Lord of Beasts", text: "Your Nature attacks deal +10 damage." },
+    ability: { name: "Lord of Beasts", text: "Klic ob vstopu: 20 škode nasprotnikovemu šampionu (naval zveri)." },
+    onEnter: { kind: "damageEnemy", value: 20 },
     weakness: "Fire", resistance: "Nature", retreatCost: 2,
     flavorText: "Between the worlds of man and beast.",
     deckTags: ["Spirits"]
@@ -606,7 +621,8 @@ const CARDS = {
       { name: "Sacred Fire", cost: ["Fire"], damage: 30, effect: null, text: "Flame of the hearth and forge." },
       { name: "Healing Flame", cost: ["Fire", "Nature"], damage: 40, effect: "heal20", text: "This Champion heals 20 HP." }
     ],
-    ability: { name: "Triple Flame", text: "At the end of your turn, this Champion heals 10 HP." },
+    ability: { name: "Triple Flame", text: "Klic ob vstopu: vsi tvoji šampioni +15 HP (plamen navdiha)." },
+    onEnter: { kind: "healBoard", value: 15 },
     weakness: "Frost", resistance: "Fire", retreatCost: 1,
     flavorText: "Poetry, healing, and the forge are hers.",
     deckTags: ["Spirits"]
@@ -992,6 +1008,30 @@ const CARDS = {
     activated: { name: "Wellspring", cost: [], effect: "rampNature", text: "Tapni (brez mane): dodaj 1 NATURE energijo to potezo." },
     ability: { name: "Mana Dork", text: "Izbira: Basic Strike (katerakoli energija), tarčni napad z učinkom, ali tap za +Nature energijo." },
     weakness: "Fire", resistance: "Nature", flavorText: "Duh, ki točí sok življenja.",
+  },
+
+  /* ============ EVOLVE cilji (razvite oblike) ============
+     Dosežeš jih z Evolve (3× Train) na osnovni karti. Ni jih v deckih.
+  --------------------------------------------------------------------------- */
+  "champ-valkyrie-queen": {
+    id: "champ-valkyrie-queen", name: "Valkyrie Queen", type: "Champion",
+    pantheon: "Norse", rarity: "Legendary", stage: "basic", hp: 140, charge: true, summonCost: 4, evolveOnly: true,
+    attacks: [
+      { name: "Sovereign Strike", cost: ["War"], damage: 45, effect: null, text: "Kraljičin udarec." },
+      { name: "Wings of Valhalla", cost: ["War", "Sky"], damage: 70, effect: "heal20", text: "70 škode; pozdravi se 20 HP." }
+    ],
+    ability: { name: "Razvita (Valkyrie)", text: "Razvita oblika Valkyrie — Naval, močni napadi." },
+    weakness: "Sky", resistance: "War", retreatCost: 2, flavorText: "Iz vojščakinje je zrasla vladarica bojišča.",
+  },
+  "champ-pegasus-celestial": {
+    id: "champ-pegasus-celestial", name: "Celestial Pegasus", type: "Champion",
+    pantheon: "Greek", rarity: "Legendary", stage: "basic", hp: 120, charge: true, summonCost: 4, evolveOnly: true,
+    attacks: [
+      { name: "Star Dive", cost: ["Sky"], damage: 40, effect: null, text: "Strmoglavi z zvezd." },
+      { name: "Heaven's Charge", cost: ["Sky", "Any"], damage: 60, effect: "stunOmen", text: "60 škode; Omen → Omama branilca." }
+    ],
+    ability: { name: "Razvita (Pegasus)", text: "Razvita oblika Pegaza — nebeški finišer z Navalom." },
+    weakness: "Underworld", resistance: "Sky", retreatCost: 2, flavorText: "Krila iz zvezdne svetlobe.",
   },
 
   /* ============ SKALIRNI MOTORJI (Korak 3 — Balatro build-around) ============
