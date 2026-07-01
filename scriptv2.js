@@ -103,10 +103,47 @@ const EFFECT_TEXT = {
   dmgPlus20: "Pritrjeni šampion zada +20 škode.", dmgReduce20: "Pritrjeni šampion prejme −20 škode.",
   healEndTurn10: "Pritrjeni šampion se ob koncu poteze pozdravi 10 HP.",
 };
+// razlaga statusov/ključnih besed — kaj pomenijo za igro (za hover)
+const KW_GLOSSARY = {
+  curse: "🟣 Prekletstvo — žrtev zada −15 škode pri svojih napadih.",
+  blessing: "🟡 Blagoslov — +15 škode pri napadih (2 potezi).",
+  burn: "🔥 Ožig — −15 HP na koncu vsake poteze.",
+  freeze: "❄ Zmrznitev — prejme +20% škode; vsako potezo 50% možnost odtajanja.",
+  stun: "💫 Omama — ta šampion ne more napasti to potezo.",
+  poison: "☠ Strup — naraščajoča škoda vsak konec poteze.",
+  shield: "🛡 Shield — naslednji udarec nase je blokiran (−20/−30 škode).",
+  guard: "🔰 Garda — −50% prejete škode do naslednje poteze.",
+  taunt: "🧱 Taunt (zid) — nasprotnik mora najprej napasti tega branilca.",
+  lifesteal: "🩸 Krvoses — napadalec se pozdravi za toliko, kolikor zada.",
+  dodge: "💨 Umik — možnost, da se popolnoma izogne napadu.",
+  decay: "⌛ Razpad — izgublja HP vsak konec poteze.",
+  charge: "⚡ Naval — lahko napade že v potezi priklica.",
+};
+// iz učinka napada izlušči, katere statuse povzroči (za razlago)
+function kwsForEffect(e) {
+  if (!e) return [];
+  if (/curse/i.test(e)) return ["curse"];
+  if (/burn|fireball/i.test(e)) return ["burn"];
+  if (/freeze|frost|nova/i.test(e)) return ["freeze"];
+  if (/stun|bolt/i.test(e)) return ["stun"];
+  if (/poison/i.test(e)) return ["poison"];
+  if (/shield/i.test(e)) return ["shield"];
+  if (/guard/i.test(e)) return ["guard"];
+  if (/taunt/i.test(e)) return ["taunt"];
+  if (/bless|reserveBuff|buffBoard/i.test(e)) return ["blessing"];
+  return [];
+}
+function kwGlossaryLines(kws) {
+  const seen = new Set(); const out = [];
+  kws.forEach(k => { if (KW_GLOSSARY[k] && !seen.has(k)) { seen.add(k); out.push(KW_GLOSSARY[k]); } });
+  return out;
+}
 function atkTipText(atk) {
   let s = `${atk.damage} škode · cena ${(atk.cost || []).length} mane`;
   if (atk.text) s += "\n" + atk.text;
   if (atk.effect && EFFECT_TEXT[atk.effect]) s += "\nUčinek: " + EFFECT_TEXT[atk.effect];
+  const g = kwGlossaryLines(kwsForEffect(atk.effect));
+  if (g.length) s += "\n\n" + g.join("\n");
   return s;
 }
 function cardTipText(d) {
@@ -117,9 +154,17 @@ function cardTipText(d) {
     if (d.ability) lines.push(`Sposobnost — ${d.ability.name}: ${d.ability.text}`);
     if (d.activated) lines.push(`⚡ ${d.activated.name}: ${d.activated.text}`);
     if (d.weakness) lines.push(`Šibkost: ${d.weakness}  ·  Odpornost: ${d.resistance || "—"}`);
+    // razlaga ključnih besed te karte
+    const kws = [];
+    (d.attacks || []).forEach(a => kwsForEffect(a.effect).forEach(k => kws.push(k)));
+    ["taunt", "lifesteal", "dodge", "decay", "charge"].forEach(k => { if (d[k]) kws.push(k); });
+    const g = kwGlossaryLines(kws);
+    if (g.length) lines.push("—", ...g);
   } else {
     lines.push(`${d.type}${d.pantheon ? " · " + d.pantheon : ""}`);
     if (d.text) lines.push(d.text);
+    const g = kwGlossaryLines(kwsForEffect(d.effect));
+    if (g.length) lines.push("—", ...g);
   }
   return lines.join("\n");
 }
@@ -211,7 +256,7 @@ function lunge(attEl, targetEl) {
   setTimeout(() => { attEl.style.transform = ""; setTimeout(() => { attEl.style.transition = ""; attEl.style.zIndex = ""; }, 160); }, 150);
 }
 // animira napad: napadalec (uid) -> tarča (el); izpiše škodo
-function animateStrike(attUid, targetEl, dmg, dodged) {
+function animateStrike(attUid, targetEl, dmg, dodged, retal) {
   const attEl = findChampEl(attUid);
   lunge(attEl, targetEl);
   if (targetEl) {
@@ -225,6 +270,8 @@ function animateStrike(attUid, targetEl, dmg, dodged) {
         flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
         if (dmg > 0) { impactBurst(c.x, c.y, dmg >= 40); shakeScreen(isHero || dmg >= 50); SFX.play(dmg >= 40 ? "hitBig" : "hit"); }
       }
+      // povratni udarec (retaliation): škoda na napadalcu
+      if (retal > 0 && attEl) { const a = elCenter(attEl); setTimeout(() => { shakeEl(attEl); flyDamage(a.x, a.y, retal, "retal"); }, 120); }
     }, 130);
   }
 }
@@ -316,10 +363,11 @@ function updateDmgPreview() {
   if (!pv || !target) { hideDmgPreview(); return; }
   document.querySelectorAll(".lethal-target").forEach(e => e.classList.remove("lethal-target"));
   const p = ensureDmgPrev();
-  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15", ARTEFAKT: "ARTEFAKT ⚔", OLTAR: "SONČNI OLTAR ×1.5", MOTOR: "MOTOR ⚙", "MOTOR×2": "MOTOR ⚙ ×2 (Apoteoza)" };
+  const lab = { WEAK: "ŠIBKOST ×1.5", RESIST: "ODPOR ×0.6", GUARD: "GARDA ×0.5", FAVOR: "NAKLONJENOST", "OMEN?": "OMEN (±)", FURIJA: "FURIJA +10", FORMACIJA: "FORMACIJA −10", VOJNA: "VOJNI POHOD +15", SONCE: "SONČNO NEBO +10", KLETEV: "PREKLETSTVO +15", ARTEFAKT: "ARTEFAKT ⚔", OLTAR: "SONČNI OLTAR ×1.5", MOTOR: "MOTOR ⚙", "MOTOR×2": "MOTOR ⚙ ×2 (Apoteoza)", "MOČ": "MOČ +", "BES": "BES +", "LOV": "LOV +" };
   const parts = (pv.parts || []).filter(x => lab[x]);
+  const retal = champEl ? (pv.retal || 0) : 0; // povratni udarec le pri napadu na bitje
   p.className = "v2-dmgprev" + (lethal ? " lethal" : "");
-  p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
+  p.innerHTML = `<span class="dp-dmg">-${pv.dmg}</span>${lethal ? '<span class="dp-lethal">💀 SMRTNO</span>' : ""}${retal ? `<span class="dp-retal">↩ prejmeš −${retal}</span>` : ""}${parts.length ? `<span class="dp-parts">${parts.map(x => lab[x] || x).join(" · ")}</span>` : ""}`;
   const r = target.getBoundingClientRect();
   p.style.left = (r.left + r.width / 2) + "px";
   p.style.top = (r.top - 6) + "px";
@@ -1804,7 +1852,7 @@ function doAttack(target) {
     if (!r.ok) { toast(r.msg || "Napad ni mogoč."); manaPick = null; render(); return; }
     selAttacker = null; selAtkIndex = null; manaPick = null;
     updateArrow();
-    animateStrike(attUid, targetEl, r.dmg, r.dodged);
+    animateStrike(attUid, targetEl, r.dmg, r.dodged, r.retal);
     setTimeout(() => { render(); checkOver(); }, 300);
   });
 }
@@ -1923,7 +1971,7 @@ function aiAttack(queue) {
   const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("you");
   const res = V2.attack(ai, c.uid, atkIdx, target);
   if (!res || !res.ok) { aiAttack(queue); return; }
-  animateStrike(c.uid, targetEl, res.dmg, res.dodged);
+  animateStrike(c.uid, targetEl, res.dmg, res.dodged, res.retal);
   setTimeout(() => {
     render(); checkOver();
     if (G.over) { aiBusy = false; return; }

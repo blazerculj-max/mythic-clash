@@ -841,3 +841,8 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
 /* Evolve napredek tag + Fortify/aktivacije */
 .v2-tag.evolve { background: rgba(186,142,255,0.9); color: #1a0b2e; box-shadow: 0 0 8px rgba(186,142,255,0.5); font-weight: 800; }
 .action-btn.ability { position: relative; }
+
+/* povratni udarec (retaliation) FX */
+.v2-fd.retal { color: #ffb15e; font-size: 26px; text-shadow: 0 2px 0 #6b3410, 0 0 12px rgba(255,150,60,0.7); }
+.v2-fd.retal::before { content: "↩ "; font-size: 18px; }
+.v2-dmgprev .dp-retal { display: block; font-size: 11px; color: #ffb15e; font-family: "SF Mono", monospace; margin-top: 2px; }

@@ -111,7 +111,8 @@ const CARDS = {
       { name: "Final Trial", cost: ["War", "War", "Any"], damage: 120, effect: "selfDamage20",
         text: "Deals 120 damage. This Champion takes 20 recoil damage." }
     ],
-    ability: { name: "Undying Hero", text: "Heracles takes -20 damage from all attacks." },
+    ability: { name: "Undying Hero", text: "Oklep: prejme −20 od vseh napadov (velja)." },
+    armorSelf: 20,
     weakness: "Sky", resistance: "War", retreatCost: 3,
     flavorText: "Twelve impossible labors, twelve victories.",
     deckTags: ["Olympus"]
@@ -163,7 +164,8 @@ const CARDS = {
     attacks: [
       { name: "Prophetic Whisper", cost: ["Wisdom"], damage: 10, effect: "draw1", text: "Draw a card." }
     ],
-    ability: { name: "Foresight", text: "When Oracle of Delphi enters play, draw a card." },
+    ability: { name: "Foresight", text: "Klic ob vstopu: potegneš karto." },
+    onEnter: { kind: "draw", value: 1 },
     weakness: "Trickery", resistance: "Wisdom", retreatCost: 1,
     flavorText: "She speaks the will of fate.",
     deckTags: ["Olympus"]
@@ -178,7 +180,8 @@ const CARDS = {
       { name: "Thunderclap", cost: ["Sky", "War"], damage: 70, effect: "stunOmen",
         text: "Omen Roll. On a Favorable Omen, the Defender is Stunned." }
     ],
-    ability: { name: "God of Strength", text: "Thor's War attacks deal +10 damage." },
+    ability: { name: "God of Strength", text: "Njegovi War napadi zadajo +10 škode (velja)." },
+    atkAura: { type: "War", amount: 10 },
     weakness: "Frost", resistance: "War", retreatCost: 2,
     flavorText: "The mountains tremble at his step.",
     deckTags: ["Ragnarok"]
@@ -191,7 +194,8 @@ const CARDS = {
       { name: "Ragnarok Strike", cost: ["Sky", "War", "War"], damage: 150, effect: "selfDamage30",
         text: "Deals 150 damage. This Champion takes 30 recoil damage." }
     ],
-    ability: { name: "Tempest Lord", text: "Thor's attacks deal +20 damage." },
+    ability: { name: "Tempest Lord", text: "Vsi njegovi napadi zadajo +20 škode (velja)." },
+    atkAura: { type: null, amount: 20 },
     weakness: "Frost", resistance: "War", retreatCost: 3,
     flavorText: "The storm has a name, and it is wrath.",
     deckTags: ["Ragnarok"]
@@ -241,7 +245,8 @@ const CARDS = {
       { name: "Devour", cost: ["War", "War"], damage: 80, effect: "selfDamage20",
         text: "Deals 80 damage. Fenrir takes 20 recoil damage." }
     ],
-    ability: { name: "Unleashed", text: "If Fenrir has 60 or less HP, its attacks deal +20 damage." },
+    ability: { name: "Unleashed", text: "Bes: pri 60 HP ali manj njegovi napadi zadajo +20 škode (velja)." },
+    enrage: { below: 60, amount: 20 },
     overload: 1,
     weakness: "Sky", resistance: "War", retreatCost: 3,
     flavorText: "When the chains break, the world ends.",
@@ -480,7 +485,8 @@ const CARDS = {
     attacks: [
       { name: "Carapace Ram", cost: ["Sun"], damage: 20, effect: null, text: "Roll of the sacred beetle." }
     ],
-    ability: { name: "Eternal Cycle", text: "When Scarab Guardian is defeated, draw a card." },
+    ability: { name: "Eternal Cycle", text: "Poslednji dih: ko je premagan, potegneš karto." },
+    onDefeat: { kind: "draw", value: 1 },
     weakness: "Underworld", resistance: "Sun", retreatCost: 1,
     flavorText: "It rolls the sun across the sky.",
     deckTags: ["Eternity"]
@@ -495,7 +501,8 @@ const CARDS = {
       { name: "Thunder Oak", cost: ["Sky", "War"], damage: 70, effect: "stunOmen",
         text: "Omen Roll. On a Favorable Omen, the Defender is Stunned." }
     ],
-    ability: { name: "Sky Father", text: "Perun's Sky attacks deal +10 damage." },
+    ability: { name: "Sky Father", text: "Njegovi Sky napadi zadajo +10 škode (velja)." },
+    atkAura: { type: "Sky", amount: 10 },
     weakness: "Underworld", resistance: "Sky", retreatCost: 2,
     flavorText: "His axe carves the heavens.",
     deckTags: ["Spirits"]
@@ -533,7 +540,8 @@ const CARDS = {
       { name: "Forge Strike", cost: ["Fire"], damage: 40, effect: null, text: "He hammered the sun into being." },
       { name: "Heaven's Fire", cost: ["Fire", "Fire"], damage: 70, effect: "burn", text: "The Defender is Burned." }
     ],
-    ability: { name: "Celestial Smith", text: "Svarog's Fire attacks deal +10 damage." },
+    ability: { name: "Celestial Smith", text: "Njegovi Fire napadi zadajo +10 škode (velja)." },
+    atkAura: { type: "Fire", amount: 10 },
     weakness: "Frost", resistance: "Fire", retreatCost: 2,
     flavorText: "The first flame was struck on his anvil.",
     deckTags: ["Spirits"]
@@ -570,7 +578,8 @@ const CARDS = {
       { name: "Luring Song", cost: ["Moon"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
       { name: "Drowning Embrace", cost: ["Moon", "Frost"], damage: 50, effect: null, text: "Down into the cold water." }
     ],
-    ability: { name: "Water's Call", text: "Cursed enemies take 10 extra damage from Rusalka." },
+    ability: { name: "Water's Call", text: "Lov: prekletim nasprotnikom zada +10 škode (velja)." },
+    vsCursed: 10,
     weakness: "Sun", resistance: "Moon", retreatCost: 1,
     flavorText: "Her song is the last sound the drowned hear.",
     deckTags: ["Spirits"]
@@ -647,7 +656,8 @@ const CARDS = {
       { name: "Warp Spasm", cost: ["War", "War"], damage: 80, effect: "selfDamage20",
         text: "Deals 80 damage. This Champion takes 20 recoil damage." }
     ],
-    ability: { name: "Battle Fury", text: "If Cu Chulainn has 50 or less HP, its attacks deal +20 damage." },
+    ability: { name: "Battle Fury", text: "Bes: pri 50 HP ali manj napadi +20 škode. Poslednji dih: 30 škode." },
+    enrage: { below: 50, amount: 20 },
     onDefeat: { kind: "damageEnemy", value: 30 },
     weakness: "Trickery", resistance: "War", retreatCost: 2,
     flavorText: "In battle frenzy, friend and foe both fear him.",
@@ -660,7 +670,8 @@ const CARDS = {
       { name: "Staff Strike", cost: ["Nature"], damage: 20, effect: null, text: "Keeper of old knowledge." },
       { name: "Nature's Gift", cost: ["Nature", "Any"], damage: 20, effect: "draw2", text: "Draw 2 cards." }
     ],
-    ability: { name: "Grove Keeper", text: "When the Druid enters play, draw a card." },
+    ability: { name: "Grove Keeper", text: "Klic ob vstopu: potegneš karto." },
+    onEnter: { kind: "draw", value: 1 },
     weakness: "Fire", resistance: "Nature", retreatCost: 1,
     flavorText: "He reads the will of oak and stone.",
     deckTags: ["Spirits"]
@@ -672,7 +683,8 @@ const CARDS = {
       { name: "Mourning Cry", cost: ["Moon"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
       { name: "Death Wail", cost: ["Moon", "Underworld"], damage: 50, effect: null, text: "Her scream foretells the grave." }
     ],
-    ability: { name: "Harbinger", text: "Cursed enemies take 10 extra damage from the Banshee." },
+    ability: { name: "Harbinger", text: "Lov: prekletim nasprotnikom zada +10 škode (velja). Krvoses." },
+    vsCursed: 10,
     lifesteal: true,
     weakness: "Sun", resistance: "Moon", retreatCost: 1,
     flavorText: "Hear her cry and someone will die tonight.",

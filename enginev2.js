@@ -611,8 +611,12 @@
     if (wpn && wpn.atkBonus) dmg += wpn.atkBonus;
     if (arm && arm.dmgReduce) dmg -= arm.dmgReduce;
     const pierce = !!(wpn && wpn.grant === "pierce");
-    // Realm bonusi (napadalec)
+    // Pasivne sposobnosti napadalca (prej zgolj besedilo, zdaj delujejo)
     const ad = def(attacker);
+    if (ad.atkAura && (!ad.atkAura.type || ad.atkAura.type === atkType0)) { dmg += ad.atkAura.amount; parts.push("MOČ"); }     // npr. Thorovi War napadi +10
+    if (ad.enrage && (attacker.maxHp - attacker.damage) <= ad.enrage.below) { dmg += ad.enrage.amount; parts.push("BES"); }     // nizek HP -> +škoda (Fenrir, Cú)
+    if (ad.vsCursed && defender.status && defender.status.curse) { dmg += ad.vsCursed; parts.push("LOV"); }                     // preklet cilj -> +škoda
+    // Realm bonusi (napadalec)
     if (G.realm === "realm-olympus" && atkType0 === "Sky" && ad.pantheon === "Greek") dmg += 10;
     if (G.realm === "realm-asgard" && atkType0 === "War" && ad.pantheon === "Norse") dmg += 10;
     if (G.realm === "realm-duat" && (atkType0 === "Underworld" || atkType0 === "Sun")) dmg += 10;
@@ -629,6 +633,7 @@
       const sb = scaleBonus(atk, attacker, atkOwner, atkType0); if (sb) { dmg += sb; parts.push(atkOwner._apotheosis ? "MOTOR×2" : "MOTOR"); } // Skalirni motorji
     }
     // Sinergije — obramba
+    if (def(defender).armorSelf) dmg -= def(defender).armorSelf;                                             // pasivni oklep (npr. Heracles ★ −20)
     if (dOwner && hasBond(dOwner, "Roman")) { dmg -= 10; parts.push("FORMACIJA"); }                          // Roman Bond
     if (defender.status.shield && !pierce) dmg -= (dOwner && hasAlliance(dOwner, "order")) ? 30 : 20;        // Greek+Roman: Shield −30
     if (dmg < 0) dmg = 0;
@@ -663,7 +668,7 @@
     const t = effType(atk); const cb = comboInfo(att, t);
     const fo = !!(attOwner && attOwner._favorArmed && attOwner.favor > 0);
     const r = computeDamage(att, attOwner, defn, atk, { comboBonus: cb.bonus, forceOmenBonus: fo });
-    return { dmg: r.dmg, parts: r.parts, comboCount: cb.count };
+    return { dmg: r.dmg, parts: r.parts, comboCount: cb.count, retal: defenseOf(defn) };
   }
   // predviden damage proti OBRAZU (brez naključnega omena; heavy -> ×1.15 pričakovano)
   function previewFace(att, attOwner, atk) {
@@ -760,18 +765,29 @@
     if (defn.status.shield && r.dmg > 0 && !(weaponOf(att) && weaponOf(att).grant === "pierce")) delete defn.status.shield;
     if ((def(att).lifesteal || equipGrants(att, "lifesteal") || hasArt(p, "art-vampirefang")) && r.dmg > 0) { defn0heal(att, r.dmg); artHeal(p); }
     p._atkChain = (p._atkChain || 0) + 1; // Momentum jedro
-    // Trni (oklep): branilec vrne škodo napadalcu
-    const dArm = armorOf(defn);
-    if (dArm && dArm.thorns && r.dmg > 0) {
-      att.damage += dArm.thorns;
-      logMsg(def(att).name + " utrpi " + dArm.thorns + " od Trnov (" + dArm.name + ").");
+    // POVRATNI UDAREC (retaliation): branilec vrne škodo napadalcu glede na svojo obrambo
+    // (vključuje Trne/oklep; hkratno kot v MTG — velja tudi če branilec zaradi udarca umre)
+    const retal = defenseOf(defn);
+    if (retal > 0) {
+      att.damage += retal;
+      logMsg(def(att).name + " prejme " + retal + " povratne škode (obramba " + def(defn).name + ").");
     }
     if (def(att).overload) att._overloadLock = (att._overloadLock || 0) + def(att).overload;
     logMsg(p.name + ": " + def(att).name + " → " + def(defn).name + " za " + r.dmg + (r.parts.length ? " [" + r.parts.join(",") + "]" : "") + ".");
     applyAtkEffect(atk, att, p, defn, opp);
     checkDeaths();
     afterAction(p);
-    return { ok: true, dmg: r.dmg };
+    return { ok: true, dmg: r.dmg, retal };
+  }
+  // obramba šampiona = povratna škoda napadalcu. Tanki/Taunt/oklep vračajo več, šibki malo/nič.
+  function defenseOf(c) {
+    if (!c) return 0;
+    const d = def(c);
+    let base = (typeof d.defense === "number") ? d.defense : Math.max(0, Math.round(((c.maxHp || d.hp || 60) - 70) / 18));
+    if (isTaunt(c)) base += 6;                          // obrambni zid vrača več
+    if (c.status && c.status.guard) base += 5;          // garda = pripravljen na udarec
+    const arm = armorOf(c); if (arm && arm.thorns) base += arm.thorns; // Trni na oklepu
+    return Math.min(20, Math.max(0, base));             // zmerno — le "davek" za napad na tanke
   }
   function defn0heal(c, amt) { c.damage = Math.max(0, c.damage - amt); logMsg(def(c).name + " (Krvoses) +" + amt + " HP."); }
 
@@ -1066,7 +1082,7 @@
     playCard, cardNeedsTarget, activateAbility, canActivate, mulliganHand, useHeroPower,
     keepHand, aiTakeTurn, cur, oppOf, def, makeInstance, omenRoll, ensureBasicAttacks,
     isTaunt, tauntsOf, synergyOf, synergyLabels, HERO_POWERS, BOARD_MAX, START_LIFE,
-    ARTIFACTS, artBattleStart, hasArt,
+    ARTIFACTS, artBattleStart, hasArt, defenseOf,
   };
   if (typeof module !== "undefined") module.exports = api;
   if (global) { global.V2 = api; }
