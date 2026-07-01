@@ -1877,12 +1877,16 @@ function runAiTurn() {
 }
 function aiSummon() {
   if (G.over) { aiBusy = false; checkOver(); return; }
-  const ai = G.players[1];
+  const ai = G.players[1], you = G.players[0];
   if (ai.board.length < V2.BOARD_MAX) {
     const affordable = ai.hand.filter(i => def(i).type === "Champion" && def(i).stage === "basic" && V2.canPay(ai, Array.from({ length: V2.summonCostOf(def(i)) }, () => "Any")));
-    // sinergija: raje prikliči šampiona prevladujočega panteona (gradi Bond)
+    // sinergija: raje prevladujoč panteon (Bond); pod pritiskom raje Taunt/obrambni zid
     const boardPan = {}; ai.board.forEach(x => { const p = def(x).pantheon; if (p) boardPan[p] = (boardPan[p] || 0) + 1; });
-    affordable.sort((a, b) => ((boardPan[def(b).pantheon] || 0) - (boardPan[def(a).pantheon] || 0)) || (V2.summonCostOf(def(b)) - V2.summonCostOf(def(a))));
+    const behind = ai.life < you.life || you.board.reduce((s, x) => s + aiChampThreat(x), 0) >= ai.life * 0.5;
+    affordable.sort((a, b) => {
+      if (behind) { const ta = def(a).taunt ? 1 : 0, tb = def(b).taunt ? 1 : 0; if (ta !== tb) return tb - ta; }
+      return ((boardPan[def(b).pantheon] || 0) - (boardPan[def(a).pantheon] || 0)) || (V2.summonCostOf(def(b)) - V2.summonCostOf(def(a)));
+    });
     const c = affordable[0];
     if (c) { const dd = def(c); revealCard(dd, "Nasprotnik prikliče", () => { V2.summon(ai, c); render(); setTimeout(aiSummon, 550); }); return; }
   }
@@ -1912,24 +1916,48 @@ function aiSpells() {
   }
   setTimeout(aiAbilities, 400);
 }
+/* ---------- AI strateško ocenjevanje (dirka vs. trguj) ---------- */
+let aiPosture = "trade"; // "lethal" | "face" | "trade" — določi se pred napadom
+function aiHpOf(c) { return c.maxHp - c.damage; }
+function aiChampFaceDmg(c) { // koliko škode ta bitje lahko potisne v OBRAZ (najboljši dovoljeni napad)
+  const ai = G.players[1]; let best = 0;
+  (def(c).attacks || []).forEach(a => { if (a.noFace) return; if (!V2.canPay(ai, a.cost, def(c).id === "celtic-lugh")) return; const pv = V2.previewFace(c, ai, a); if (pv && pv.dmg > best) best = pv.dmg; });
+  return best;
+}
+function aiChampThreat(c) { let best = 0; (def(c).attacks || []).forEach(a => { if ((a.damage || 0) > best) best = a.damage || 0; }); return best; }
+function aiBestAtkVs(c, t) { // najboljši (indeks, škoda) napad bitja c proti bitju t
+  const ai = G.players[1]; let bi = null, bd = -1;
+  (def(c).attacks || []).forEach((a, i) => { if (!V2.canPay(ai, a.cost, def(c).id === "celtic-lugh")) return; const pv = V2.previewDamage(c, ai, t, a); const d = pv ? pv.dmg : (a.damage || 0); if (d > bd) { bd = d; bi = i; } });
+  return { i: bi, dmg: bd };
+}
+function aiDecidePosture() {
+  const ai = G.players[1], you = G.players[0];
+  const myClock = ai.board.filter(x => V2.canAttack(ai, x)).reduce((s, x) => s + aiChampFaceDmg(x), 0);
+  if (V2.tauntsOf(you).length === 0 && myClock >= you.life) return "lethal";      // lahko ubijem to potezo
+  const theirClock = you.board.reduce((s, x) => s + aiChampThreat(x), 0);
+  const youTTK = myClock > 0 ? Math.ceil(you.life / myClock) : 99;
+  const meTTK = theirClock > 0 ? Math.ceil(ai.life / theirClock) : 99;
+  return (youTTK <= meTTK) ? "face" : "trade";                                     // zmagujem tekmo -> dirkaj; sicer stabiliziraj
+}
 function aiAbilities() {
   if (G.over) { aiBusy = false; checkOver(); return; }
   const ai = G.players[1], opp = G.players[0];
-  // Hero Power, če je smiseln in plačljiv
   const hpw = ai.heroPower;
   if (hpw && !ai.heroPowerUsed && V2.canPay(ai, Array.from({ length: hpw.cost }, () => "Any"))) {
     let use = false;
     if (hpw.kind === "heroHeal") use = ai.life < ai.maxLife * 0.6;
-    else if (hpw.kind === "chain") use = opp.board.length >= 2 || (opp.board.length === 1 && (opp.board[0].maxHp - opp.board[0].damage) <= hpw.value);
-    else if (hpw.kind === "heroAttack") use = !opp.board.some(c => !c.tapped) || opp.life <= hpw.value;
+    else if (hpw.kind === "chain") use = opp.board.length >= 2 || (opp.board.length === 1 && aiHpOf(opp.board[0]) <= hpw.value);
+    else if (hpw.kind === "heroAttack") use = !opp.board.some(c => !c.tapped) || opp.life <= hpw.value + 25; // pritiskaj obraz proti lethalu
     else if (hpw.kind === "shieldAll") use = ai.board.length >= 2 && opp.board.length >= 1;
     if (use) { V2.useHeroPower(ai); SFX.play("hero"); render(); setTimeout(aiAbilities, 600); return; }
   }
-  // aktiviraj obrambno/heal sposobnost na poškodovanem šampionu (HP < 55%)
-  const c = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) &&
-    (x.maxHp - x.damage) / x.maxHp < 0.55 &&
-    ["healSelf30", "guard", "shieldSelf", "healBoard20"].includes(def(x).activated.effect));
+  // obramba: heal poškodovanega; Fortify (zid), ko je AI pod pritiskom
+  const underPressure = ai.life < ai.maxLife * 0.5 || opp.board.reduce((s, x) => s + aiChampThreat(x), 0) >= ai.life * 0.5;
+  const c = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) && def(x).activated &&
+    (def(x).activated.effect === "fortify" ? underPressure
+      : ["healSelf30", "guard", "shieldSelf", "healBoard20"].includes(def(x).activated.effect) && aiHpOf(x) / x.maxHp < 0.55));
   if (c) { V2.activateAbility(ai, c.uid); render(); setTimeout(aiAbilities, 500); return; }
+  aiPosture = aiDecidePosture();
   setTimeout(() => aiAttack(ai.board.filter(x => V2.canAttack(ai, x))), 650);
 }
 function aiAttack(queue) {
@@ -1939,33 +1967,30 @@ function aiAttack(queue) {
   const c = queue.shift();
   if (!V2.canAttack(ai, c)) { aiAttack(queue); return; }
   const taunts = V2.tauntsOf(you);
-  const faceAtk = aiBestAttack(c, true); // najboljši napad, ki sme v obraz (preskoči noFace)
-  // poišči najboljšo (tarča, napad) kombinacijo v bazenu bitij — dovoli noFace napade
-  const bestVsPool = pool => {
-    let bt = null, bi = null, btDmg = -1, btScore = -1;
-    pool.forEach(t => {
-      (def(c).attacks || []).forEach((atk, i) => {
-        if (!V2.canPay(ai, atk.cost, def(c).id === "celtic-lugh")) return;
-        const pr = V2.previewDamage(c, ai, t, atk);
-        const dmg = pr ? pr.dmg : (atk.damage || 0);
-        const score = dmg + (atk.effect ? 0.5 : 0); // ob enaki škodi raje napad z učinkom
-        if (score > btScore) { btScore = score; btDmg = dmg; bt = t; bi = i; }
-      });
-    });
-    return { bt, bi, btDmg };
-  };
+  const faceAtk = aiBestAttack(c, true); // najboljši napad, ki sme v obraz
   let target = null, atkIdx = null;
   if (taunts.length) {
-    const { bt, bi } = bestVsPool(taunts);
-    if (bt != null) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; }
+    // razbij zid: fokusiraj Taunt, ki ga lahko ubiješ; sicer najšibkejšega
+    let pick = null, pi = null;
+    taunts.forEach(t => { if (pick) return; const a = aiBestAtkVs(c, t); if (a.i != null && a.dmg >= aiHpOf(t)) { pick = t; pi = a.i; } });
+    if (!pick) { const t = taunts.slice().sort((a, b) => aiHpOf(a) - aiHpOf(b))[0]; const a = aiBestAtkVs(c, t); pick = t; pi = a.i; }
+    if (pick && pi != null) { target = { kind: "champ", uid: pick.uid }; atkIdx = pi; }
+  } else if ((aiPosture === "lethal" || aiPosture === "face") && faceAtk) {
+    target = { kind: "face" }; atkIdx = faceAtk.i;                 // DIRKA / LETHAL — pritisni obraz
   } else if (you.board.length) {
-    const { bt, bi, btDmg } = bestVsPool(you.board);
-    if (bt && btDmg >= (bt.maxHp - bt.damage)) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; } // lethal na bitje
-    else if (faceAtk && you.life <= faceAtk.dmg + 5) { target = { kind: "face" }; atkIdx = faceAtk.i; } // skoraj-lethal pritisk
-    else if (bt) { target = { kind: "champ", uid: bt.uid }; atkIdx = bi; }
+    // TRADE — odstrani največjo grožnjo (najprej ubijljivo, sicer čip)
+    const threats = you.board.slice().sort((a, b) => aiChampThreat(b) - aiChampThreat(a));
+    let pick = null, pi = null;
+    threats.forEach(t => { if (pick) return; const a = aiBestAtkVs(c, t); if (a.i != null && a.dmg >= aiHpOf(t)) { pick = t; pi = a.i; } });
+    if (!pick) { const t = threats[0]; const a = aiBestAtkVs(c, t); if (a.i != null) { pick = t; pi = a.i; } }
+    if (pick && pi != null) { target = { kind: "champ", uid: pick.uid }; atkIdx = pi; }
     else if (faceAtk) { target = { kind: "face" }; atkIdx = faceAtk.i; }
   } else if (faceAtk) {
     target = { kind: "face" }; atkIdx = faceAtk.i;
+  }
+  // napadalec brez face-opcije (noFace), a bi šel v obraz -> preusmeri na bitje
+  if (target && target.kind === "face" && !faceAtk && you.board.length) {
+    const a = aiBestAtkVs(c, you.board[0]); if (a.i != null) { target = { kind: "champ", uid: you.board[0].uid }; atkIdx = a.i; }
   }
   if (target == null || atkIdx == null) { aiAttack(queue); return; }
   const targetEl = target.kind === "champ" ? findChampEl(target.uid) : heroElOf("you");
@@ -1975,7 +2000,7 @@ function aiAttack(queue) {
   setTimeout(() => {
     render(); checkOver();
     if (G.over) { aiBusy = false; return; }
-    setTimeout(() => aiAttack(queue), 600); // rahlo počasneje, da se vidi vsak napad
+    setTimeout(() => aiAttack(queue), 600);
   }, 340);
 }
 function aiBestAttack(c, face) {

@@ -785,11 +785,11 @@
   function defenseOf(c) {
     if (!c) return 0;
     const d = def(c);
-    let base = (typeof d.defense === "number") ? d.defense : Math.max(0, Math.round(((c.maxHp || d.hp || 60) - 70) / 18));
-    if (isTaunt(c)) base += 6;                          // obrambni zid vrača več
-    if (c.status && c.status.guard) base += 5;          // garda = pripravljen na udarec
+    let base = (typeof d.defense === "number") ? d.defense : Math.max(0, Math.round(((c.maxHp || d.hp || 60) - 55) / 12));
+    if (isTaunt(c)) base += 12;                         // obrambni zid vrača precej — napad nanj boli
+    if (c.status && c.status.guard) base += 8;          // garda = pripravljen na udarec
     const arm = armorOf(c); if (arm && arm.thorns) base += arm.thorns; // Trni na oklepu
-    return Math.min(20, Math.max(0, base));             // zmerno — le "davek" za napad na tanke
+    return Math.min(35, Math.max(0, base));             // občuten davek za napad na tanke/zidove
   }
   function defn0heal(c, amt) { c.damage = Math.max(0, c.damage - amt); logMsg(def(c).name + " (Krvoses) +" + amt + " HP."); }
 
