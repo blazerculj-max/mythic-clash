@@ -138,7 +138,7 @@ const CARDS = {
       { name: "Sky Dash", cost: ["Sky"], damage: 30, effect: null, text: "Swift as the wind." },
       { name: "Hoof Storm", cost: ["Sky", "Any"], damage: 50, effect: null, text: "A flurry from above." }
     ],
-    ability: { name: "Free Flight", text: "Pegasus has no retreat cost. Uri ga 3× (Evolve) → Celestial Pegasus." },
+    ability: { name: "Free Flight", text: "Naval (napade takoj). Uri ga 3× (Evolve) → Celestial Pegasus." },
     activated: { name: "Train", cost: [], effect: "evolve", text: "Tapni: +1 urjenje. Pri 3/3 se razvije v Celestial Pegasus." },
     evolve: { need: 3, into: "champ-pegasus-celestial", name: "Celestial Pegasus" },
     charge: true,
@@ -232,7 +232,8 @@ const CARDS = {
       { name: "Falcon Cloak", cost: ["Sky"], damage: 30, effect: null, text: "She flies between worlds." },
       { name: "Valkyrie Call", cost: ["War", "Any"], damage: 50, effect: "heal20", text: "Freyja heals 20 HP." }
     ],
-    ability: { name: "Chooser of Slain", text: "When a Norse Champion you control is defeated, draw a card." },
+    ability: { name: "Chooser of Slain", text: "Poslednji dih: ko je premagana, potegneš 2 karti (izbere padle)." },
+    onDefeat: { kind: "draw", value: 2 },
     weakness: "Fire", resistance: "Frost", retreatCost: 1,
     flavorText: "Half the fallen are hers by right.",
     deckTags: ["Ragnarok"]
@@ -302,7 +303,8 @@ const CARDS = {
       { name: "Calculated Strike", cost: ["Wisdom"], damage: 30, effect: null, text: "Every move is planned." },
       { name: "Battle Doctrine", cost: ["Wisdom", "War"], damage: 50, effect: "draw1", text: "Draw a card." }
     ],
-    ability: { name: "Strategist", text: "Once per turn, when you play an Oracle, draw a card." },
+    ability: { name: "Strategist", text: "Klic ob vstopu: potegneš karto (taktični um)." },
+    onEnter: { kind: "draw", value: 1 },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 1,
     flavorText: "Wisdom is the sharpest blade.",
     deckTags: ["Legion"]
@@ -328,7 +330,8 @@ const CARDS = {
       { name: "Shield Wall", cost: ["War"], damage: 20, effect: "selfShield", text: "Gains Shield." },
       { name: "Pila Volley", cost: ["War", "Any"], damage: 50, effect: null, text: "A storm of javelins." }
     ],
-    ability: { name: "Formation", text: "Takes -10 damage for each other Roman Champion you control (max -20)." },
+    ability: { name: "Formation", text: "Oklep: prejme −8 od vseh napadov (formacija drži linijo)." },
+    armorSelf: 8,
     weakness: "Fire", resistance: "War", retreatCost: 1,
     flavorText: "One shield is weak. A wall is unbreakable.",
     deckTags: ["Legion"]
@@ -339,7 +342,8 @@ const CARDS = {
     attacks: [
       { name: "Read the Omens", cost: ["Wisdom"], damage: 10, effect: "draw1", text: "Draw a card." }
     ],
-    ability: { name: "Divination", text: "When you Ascend a Champion, draw a card." },
+    ability: { name: "Divination", text: "Klic ob vstopu: potegneš karto (ptice napovejo)." },
+    onEnter: { kind: "draw", value: 1 },
     weakness: "Underworld", resistance: "Wisdom", retreatCost: 1,
     flavorText: "The birds tell him what the gods intend.",
     deckTags: ["Legion"]
@@ -350,7 +354,8 @@ const CARDS = {
     attacks: [
       { name: "Twin Faces", cost: ["Wisdom", "Any"], damage: 40, effect: "swapHint", text: "Strikes from an unexpected, shifting angle." }
     ],
-    ability: { name: "Threshold", text: "Retreating one of your Champions costs 1 less Energy." },
+    ability: { name: "Threshold", text: "Klic ob vstopu: dvigne Shield (vratar zapre prag)." },
+    onEnter: { kind: "shieldSelf" },
     weakness: "Fire", resistance: "Wisdom", retreatCost: 1,
     flavorText: "He looks to where you came from, and where you go.",
     deckTags: ["Legion"]
@@ -362,7 +367,8 @@ const CARDS = {
       { name: "Hammer of the Forge", cost: ["Fire"], damage: 40, effect: null, text: "Struck on the anvil of war." },
       { name: "Molten Burst", cost: ["Fire", "War"], damage: 60, effect: "burn", text: "The Defender is Burned." }
     ],
-    ability: { name: "Master Smith", text: "Relics attached to your Champions give +10 damage." },
+    ability: { name: "Master Smith", text: "Njegovi Fire napadi zadajo +10 škode (velja)." },
+    atkAura: { type: "Fire", amount: 10 },
     weakness: "Frost", resistance: "Fire", retreatCost: 2,
     flavorText: "He forged the weapons of the gods.",
     deckTags: ["Legion"]
@@ -401,7 +407,8 @@ const CARDS = {
       { name: "Jackal Strike", cost: ["Underworld"], damage: 30, effect: null, text: "He guides the dead." },
       { name: "Weigh the Soul", cost: ["Underworld", "Any"], damage: 50, effect: "curse", text: "The Defender is Cursed." }
     ],
-    ability: { name: "Guardian of the Dead", text: "When Anubis is defeated, draw 2 cards." },
+    ability: { name: "Guardian of the Dead", text: "Poslednji dih: ko je premagan, potegneš 2 karti." },
+    onDefeat: { kind: "draw", value: 2 },
     weakness: "Sun", resistance: "Underworld", retreatCost: 2,
     flavorText: "Your heart is weighed against a feather.",
     deckTags: ["Eternity"]
@@ -449,7 +456,8 @@ const CARDS = {
       { name: "Talon Dive", cost: ["Sky"], damage: 40, effect: null, text: "From the sun he strikes." },
       { name: "Eye of Vengeance", cost: ["Sky", "Sun"], damage: 70, effect: null, text: "He avenges his father." }
     ],
-    ability: { name: "Sky Falcon", text: "Horus takes -10 damage from Underworld attacks." },
+    ability: { name: "Sky Falcon", text: "Oklep: prejme −10 od Underworld napadov (velja)." },
+    armorVs: { type: "Underworld", amount: 10 },
     weakness: "Frost", resistance: "Sky", retreatCost: 1,
     flavorText: "His eyes are the sun and the moon.",
     deckTags: ["Eternity"]
@@ -461,7 +469,8 @@ const CARDS = {
       { name: "Claw Swipe", cost: ["Moon"], damage: 30, effect: null, text: "Soft paws, sharp claws." },
       { name: "Night Pounce", cost: ["Moon", "Any"], damage: 50, effect: "selfShield", text: "Gains Shield." }
     ],
-    ability: { name: "Feline Grace", text: "Bastet's retreat cost is 0." },
+    ability: { name: "Feline Grace", text: "Umik 25% — možnost, da se popolnoma izogne napadu." },
+    dodge: 0.25,
     weakness: "Underworld", resistance: "Moon", retreatCost: 0,
     flavorText: "Guardian of home and hearth.",
     deckTags: ["Eternity"]
@@ -591,7 +600,8 @@ const CARDS = {
       { name: "Hex", cost: ["Trickery"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
       { name: "Cauldron Brew", cost: ["Trickery", "Nature"], damage: 50, effect: "poison", text: "The Defender is Poisoned." }
     ],
-    ability: { name: "Bone Hut", text: "While Baba Yaga is on your board, your Oracle cards draw an extra card." },
+    ability: { name: "Bone Hut", text: "Klic ob vstopu: nasprotnikov šampion je PREKLET (−15 škode)." },
+    onEnter: { kind: "curseEnemy" },
     weakness: "Sun", resistance: "Trickery", retreatCost: 1,
     flavorText: "Her hut runs on chicken legs.",
     deckTags: ["Spirits"]
@@ -618,7 +628,8 @@ const CARDS = {
       { name: "Crow's Omen", cost: ["Trickery"], damage: 20, effect: "curse", text: "The Defender is Cursed." },
       { name: "Phantom Flight", cost: ["Trickery", "Moon"], damage: 50, effect: "swapHint", text: "Strikes from an unexpected, shifting angle." }
     ],
-    ability: { name: "Foreteller of Doom", text: "When a Champion is defeated (yours or the enemy's), draw a card." },
+    ability: { name: "Foreteller of Doom", text: "Poslednji dih: ko je premagana, potegneš 2 karti." },
+    onDefeat: { kind: "draw", value: 2 },
     weakness: "Sun", resistance: "Trickery", retreatCost: 1,
     flavorText: "She decides who lives and who falls.",
     deckTags: ["Spirits"]
@@ -697,7 +708,7 @@ const CARDS = {
       { name: "Pixie Dust", cost: ["Trickery"], damage: 20, effect: "stunOmen",
         text: "Omen Roll. On a Favorable Omen, the Defender is Stunned." }
     ],
-    ability: { name: "Glamour", text: "Faerie Trickster has no retreat cost." },
+    ability: { name: "Glamour", text: "Umik 25% — možnost, da se popolnoma izogne napadu." },
     dodge: 0.25,
     weakness: "Sun", resistance: "Trickery", retreatCost: 0,
     flavorText: "Never accept a faerie's bargain.",
@@ -855,8 +866,8 @@ const CARDS = {
   },
   "realm-frozen": {
     id: "realm-frozen", name: "Frozen Battlefield", type: "Realm", pantheon: "Norse", rarity: "Rare",
-    realmEffect: "nonNorseRetreatPlus1",
-    text: "Non-Norse Champions have +1 retreat cost.",
+    realmEffect: "frostPlus10",
+    text: "Dokler je aktiven: Frost napadi zadajo +10 škode.",
     flavorText: "A wasteland of ice and frozen blood."
   },
 

@@ -28,8 +28,7 @@ const STARTER_DECKS = {
       ...rep("greek-athena", 3),    // Wisdom/War
       ...rep("greek-hydra", 2),     // Nature splash (cheap)
       ...rep("greek-zeus", 2),      // Sky finisher
-      ...rep("greek-heracles", 1),  // War body
-      "greek-heracles-asc",         // ascension
+      ...rep("greek-heracles", 2),  // War body (nadomesti odstranjeno ascension karto)
       // 14 Energy — Sky težišče
       ...rep("energy-sky", 8), ...rep("energy-wisdom", 4), ...rep("energy-war", 2),
       // 6 Oracle
@@ -70,7 +69,7 @@ const STARTER_DECKS = {
       ...rep("norse-thor", 2),       // War/Sky
       ...rep("norse-loki", 1),       // Trickery splash
       ...rep("norse-odin", 1),       // Wisdom/Sky draw (0->1, manj tempa)
-      "norse-thor-asc",              // ascension
+      ...rep("norse-fenrir", 1),     // dodatno telo (nadomesti odstranjeno ascension karto)
       // 14 Energy — War težišče + nekaj Sky/Frost
       ...rep("energy-war", 7), ...rep("energy-sky", 3), ...rep("energy-frost", 4),
       // 6 Oracle
@@ -110,8 +109,8 @@ const STARTER_DECKS = {
       ...rep("egypt-sphinx", 2),    // Wisdom/Sun wall
       ...rep("egypt-ra", 2),        // Sun finisher
       ...rep("egypt-anubis", 1),    // Underworld splash
+      ...rep("egypt-scarab", 1),    // dodatno poceni telo (nadomesti odstranjeno ascension karto)
       "egypt-osiris",               // Underworld/Sun revive
-      "egypt-anubis-asc",           // ascension
       // 14 Energy — Sun težišče + Sky (Horus) + Wisdom (Sphinx) + Underworld
       ...rep("energy-sun", 8), ...rep("energy-underworld", 2),
       ...rep("energy-wisdom", 2), ...rep("energy-sky", 2),

@@ -620,6 +620,7 @@
     if (G.realm === "realm-olympus" && atkType0 === "Sky" && ad.pantheon === "Greek") dmg += 10;
     if (G.realm === "realm-asgard" && atkType0 === "War" && ad.pantheon === "Norse") dmg += 10;
     if (G.realm === "realm-duat" && (atkType0 === "Underworld" || atkType0 === "Sun")) dmg += 10;
+    if (G.realm === "realm-frozen" && atkType0 === "Frost") dmg += 10;
     // Realm: Forum -10 če ima branilčev lastnik 2+ šampione
     const dOwner = ownerOfChamp(defender);
     if (G.realm === "realm-forum") { if (dOwner && dOwner.board.length >= 2) dmg -= 10; }
@@ -634,6 +635,7 @@
     }
     // Sinergije — obramba
     if (def(defender).armorSelf) dmg -= def(defender).armorSelf;                                             // pasivni oklep (npr. Heracles ★ −20)
+    { const av = def(defender).armorVs; if (av && av.type === atkType0) dmg -= av.amount; }                  // pogojni oklep (npr. Horus −10 proti Underworld)
     if (dOwner && hasBond(dOwner, "Roman")) { dmg -= 10; parts.push("FORMACIJA"); }                          // Roman Bond
     if (defender.status.shield && !pierce) dmg -= (dOwner && hasAlliance(dOwner, "order")) ? 30 : 20;        // Greek+Roman: Shield −30
     if (dmg < 0) dmg = 0;
