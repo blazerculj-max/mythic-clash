@@ -123,6 +123,39 @@ function cardTipText(d) {
 }
 function tipAttr(title, body) { return `data-tip-title="${esc(title)}" data-tip="${esc(body)}"`; }
 
+/* ---------------- ZVOK (audio motor) ---------------- */
+const SFX = {
+  muted: localStorage.getItem("mc-muted") === "1",
+  vol: (() => { const v = parseFloat(localStorage.getItem("mc-vol")); return isNaN(v) ? 0.7 : v; })(),
+  base: {}, last: {}, unlocked: false,
+  // dogodek -> ime datoteke v audio/
+  map: { summon: "summon", spell: "spell", hit: "hit", hitBig: "hit_big", heal: "heal", draw: "draw", mana: "mana", energy: "energy", hero: "hero", turn: "turn", death: "death", click: "click", victory: "victory", defeat: "defeat" },
+  // relativna glasnost posameznega zvoka (da niso vsi enako glasni)
+  gain: { click: 0.45, mana: 0.5, draw: 0.55, hit: 0.8, hitBig: 1.0, death: 0.7, heal: 0.6, turn: 0.7, summon: 0.85, spell: 0.85, energy: 0.7, hero: 0.9, victory: 0.95, defeat: 0.95 },
+  // min. razmik (ms) za hitro ponavljajoče se zvoke, da se ne zlijejo v hrup
+  throttle: { mana: 70, hit: 55, draw: 90, heal: 130, summon: 90, click: 40, energy: 90 },
+  preload() { for (const k in this.map) { try { const a = new Audio("audio/" + this.map[k] + ".mp3"); a.preload = "auto"; this.base[k] = a; } catch (e) {} } },
+  unlock() { if (this.unlocked) return; this.unlocked = true; const a = this.base.click; if (a) { const c = a.cloneNode(); c.volume = 0; c.play().then(() => { c.pause(); }).catch(() => {}); } },
+  play(key) {
+    if (this.muted) return;
+    const b = this.base[key]; if (!b) return;
+    const now = performance.now(), th = this.throttle[key] || 0;
+    if (th && this.last[key] && now - this.last[key] < th) return;
+    this.last[key] = now;
+    try { const a = b.cloneNode(); a.volume = Math.max(0, Math.min(1, this.vol * (this.gain[key] != null ? this.gain[key] : 0.8))); a.play().catch(() => {}); } catch (e) {}
+  },
+  setMuted(m) { this.muted = m; try { localStorage.setItem("mc-muted", m ? "1" : "0"); } catch (e) {} },
+};
+SFX.preload();
+function ensureSoundBtn() {
+  if (document.getElementById("mc-sound")) return;
+  const b = el("button", "mc-sound-btn"); b.id = "mc-sound"; b.title = "Zvok vklop/izklop";
+  const upd = () => { b.textContent = SFX.muted ? "🔇" : "🔊"; b.classList.toggle("muted", SFX.muted); };
+  upd();
+  b.addEventListener("click", () => { SFX.setMuted(!SFX.muted); upd(); if (!SFX.muted) SFX.play("click"); });
+  document.body.appendChild(b);
+}
+
 /* ---------------- FX (puščica, animacije, reveal) ---------------- */
 function ensureFx() {
   if (!document.getElementById("v2-fx")) { const f = el("div", "v2-fx"); f.id = "v2-fx"; document.body.appendChild(f); }
@@ -188,7 +221,7 @@ function animateStrike(attUid, targetEl, dmg, dodged) {
       if (dodged) { flyDamage(c.x, c.y, 0, "dodge"); }
       else {
         flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
-        if (dmg > 0) { impactBurst(c.x, c.y, dmg >= 40); shakeScreen(isHero || dmg >= 50); }
+        if (dmg > 0) { impactBurst(c.x, c.y, dmg >= 40); shakeScreen(isHero || dmg >= 50); SFX.play(dmg >= 40 ? "hitBig" : "hit"); }
       }
     }, 130);
   }
@@ -201,6 +234,7 @@ function showTurnBanner(text, cls) {
   const old = fx.querySelector(".v2-turnbanner"); if (old) old.remove();
   const b = el("div", "v2-turnbanner " + (cls || ""), `<span>${text}</span>`);
   fx.appendChild(b);
+  if (cls === "you") SFX.play("turn");
   requestAnimationFrame(() => b.classList.add("show"));
   clearTimeout(turnBannerTimer);
   turnBannerTimer = setTimeout(() => { b.classList.add("out"); setTimeout(() => b.remove(), 350); }, 800);
@@ -1146,7 +1180,7 @@ function render() {
 function fxTrackChamps() {
   const all = []; G.players.forEach(pl => pl.board.forEach(c => all.push(c)));
   const curUids = new Set(all.map(c => c.uid));
-  Object.keys(lastChampFx).forEach(uid => { if (!curUids.has(uid)) { const f = lastChampFx[uid]; deathPoof(f.x, f.y); } });
+  Object.keys(lastChampFx).forEach(uid => { if (!curUids.has(uid)) { const f = lastChampFx[uid]; deathPoof(f.x, f.y); SFX.play("death"); } });
   const cur = {};
   all.forEach(c => {
     const eln = findChampEl(c.uid);
@@ -1156,7 +1190,7 @@ function fxTrackChamps() {
     const buffs = ["blessing", "shield", "guard"].filter(k => c.status && c.status[k]);
     const prev = lastChampFx[c.uid];
     if (prev && eln) {
-      if (hp > prev.hp) { flyDamage(pos.x, pos.y - 14, hp - prev.hp, "heal"); eln.classList.add("fx-heal"); setTimeout(() => eln.classList.remove("fx-heal"), 650); }
+      if (hp > prev.hp) { flyDamage(pos.x, pos.y - 14, hp - prev.hp, "heal"); eln.classList.add("fx-heal"); setTimeout(() => eln.classList.remove("fx-heal"), 650); SFX.play("heal"); }
       if (buffs.some(bk => !prev.buffs.includes(bk))) { eln.classList.add("fx-buff"); setTimeout(() => eln.classList.remove("fx-buff"), 750); }
     }
     cur[c.uid] = { hp, buffs, x: pos.x, y: pos.y };
@@ -1177,8 +1211,8 @@ function fxManaChanges() {
   const pips = document.querySelectorAll('#v2-mana .v2-manacard');
   cur.forEach((tapped, i) => {
     const pip = pips[i]; if (!pip) return;
-    if (i >= prevYouMana.length) { pip.classList.add("just-added"); setTimeout(() => pip.classList.remove("just-added"), 500); }
-    else if (tapped && !prevYouMana[i]) { pip.classList.add("just-tapped"); setTimeout(() => pip.classList.remove("just-tapped"), 420); }
+    if (i >= prevYouMana.length) { pip.classList.add("just-added"); setTimeout(() => pip.classList.remove("just-added"), 500); if (prevYouMana.length) SFX.play("energy"); }
+    else if (tapped && !prevYouMana[i]) { pip.classList.add("just-tapped"); setTimeout(() => pip.classList.remove("just-tapped"), 420); SFX.play("mana"); }
   });
   prevYouMana = cur;
 }
@@ -1306,7 +1340,7 @@ function boardChamp(c, owner, isYou) {
   node.style.setProperty("--rar", rar.color); node.style.setProperty("--rar-glow", rar.glow);
   node.dataset.uid = c.uid;
   node.dataset.owner = isYou ? "you" : "opp";
-  if (!seenChampUids.has(c.uid)) { node.classList.add("entering"); seenChampUids.add(c.uid); } // enter-play animacija (enkrat)
+  if (!seenChampUids.has(c.uid)) { node.classList.add("entering"); seenChampUids.add(c.uid); SFX.play("summon"); } // enter-play animacija (enkrat) + zvok
   node.style.setProperty("--c-grad", `linear-gradient(160deg, ${st.grad[0]}, ${st.grad[1]})`);
   const canAtk = isYou && G.turn === 0 && !G.over && V2.canAttack(owner, c);
   if (canAtk) node.classList.add("ready");
@@ -1415,7 +1449,7 @@ function renderHand() {
     // card-draw animacija: nove karte (še neviden uid) zletijo iz decka v roko
     if (inst.uid != null && !seenHandUids.has(inst.uid)) {
       seenHandUids.add(inst.uid);
-      if (!firstHandRender) { node.classList.add("drawn"); node.style.setProperty("--draw-i", drawIdx++); }
+      if (!firstHandRender) { node.classList.add("drawn"); node.style.setProperty("--draw-i", drawIdx++); SFX.play("draw"); }
     }
     node.addEventListener("pointerdown", (e) => startHandDrag(inst, node, e));
     h.appendChild(node);
@@ -1527,7 +1561,7 @@ function doHeroPower() {
   const you = G.players[0]; const hpw = you.heroPower; if (!hpw) return;
   payThen(Array.from({ length: hpw.cost }, () => "Any"), false, idx => {
     const r = V2.useHeroPower(you, idx);
-    if (!r.ok) toast(r.msg || "Ni mogoče.");
+    if (!r.ok) toast(r.msg || "Ni mogoče."); else SFX.play("hero");
     manaPick = null; render(); checkOver();
   });
 }
@@ -1668,12 +1702,12 @@ function dropPlay(inst, x, y) {
         targetUid = Number(champEl.dataset.uid);
       if (targetUid == null) { toast(need === "enemy" ? "Spusti na NASPROTNIKOVEGA šampiona." : "Spusti na SVOJEGA šampiona."); return; }
       const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-      payThen(cost, false, idx => { const r = V2.playCard(you, inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+      payThen(cost, false, idx => { const r = V2.playCard(you, inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
       return;
     }
     if (!overField) return;
     const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
     return;
   }
 }
@@ -1700,7 +1734,7 @@ function onHandClick(inst) {
       return;
     }
     const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
     return;
   }
 }
@@ -1715,7 +1749,7 @@ function onChampClick(c, owner, isYou) {
       const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
       const targetUid = c.uid;
       pendingPlay = null;
-      payThen(cost, false, idx => { const r = V2.playCard(G.players[0], inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); manaPick = null; render(); });
+      payThen(cost, false, idx => { const r = V2.playCard(G.players[0], inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
       return;
     } else { toast(want === "ally" ? "Izberi SVOJEGA šampiona." : "Izberi NASPROTNIKOVEGA šampiona."); return; }
   }
@@ -1812,7 +1846,7 @@ function aiSpells() {
     if (need === "enemy") targetUid = (you.board[0] || {}).uid;
     else if (need === "ally") targetUid = (ai.board.slice().sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0] || {}).uid;
     const dd = def(inst);
-    revealCard(dd, "Nasprotnik igra", () => { V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 300); });
+    revealCard(dd, "Nasprotnik igra", () => { if (dd.type === "Oracle") SFX.play("spell"); V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 300); });
     return; // morda še en
   }
   setTimeout(aiAbilities, 400);
@@ -1828,7 +1862,7 @@ function aiAbilities() {
     else if (hpw.kind === "chain") use = opp.board.length >= 2 || (opp.board.length === 1 && (opp.board[0].maxHp - opp.board[0].damage) <= hpw.value);
     else if (hpw.kind === "heroAttack") use = !opp.board.some(c => !c.tapped) || opp.life <= hpw.value;
     else if (hpw.kind === "shieldAll") use = ai.board.length >= 2 && opp.board.length >= 1;
-    if (use) { V2.useHeroPower(ai); render(); setTimeout(aiAbilities, 600); return; }
+    if (use) { V2.useHeroPower(ai); SFX.play("hero"); render(); setTimeout(aiAbilities, 600); return; }
   }
   // aktiviraj obrambno/heal sposobnost na poškodovanem šampionu (HP < 55%)
   const c = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) &&
@@ -1902,6 +1936,7 @@ function aiBestAttack(c, face) {
 function checkOver() {
   if (!G.over) return;
   render();
+  SFX.play(G.winner === 0 ? "victory" : "defeat");
   if (runActive) {
     runActive = false;
     const won = G.winner === 0;
@@ -1914,9 +1949,14 @@ function checkOver() {
 /* ---------------- BOOT ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
   ensureFx();
+  ensureSoundBtn();
   initTooltips();
   buildSetup();
   $("#v2-end").addEventListener("click", endHumanTurn);
+  // odkleni zvok ob prvi interakciji (avtoplay pravila brskalnika)
+  window.addEventListener("pointerdown", () => SFX.unlock(), { once: true });
+  // klik zvok na gumbih
+  document.addEventListener("click", (e) => { if (e.target.closest("button, .mode-card, .deck-card, .reward-card, .mull-btn, .run-deckcard, .reward-card")) SFX.play("click"); });
   // Dnevnik: zložljiv, privzeto zaprt
   const logPanel = document.querySelector(".log-panel");
   if (logPanel) {
