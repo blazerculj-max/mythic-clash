@@ -256,6 +256,82 @@ function lunge(attEl, targetEl) {
   setTimeout(() => { attEl.style.transform = ""; setTimeout(() => { attEl.style.transition = ""; attEl.style.zIndex = ""; }, 160); }, 150);
 }
 // animira napad: napadalec (uid) -> tarča (el); izpiše škodo
+/* ---------- SPELL PROJEKTIL (svetlobni izstrelek do tarče) ---------- */
+function spellFxKind(e) {
+  e = e || "";
+  if (/freeze|frost|nova/i.test(e)) return "frost";
+  if (/heal/i.test(e)) return "heal";
+  if (/curse/i.test(e)) return "curse";
+  if (/bless|shield|buff|apotheosis|draw/i.test(e)) return "gold";
+  if (/dmg|fireball|bolt|aoe|burn|face/i.test(e)) return "fire";
+  return "fire";
+}
+function spellProjectile(fromEl, toEl, kind, done) {
+  ensureFx();
+  if (!fromEl || !toEl) { done && done(); return; }
+  const a = elCenter(fromEl), b = elCenter(toEl);
+  const orb = el("div", "v2-proj " + (kind || "fire"));
+  document.getElementById("v2-fx").appendChild(orb);
+  const t0 = performance.now(), dur = 380;
+  const cx = (a.x + b.x) / 2, cy = Math.min(a.y, b.y) - 90; // lok navzgor
+  let frame = 0;
+  (function step(now) {
+    const t = Math.min(1, (now - t0) / dur), u = 1 - t;
+    const x = u * u * a.x + 2 * u * t * cx + t * t * b.x;
+    const y = u * u * a.y + 2 * u * t * cy + t * t * b.y;
+    orb.style.left = x + "px"; orb.style.top = y + "px";
+    if (++frame % 3 === 0) { // sled
+      const d = el("div", "v2-proj-trail " + (kind || "fire"));
+      d.style.left = x + "px"; d.style.top = y + "px";
+      document.getElementById("v2-fx").appendChild(d);
+      setTimeout(() => d.remove(), 320);
+    }
+    if (t < 1) requestAnimationFrame(step);
+    else { orb.remove(); done && done(); }
+  })(performance.now());
+}
+// urok: FX od izvajalca do tarče; onDone -> render (stanje je že uveljavljeno)
+function castSpellFx(byYou, d, targetUid, done) {
+  const e = d.effect || "";
+  const kind = spellFxKind(e);
+  const from = heroElOf(byYou ? "you" : "opp");
+  const enemySide = byYou ? "opp" : "you";
+  let to = null, aoe = false, face = false;
+  if (targetUid != null) to = findChampEl(targetUid);
+  else if (/faceDmg/.test(e)) { to = heroElOf(enemySide); face = true; }
+  else if (/^aoe/.test(e)) { to = document.querySelector(".v2-" + enemySide + " .v2-board-row"); aoe = true; }
+  if (!to || !from) { // samo-učinek (vlek/ščit/apoteoza): zlat sij nad izvajalcem
+    if (from) { const c = elCenter(from); impactBurst(c.x, c.y, false); }
+    done && done(); return;
+  }
+  spellProjectile(from, to, kind, () => {
+    if (aoe) {
+      document.querySelectorAll('.v2-' + enemySide + ' .v2-champ').forEach(ch => { const c = elCenter(ch); impactBurst(c.x, c.y, false); shakeEl(ch); });
+      shakeScreen(false);
+    } else {
+      const c = elCenter(to); impactBurst(c.x, c.y, true); shakeEl(to);
+      if (face) { heroHitFx(to, enemySide === "you"); shakeScreen(true); }
+    }
+    SFX.play("hit");
+    done && done();
+  });
+}
+/* ---------- HERO HIT (razpoka + rdeč blisk zaslona) ---------- */
+function heroHitFx(heroEl, isYou) {
+  ensureFx();
+  if (heroEl) {
+    const ava = heroEl.querySelector(".v2-hero-ava") || heroEl;
+    const cr = el("div", "v2-crack");
+    ava.appendChild(cr);
+    setTimeout(() => cr.remove(), 650);
+  }
+  if (isYou) { // rdeč vinjetni blisk le ob udarcu v TVOJEGA heroja
+    const f = el("div", "v2-redflash");
+    document.getElementById("v2-fx").appendChild(f);
+    requestAnimationFrame(() => f.classList.add("show"));
+    setTimeout(() => f.remove(), 500);
+  }
+}
 function animateStrike(attUid, targetEl, dmg, dodged, retal) {
   const attEl = findChampEl(attUid);
   lunge(attEl, targetEl);
@@ -264,7 +340,10 @@ function animateStrike(attUid, targetEl, dmg, dodged, retal) {
     const isHero = targetEl.classList.contains("v2-hero");
     setTimeout(() => {
       shakeEl(targetEl);
-      if (isHero && !dodged && dmg > 0) { targetEl.classList.add("hero-hurt"); setTimeout(() => targetEl.classList.remove("hero-hurt"), 600); }
+      if (isHero && !dodged && dmg > 0) {
+        targetEl.classList.add("hero-hurt"); setTimeout(() => targetEl.classList.remove("hero-hurt"), 600);
+        heroHitFx(targetEl, !!targetEl.closest(".v2-you"));
+      }
       if (dodged) { flyDamage(c.x, c.y, 0, "dodge"); }
       else {
         flyDamage(c.x, c.y, dmg, dmg > 0 ? "dmg" : "zero");
@@ -1772,14 +1851,19 @@ function dropPlay(inst, x, y) {
         targetUid = Number(champEl.dataset.uid);
       if (targetUid == null) { toast(need === "enemy" ? "Spusti na NASPROTNIKOVEGA šampiona." : "Spusti na SVOJEGA šampiona."); return; }
       const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-      payThen(cost, false, idx => { const r = V2.playCard(you, inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
+      payThen(cost, false, idx => { const r = V2.playCard(you, inst, { targetUid, manaIdx: idx }); manaPick = null; if (!r.ok) { toast(r.msg || "Ni mogoče."); render(); return; } playedCardFx(d, targetUid); });
       return;
     }
     if (!overField) return;
     const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); manaPick = null; if (!r.ok) { toast(r.msg || "Ni mogoče."); render(); return; } playedCardFx(d, null); });
     return;
   }
+}
+// po uspešno odigrani karti: urok -> projektil, nato render (+ konec igre npr. faceDmg lethal)
+function playedCardFx(d, targetUid) {
+  if (d.type === "Oracle") { SFX.play("spell"); castSpellFx(true, d, targetUid, () => { render(); checkOver(); }); }
+  else { render(); checkOver(); }
 }
 
 function onHandClick(inst) {
@@ -1804,7 +1888,7 @@ function onHandClick(inst) {
       return;
     }
     const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
-    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
+    payThen(cost, false, idx => { const r = V2.playCard(you, inst, { manaIdx: idx }); manaPick = null; if (!r.ok) { toast(r.msg || "Ni mogoče."); render(); return; } playedCardFx(d, null); });
     return;
   }
 }
@@ -1819,7 +1903,7 @@ function onChampClick(c, owner, isYou) {
       const cost = Array.from({ length: V2.manaCostOf(d) }, () => "Any");
       const targetUid = c.uid;
       pendingPlay = null;
-      payThen(cost, false, idx => { const r = V2.playCard(G.players[0], inst, { targetUid, manaIdx: idx }); if (!r.ok) toast(r.msg || "Ni mogoče."); else if (d.type === "Oracle") SFX.play("spell"); manaPick = null; render(); });
+      payThen(cost, false, idx => { const r = V2.playCard(G.players[0], inst, { targetUid, manaIdx: idx }); manaPick = null; if (!r.ok) { toast(r.msg || "Ni mogoče."); render(); return; } playedCardFx(d, targetUid); });
       return;
     } else { toast(want === "ally" ? "Izberi SVOJEGA šampiona." : "Izberi NASPROTNIKOVEGA šampiona."); return; }
   }
@@ -1920,7 +2004,11 @@ function aiSpells() {
     if (need === "enemy") targetUid = (you.board[0] || {}).uid;
     else if (need === "ally") targetUid = (ai.board.slice().sort((a, b) => (b.maxHp - b.damage) - (a.maxHp - a.damage))[0] || {}).uid;
     const dd = def(inst);
-    revealCard(dd, "Nasprotnik igra", () => { if (dd.type === "Oracle") SFX.play("spell"); V2.playCard(ai, inst, { targetUid }); render(); setTimeout(aiSpells, 550); });
+    revealCard(dd, "Nasprotnik igra", () => {
+      V2.playCard(ai, inst, { targetUid });
+      if (dd.type === "Oracle") { SFX.play("spell"); castSpellFx(false, dd, targetUid, () => { render(); checkOver(); if (!G.over) setTimeout(aiSpells, 550); }); }
+      else { render(); setTimeout(aiSpells, 550); }
+    });
     return; // morda še en
   }
   setTimeout(aiAbilities, 400);

@@ -1085,3 +1085,52 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
   -webkit-background-clip: text; background-clip: text; text-shadow: 0 0 42px rgba(255, 100, 80, 0.22);
 }
 .go-sub { color: var(--ink-dim); font-size: 15px; margin: 0 0 26px; font-style: italic; }
+
+/* — SPELL PROJEKTIL: komet z repom, barva po tipu učinka — */
+.v2-proj {
+  position: fixed; width: 20px; height: 20px; transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none; z-index: 505;
+  animation: projPulse 0.24s ease-in-out infinite alternate;
+}
+.v2-proj.fire  { background: radial-gradient(circle at 38% 32%, #fff3c8, #ffb03a 45%, #e2521f 70%, transparent 82%); box-shadow: 0 0 18px 5px rgba(255, 150, 50, 0.65); }
+.v2-proj.frost { background: radial-gradient(circle at 38% 32%, #eaf9ff, #7fd4ff 45%, #2d7fd6 70%, transparent 82%); box-shadow: 0 0 18px 5px rgba(110, 190, 255, 0.6); }
+.v2-proj.heal  { background: radial-gradient(circle at 38% 32%, #eaffec, #8fe6a4 45%, #2f9e57 70%, transparent 82%); box-shadow: 0 0 18px 5px rgba(120, 230, 150, 0.6); }
+.v2-proj.curse { background: radial-gradient(circle at 38% 32%, #f3e6ff, #c08aff 45%, #7a3ad6 70%, transparent 82%); box-shadow: 0 0 18px 5px rgba(180, 120, 255, 0.6); }
+.v2-proj.gold  { background: radial-gradient(circle at 38% 32%, #fff8dc, #ffd97a 45%, #c99a3e 70%, transparent 82%); box-shadow: 0 0 18px 5px rgba(255, 216, 122, 0.6); }
+@keyframes projPulse { from { transform: translate(-50%, -50%) scale(0.9); } to { transform: translate(-50%, -50%) scale(1.15); } }
+.v2-proj-trail {
+  position: fixed; width: 9px; height: 9px; transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none; z-index: 504; opacity: 0.75;
+  animation: projTrail 0.32s ease-out forwards;
+}
+.v2-proj-trail.fire  { background: radial-gradient(circle, #ffcf7a, transparent 70%); }
+.v2-proj-trail.frost { background: radial-gradient(circle, #a8dfff, transparent 70%); }
+.v2-proj-trail.heal  { background: radial-gradient(circle, #a9eeb8, transparent 70%); }
+.v2-proj-trail.curse { background: radial-gradient(circle, #d0a8ff, transparent 70%); }
+.v2-proj-trail.gold  { background: radial-gradient(circle, #ffe9a8, transparent 70%); }
+@keyframes projTrail { to { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } }
+
+/* — HERO HIT: razpoka na portretu + rdeč vinjetni blisk — */
+.v2-hero-ava { position: relative; overflow: visible; }
+.v2-crack {
+  position: absolute; inset: -4px; border-radius: 50%; pointer-events: none; z-index: 5;
+  background:
+    linear-gradient(23deg, transparent 46%, rgba(255,240,220,0.95) 48.5%, transparent 51%),
+    linear-gradient(-38deg, transparent 44%, rgba(255,220,200,0.85) 46.5%, transparent 49%),
+    linear-gradient(78deg, transparent 55%, rgba(255,240,220,0.8) 57%, transparent 59.5%),
+    radial-gradient(circle at 50% 42%, rgba(255,80,50,0.5), transparent 60%);
+  animation: crackFlash 0.62s ease-out forwards;
+}
+@keyframes crackFlash {
+  0%   { opacity: 0; transform: scale(0.6); }
+  18%  { opacity: 1; transform: scale(1.08); }
+  45%  { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.02); }
+}
+.v2-redflash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9000;
+  background: radial-gradient(75% 75% at 50% 50%, transparent 55%, rgba(190, 20, 10, 0.42) 100%);
+  opacity: 0; transition: opacity 0.12s ease-in;
+}
+.v2-redflash.show { opacity: 1; animation: redflashOut 0.5s ease-out forwards; }
+@keyframes redflashOut { 0% { opacity: 1; } 35% { opacity: 0.85; } 100% { opacity: 0; } }

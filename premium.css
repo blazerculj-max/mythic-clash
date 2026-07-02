@@ -300,3 +300,96 @@ h1, h2, h3, .mull-title, .run-title { font-family: "Cinzel", Georgia, serif; }
   .deck-card { min-height: 240px; }
   #arena-bg { background-attachment: scroll; }
 }
+
+/* ================================================================
+   PREMIUM ZASLONI: mulligan + kampanja/arena (run) + nagrade
+================================================================ */
+/* — Mulligan — */
+.mull-eyebrow { font-family: "Cinzel", Georgia, serif; color: var(--mc-gold-2); letter-spacing: 0.3em; }
+.mull-sub { color: #cfc8b8; font-style: italic; }
+.mull-card, .v2-pickcard, .v2-infocard {
+  border: 1px solid var(--mc-edge-dim);
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(16,14,26,0.92), rgba(8,8,16,0.96));
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: transform .18s ease, box-shadow .2s ease, border-color .18s ease;
+  overflow: hidden;
+}
+.mull-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--mc-gold-2);
+  box-shadow: 0 20px 46px rgba(0,0,0,0.7), 0 0 26px -6px rgba(203,161,53,0.45);
+}
+.v2-pick-art { position: relative; }
+.v2-pick-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(6,6,12,0.78) 100%);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.45);
+}
+.v2-pick-name { font-family: "Cinzel", Georgia, serif; }
+.mull-btn { font-family: "Cinzel", Georgia, serif; letter-spacing: 0.06em; border-radius: 999px; }
+.mull-btn.keep {
+  color: #241a05;
+  background: linear-gradient(180deg, #ffe9a3 0%, #e9c46a 45%, #b8892f 100%);
+  border: 1px solid #7a5c16;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -2px 4px rgba(90,60,10,0.55), 0 6px 18px rgba(0,0,0,0.55), 0 0 22px -4px rgba(233,196,106,0.5);
+}
+.mull-btn.mull {
+  background: rgba(10,10,20,0.6);
+  border: 1px solid var(--mc-edge);
+  color: var(--mc-gold-1);
+  backdrop-filter: blur(4px);
+}
+.mull-btn.mull:hover { border-color: var(--mc-gold-1); box-shadow: 0 0 18px -4px rgba(246,226,122,0.5); }
+
+/* — Run zasloni (kampanja / arena / nagrade) — */
+#v2-run {
+  background:
+    radial-gradient(1000px 640px at 50% -10%, rgba(140, 90, 220, 0.14), transparent 60%),
+    radial-gradient(820px 560px at 90% 106%, rgba(210, 150, 50, 0.10), transparent 60%),
+    linear-gradient(180deg, #07070f, #0d0d1c 55%, #090912);
+}
+.run-title {
+  color: var(--mc-gold-1);
+  text-shadow: 0 0 24px rgba(246,226,122,0.28), 0 2px 6px rgba(0,0,0,0.9);
+  letter-spacing: 0.04em;
+}
+.run-statline, .run-arts {
+  background: var(--mc-glass);
+  border: 1px solid var(--mc-edge-dim);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+}
+.run-arts { padding: 8px 10px; }
+.run-stage {
+  border: 1px solid var(--mc-edge-dim);
+  border-radius: 11px;
+  background: var(--mc-glass);
+  backdrop-filter: blur(4px);
+}
+.run-stage.current {
+  border-color: var(--mc-gold-2);
+  box-shadow: 0 0 22px -6px rgba(203,161,53,0.55), inset 0 0 0 1px rgba(246,226,122,0.18);
+}
+.run-stage.done { border-color: rgba(111,217,138,0.35); }
+
+/* nagradne karte: zlat okvir + kinematski art */
+.reward-card {
+  border: 1px solid var(--mc-edge-dim);
+  background: linear-gradient(180deg, rgba(14,12,24,0.94), rgba(7,7,14,0.97));
+  box-shadow: 0 14px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.reward-card:hover {
+  border-color: var(--mc-gold-1);
+  box-shadow: 0 22px 52px rgba(0,0,0,0.72), 0 0 0 2px var(--mc-gold-1), 0 0 30px -4px rgba(246,226,122,0.5);
+}
+.reward-card .rdc-art { position: relative; }
+.reward-card .rdc-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 58%, rgba(6,6,12,0.7) 100%);
+}
+.rw-tag { font-family: "Cinzel", Georgia, serif; color: var(--mc-gold-2); }
+.rw-up-label, .reward-card .rdc-n { font-family: "Cinzel", Georgia, serif; }
+.run-deckcard { transition: transform .15s ease, box-shadow .18s ease, border-color .15s ease; }
+.run-deckcard:hover { transform: translateY(-4px); border-color: var(--mc-gold-2); box-shadow: 0 12px 28px rgba(0,0,0,0.55); }
+.rules-toggle { font-family: "Cinzel", Georgia, serif; letter-spacing: 0.05em; }
