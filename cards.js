@@ -1033,6 +1033,194 @@ const CARDS = {
     weakness: "Fire", resistance: "Nature", flavorText: "Duh, ki točí sok življenja.",
   },
 
+  /* ============ RAZŠIRITEV (Korak 2: max-2 pravilo -> več variacije) ============
+     18 novih kart, 3 na panteon. Uporabljajo obstoječe učinke (brez engine sprememb).
+  ------------------------------------------------------------------------------ */
+  /* — GREEK — */
+  "greek-artemis": {
+    id: "greek-artemis", name: "Artemis, Moonlit Huntress", type: "Champion",
+    pantheon: "Greek", rarity: "Rare", stage: "basic", hp: 90, dodge: 0.2,
+    attacks: [
+      { name: "Moonshot", cost: ["Sky"], damage: 30, effect: null, text: "Puščica, ki nikoli ne zgreši." },
+      { name: "Twin Arrows", cost: ["Sky", "Any"], damage: 50, effect: "stunOmen", text: "Omen met: ob ugodnem znamenju je branilec Omamljen." }
+    ],
+    ability: { name: "Mark of the Hunt", text: "Klic ob vstopu: 15 škode nasprotnikovemu šampionu. Umik 20%." },
+    onEnter: { kind: "damageEnemy", value: 15 },
+    weakness: "Underworld", resistance: "Sky", retreatCost: 1,
+    flavorText: "Lov se začne, ko vzide luna.",
+  },
+  "greek-triton": {
+    id: "greek-triton", name: "Triton, Tide Herald", type: "Champion",
+    pantheon: "Greek", rarity: "Uncommon", stage: "basic", hp: 100, taunt: true,
+    attacks: [
+      { name: "Tide Slam", cost: ["Sky"], damage: 25, effect: "selfShield", text: "Udari 25 in dvigne Shield (val ga zakrije)." }
+    ],
+    ability: { name: "Sea Wall", text: "Taunt — val, ki ga moraš najprej prebiti." },
+    weakness: "Frost", resistance: "Sky", retreatCost: 2,
+    flavorText: "Njegov rog kliče plimo.",
+  },
+  "minion-myrmidon": {
+    id: "minion-myrmidon", name: "Myrmidon", type: "Champion", minion: true,
+    pantheon: "Greek", rarity: "Common", stage: "basic", summonCost: 1, hp: 30,
+    attacks: [{ name: "Phalanx Jab", cost: ["War"], damage: 15, effect: "guardSelf", text: "Tarčni (War): udari 15 in zavzame gardo (−50% škode)." }],
+    ability: { name: "Disciplined", text: "Mravljinčji vojak — po udarcu se skrije za ščit." },
+    weakness: "Fire", resistance: "War", flavorText: "Rojen iz mravelj, zvest do smrti.",
+  },
+  /* — NORSE — */
+  "norse-heimdall": {
+    id: "norse-heimdall", name: "Heimdall, Watcher of Bifrost", type: "Champion",
+    pantheon: "Norse", rarity: "Rare", stage: "basic", hp: 110, taunt: true,
+    attacks: [
+      { name: "Gjallarhorn", cost: ["War"], damage: 30, effect: null, text: "Rog, ki napove konec sveta." },
+      { name: "Bifrost Guard", cost: ["Sky", "War"], damage: 55, effect: null, text: "Mavrični most brani sam." }
+    ],
+    ability: { name: "All-Seeing", text: "Klic ob vstopu: dvigne Shield. Taunt — stražar mostu." },
+    onEnter: { kind: "shieldSelf" },
+    weakness: "Trickery", resistance: "Sky", retreatCost: 2,
+    flavorText: "Vidi travo rasti in sliši volno na ovcah.",
+  },
+  "norse-skadi": {
+    id: "norse-skadi", name: "Skadi, Winter Archer", type: "Champion",
+    pantheon: "Norse", rarity: "Uncommon", stage: "basic", hp: 90,
+    attacks: [
+      { name: "Frost Arrow", cost: ["Frost"], damage: 20, effect: "freeze", text: "Branilec je Zmrznjen." },
+      { name: "Winter Hunt", cost: ["Frost", "Any"], damage: 50, effect: null, text: "Sledi plenu čez led." }
+    ],
+    ability: { name: "Snowstrider", text: "Njeni Frost napadi zamrznejo pot." },
+    weakness: "Fire", resistance: "Frost", retreatCost: 1,
+    flavorText: "Gora je njen dom, zima njen zaveznik.",
+  },
+  "minion-draugr": {
+    id: "minion-draugr", name: "Draugr", type: "Champion", minion: true,
+    pantheon: "Norse", rarity: "Common", stage: "basic", summonCost: 1, hp: 35, lifesteal: true, decay: 10,
+    attacks: [{ name: "Grave Grip", cost: ["Underworld"], damage: 15, effect: null, noFace: true, text: "Tarčni (Underworld): 15 + Krvoses — LE na bitja. Razpada 10/potezo." }],
+    ability: { name: "Restless Dead", text: "Krvoses; a truplo razpada — vsak konec poteze izgubi 10 HP." },
+    weakness: "Sun", resistance: "Underworld", flavorText: "Grob ga ni mogel zadržati.",
+  },
+  /* — EGYPTIAN — */
+  "egypt-sekhmet": {
+    id: "egypt-sekhmet", name: "Sekhmet, Lioness of War", type: "Champion",
+    pantheon: "Egyptian", rarity: "Epic", stage: "basic", hp: 100,
+    attacks: [
+      { name: "Lioness Claw", cost: ["Sun"], damage: 35, effect: null, text: "Kremplji sončne jeze." },
+      { name: "Blood Fury", cost: ["Sun", "War"], damage: 60, effect: null, text: "Njena jeza pije kri." }
+    ],
+    ability: { name: "Wrath Unbound", text: "Bes: pri 50 HP ali manj njeni napadi zadajo +20 škode (velja)." },
+    enrage: { below: 50, amount: 20 },
+    weakness: "Frost", resistance: "Sun", retreatCost: 2,
+    flavorText: "Ra jo je poslal kaznovat človeštvo.",
+  },
+  "egypt-thoth": {
+    id: "egypt-thoth", name: "Thoth, Scribe of Truth", type: "Champion",
+    pantheon: "Egyptian", rarity: "Uncommon", stage: "basic", hp: 80,
+    attacks: [
+      { name: "Glyph Strike", cost: ["Wisdom"], damage: 20, effect: "draw1", text: "Udari 20; potegneš karto." }
+    ],
+    ability: { name: "Keeper of Records", text: "Klic ob vstopu: potegneš karto." },
+    onEnter: { kind: "draw", value: 1 },
+    weakness: "Trickery", resistance: "Wisdom", retreatCost: 1,
+    flavorText: "Zapisal je vsako izrečeno resnico.",
+  },
+  "minion-anubite": {
+    id: "minion-anubite", name: "Anubite Sentinel", type: "Champion", minion: true,
+    pantheon: "Egyptian", rarity: "Common", stage: "basic", summonCost: 1, hp: 30,
+    attacks: [{ name: "Soul Weigh", cost: ["Underworld"], damage: 15, effect: "curse", text: "Tarčni (Underworld): 15 in branilec je PREKLET (−15 škode)." }],
+    ability: { name: "Judgement", text: "Šakalji stražar tehta duše — prekolne tarčo." },
+    weakness: "Sun", resistance: "Underworld", flavorText: "Šakal nikoli ne spi.",
+  },
+  /* — SLAVIC — */
+  "slavic-zmey": {
+    id: "slavic-zmey", name: "Zmey Gorynych", type: "Champion",
+    pantheon: "Slavic", rarity: "Epic", stage: "basic", hp: 120, overload: 1,
+    attacks: [
+      { name: "Triple Flame", cost: ["Fire"], damage: 40, effect: "burn", text: "Tri glave, en ogenj — branilec gori." },
+      { name: "Dragon Storm", cost: ["Fire", "Fire", "Any"], damage: 90, effect: "selfDamage20", text: "90 škode; zmaj utrpi 20 povratne." }
+    ],
+    ability: { name: "Three Heads", text: "Preobremenitev: po napadu tapne 1 mano naslednjo potezo." },
+    weakness: "Frost", resistance: "Fire", retreatCost: 3,
+    flavorText: "Odsekaj glavo — zrasteta dve.",
+  },
+  "slavic-alkonost": {
+    id: "slavic-alkonost", name: "Alkonost, Bird of Joy", type: "Champion",
+    pantheon: "Slavic", rarity: "Rare", stage: "basic", hp: 90,
+    attacks: [
+      { name: "Radiant Song", cost: ["Nature"], damage: 25, effect: "heal20", text: "Udari 25; Alkonost se pozdravi 20." }
+    ],
+    ability: { name: "Song of Dawn", text: "Klic ob vstopu: vsi tvoji šampioni +15 HP." },
+    onEnter: { kind: "healBoard", value: 15 },
+    weakness: "Underworld", resistance: "Nature", retreatCost: 1,
+    flavorText: "Kdor sliši njeno pesem, pozabi žalost.",
+  },
+  "minion-kikimora": {
+    id: "minion-kikimora", name: "Kikimora", type: "Champion", minion: true,
+    pantheon: "Slavic", rarity: "Common", stage: "basic", summonCost: 1, hp: 25, dodge: 0.25,
+    attacks: [{ name: "Night Pinch", cost: ["Trickery"], damage: 15, effect: "poison", text: "Tarčni (Trickery): 15 in branilec je ZASTRUPLJEN." }],
+    ability: { name: "House Haunt", text: "Umik 25% — duh, ki ga težko ujameš." },
+    weakness: "Sun", resistance: "Trickery", flavorText: "Ponoči šiva, podnevi straši.",
+  },
+  /* — ROMAN — */
+  "roman-centurion": {
+    id: "roman-centurion", name: "Centurion Primus", type: "Champion",
+    pantheon: "Roman", rarity: "Uncommon", stage: "basic", hp: 100, taunt: true,
+    attacks: [
+      { name: "Gladius Thrust", cost: ["War"], damage: 30, effect: null, text: "Kratek meč, dolga slava." },
+      { name: "Hold the Line", cost: ["War", "Any"], damage: 45, effect: "selfShield", text: "45 škode in dvigne Shield." }
+    ],
+    ability: { name: "First Spear", text: "Oklep: prejme −5 od vseh napadov. Taunt." },
+    armorSelf: 5,
+    weakness: "Trickery", resistance: "War", retreatCost: 2,
+    flavorText: "Sto mož mu sledi brez vprašanj.",
+  },
+  "roman-victoria": {
+    id: "roman-victoria", name: "Victoria, Winged Triumph", type: "Champion",
+    pantheon: "Roman", rarity: "Rare", stage: "basic", hp: 90, charge: true,
+    attacks: [
+      { name: "Laurel Charge", cost: ["Sky"], damage: 30, effect: null, text: "Zmaga prileti na krilih." }
+    ],
+    ability: { name: "Triumph", text: "Klic ob vstopu: vsi tvoji šampioni dobijo Blagoslov (+15 škode). Naval." },
+    onEnter: { kind: "buffBoard" },
+    weakness: "Underworld", resistance: "Sky", retreatCost: 1,
+    flavorText: "Kjer pristane, tam slavijo.",
+  },
+  "minion-ballista": {
+    id: "minion-ballista", name: "Siege Ballista", type: "Champion", minion: true,
+    pantheon: "Roman", rarity: "Common", stage: "basic", summonCost: 1, hp: 20,
+    attacks: [{ name: "Bolt Loose", cost: ["War"], damage: 25, effect: null, noFace: true, text: "Tarčni (War): 25 škode — LE na bitja (obleganje)." }],
+    ability: { name: "Siege Engine", text: "Stroj za rušenje bitij — obraza ne doseže." },
+    weakness: "Fire", resistance: null, flavorText: "Les, vrv in matematika.",
+  },
+  /* — CELTIC — */
+  "celtic-scathach": {
+    id: "celtic-scathach", name: "Scáthach, Shadow Teacher", type: "Champion",
+    pantheon: "Celtic", rarity: "Epic", stage: "basic", hp: 100,
+    attacks: [
+      { name: "Spear Form", cost: ["War"], damage: 35, effect: null, text: "Popolna tehnika kopja." },
+      { name: "Teacher's Lesson", cost: ["War", "Any"], damage: 55, effect: "reserveBuff", text: "55 škode; vsi tvoji šampioni dobijo Blagoslov." }
+    ],
+    ability: { name: "War School", text: "Klic ob vstopu: potegneš karto (učiteljica vé)." },
+    onEnter: { kind: "draw", value: 1 },
+    weakness: "Sun", resistance: "War", retreatCost: 2,
+    flavorText: "Naučila je Cúchulainna vsega, kar zna.",
+  },
+  "celtic-dagda": {
+    id: "celtic-dagda", name: "The Dagda, Good God", type: "Champion",
+    pantheon: "Celtic", rarity: "Rare", stage: "basic", hp: 120, taunt: true,
+    attacks: [
+      { name: "Club Smash", cost: ["Nature"], damage: 30, effect: "healSelf20", text: "Udari 30 in se pozdravi 20 (kotel obilja)." }
+    ],
+    ability: { name: "Cauldron of Plenty", text: "Fortify: tapni za Taunt+Shield. Taunt." },
+    activated: { name: "Fortify", cost: ["Any"], effect: "fortify", text: "Tapni + 1 energija: dobi Taunt (do naslednje poteze) in Shield." },
+    weakness: "Frost", resistance: "Nature", retreatCost: 2,
+    flavorText: "Njegov kotel nikoli ni prazen.",
+  },
+  "minion-wisp": {
+    id: "minion-wisp", name: "Will-o'-Wisp", type: "Champion", minion: true,
+    pantheon: "Celtic", rarity: "Common", stage: "basic", summonCost: 1, hp: 15, charge: true, dodge: 0.3,
+    attacks: [{ name: "Ghost Light", cost: ["Moon"], damage: 15, effect: null, text: "Tarčni (Moon): bliskovita lučka za 15." }],
+    ability: { name: "Flicker", text: "Naval + Umik 30% — težko ga je uloviti." },
+    weakness: "Sun", resistance: null, flavorText: "Sledi luči — in se izgubi.",
+  },
+
   /* ============ EVOLVE cilji (razvite oblike) ============
      Dosežeš jih z Evolve (3× Train) na osnovni karti. Ni jih v deckih.
   --------------------------------------------------------------------------- */

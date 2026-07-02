@@ -22,13 +22,15 @@ const STARTER_DECKS = {
     blurb: "Uravnotežen grški deck. Hiter Sky pritisk, card draw in Zeus kot zaključek.",
     style: "Balanced • Sky • Draw",
     list: [
-      // 16 Champions — jedro Sky (Pegasus, Zeus) + Wisdom (Athena, Oracle)
-      ...rep("greek-pegasus", 4),   // Sky, poceni, cost 0 retreat
-      ...rep("greek-oracle", 3),    // Wisdom, draw engine
-      ...rep("greek-athena", 3),    // Wisdom/War
+      // 16 Champions — jedro Sky (max 2 kopiji -> več variacije)
+      ...rep("greek-pegasus", 2),   // Sky, poceni, Evolve
+      ...rep("greek-oracle", 2),    // Wisdom, draw engine
+      ...rep("greek-athena", 2),    // Wisdom/War
       ...rep("greek-hydra", 2),     // Nature splash (cheap)
       ...rep("greek-zeus", 2),      // Sky finisher
-      ...rep("greek-heracles", 2),  // War body (nadomesti odstranjeno ascension karto)
+      ...rep("greek-heracles", 2),  // War body
+      ...rep("greek-artemis", 2),   // NOVA: lovka, battlecry 15 + dodge
+      "greek-triton",               // NOVA: Taunt zid s Shieldom
       // 14 Energy — Sky težišče
       ...rep("energy-sky", 8), ...rep("energy-wisdom", 4), ...rep("energy-war", 2),
       // 6 Oracle
@@ -42,7 +44,7 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-spear-olympus", "equip-legion-aegis",
       // Minioni (1 mana)
-      ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2),
+      ...rep("minion-hoplite", 2), ...rep("minion-harpy", 2), "minion-myrmidon",
       // Napadalni uroki
       ...rep("spell-lightning-bolt", 2), "spell-divine-wrath",
       // Skalirni motor (Korak 3)
@@ -61,15 +63,16 @@ const STARTER_DECKS = {
     blurb: "Agresiven nordijski deck. Veliko War napadov, hitri pritisk in Thor, Storm Unleashed.",
     style: "Aggro • War • Burst",
     list: [
-      // 16 Champions — jedro War, a manj eksplozivno (manj Valkyrie/Fenrir)
-      ...rep("norse-valkyrie", 3),   // War, poceni agresija (4->3)
-      ...rep("norse-fenrir", 2),     // War, velik damage (3->2)
-      ...rep("norse-frostgiant", 3), // Frost body (2->3, počasnejši wall)
-      ...rep("norse-freya", 3),      // Sky/War utility + heal (2->3)
-      ...rep("norse-thor", 2),       // War/Sky
+      // 16 Champions — jedro War (max 2 kopiji -> več variacije)
+      ...rep("norse-valkyrie", 2),   // War, Evolve v Queen
+      ...rep("norse-fenrir", 2),     // War, velik damage + bes
+      ...rep("norse-frostgiant", 2), // Frost wall
+      ...rep("norse-freya", 2),      // Sky/War utility + heal
+      ...rep("norse-thor", 2),       // War/Sky + aura
       ...rep("norse-loki", 1),       // Trickery splash
-      ...rep("norse-odin", 1),       // Wisdom/Sky draw (0->1, manj tempa)
-      ...rep("norse-fenrir", 1),     // dodatno telo (nadomesti odstranjeno ascension karto)
+      ...rep("norse-odin", 1),       // Wisdom/Sky battlecry draw
+      ...rep("norse-heimdall", 2),   // NOVA: Taunt stražar z Shieldom
+      "norse-skadi",                 // NOVA: Frost freeze lokostrelka
       // 14 Energy — War težišče + nekaj Sky/Frost
       ...rep("energy-war", 7), ...rep("energy-sky", 3), ...rep("energy-frost", 4),
       // 6 Oracle
@@ -83,7 +86,7 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-wolf-blade", "equip-jotun-hide",
       // Minioni (1 mana)
-      ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2),
+      ...rep("minion-berserker", 2), ...rep("minion-shieldmaiden", 2), "minion-draugr",
       // Napadalni uroki
       "spell-mjolnir", ...rep("spell-frost-nova", 1),
       // Skalirni motor (Korak 3)
@@ -102,14 +105,15 @@ const STARTER_DECKS = {
     blurb: "Egipčanski deck zdravljenja in vstajenj. Sončno težišče, vztrajen tempo, močan late game.",
     style: "Sun • Heal • Revive",
     list: [
-      // 16 Champions — jedro Sun (Scarab, Isis, Ra, Horus delno)
-      ...rep("egypt-scarab", 4),    // Sun, poceni
-      ...rep("egypt-isis", 3),      // Sun, heal
+      // 16 Champions — jedro Sun (max 2 kopiji -> več variacije)
+      ...rep("egypt-scarab", 2),    // Sun, poceni
+      ...rep("egypt-isis", 2),      // Sun, heal
       ...rep("egypt-horus", 2),     // Sky/Sun
-      ...rep("egypt-sphinx", 2),    // Wisdom/Sun wall
-      ...rep("egypt-ra", 2),        // Sun finisher
+      ...rep("egypt-sphinx", 2),    // Wisdom/Sun wall + Fortify
+      ...rep("egypt-ra", 2),        // Sun finisher + battlecry
       ...rep("egypt-anubis", 1),    // Underworld splash
-      ...rep("egypt-scarab", 1),    // dodatno poceni telo (nadomesti odstranjeno ascension karto)
+      ...rep("egypt-sekhmet", 2),   // NOVA: levinja z besom (enrage)
+      "egypt-thoth",                // NOVA: battlecry vlek + draw napad
       "egypt-osiris",               // Underworld/Sun revive
       // 14 Energy — Sun težišče + Sky (Horus) + Wisdom (Sphinx) + Underworld
       ...rep("energy-sun", 8), ...rep("energy-underworld", 2),
@@ -125,7 +129,7 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-khopesh-ra", "equip-legion-aegis",
       // Minioni (1 mana)
-      ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2),
+      ...rep("minion-tomb-guard", 2), ...rep("minion-scarab-swarm", 2), "minion-anubite",
       // Napadalni uroki
       ...rep("spell-solar-flare", 2),
       // Skalirni motor (Korak 3)
@@ -144,9 +148,11 @@ const STARTER_DECKS = {
     blurb: "Slovanski deck narave in statusov. Nadzor tempa, zdravljenje, prekletstva in led okoli Nature jedra.",
     style: "Nature • Status • Control",
     list: [
-      // 16 Champions — Nature/Underworld/Fire jedro + več udarne moči
-      ...rep("slavic-svarog", 3),    // Fire finisher 40/70
-      ...rep("slavic-veles", 3),     // Underworld 30/60 + curse
+      // 16 Champions — Nature/Underworld/Fire jedro (max 2 kopiji)
+      ...rep("slavic-svarog", 2),    // Fire finisher + aura
+      ...rep("slavic-veles", 2),     // Underworld + battlecry curse
+      "slavic-zmey",                 // NOVA: troglavi zmaj, burn + burst
+      "slavic-alkonost",             // NOVA: battlecry board heal
       ...rep("slavic-leshy", 2),     // Nature wall 30/50 + freeze
       ...rep("slavic-perun", 2),     // 130HP Sky/War finisher 40/70
       ...rep("slavic-morana", 2),    // Frost 30/60
@@ -166,7 +172,7 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-bark-carapace", "equip-jotun-hide",
       // Minioni (1 mana)
-      ...rep("minion-domovoi", 2), ...rep("minion-vila", 2),
+      ...rep("minion-domovoi", 2), "minion-vila", "minion-kikimora",
       // Napadalni uroki
       ...rep("spell-fireball", 2),
       // Dual energija
@@ -183,8 +189,9 @@ const STARTER_DECKS = {
     blurb: "Rimski deck discipline. War napadi, formacije z rezervo, ščiti in Mars kot zaključek.",
     style: "War • Formation • Shield",
     list: [
-      // 16 Champions — War/Wisdom jedro
-      ...rep("roman-legionnaire", 3), // War, formacija (reserve reduce)
+      // 16 Champions — War/Wisdom jedro (max 2 kopiji)
+      ...rep("roman-legionnaire", 2), // War, formacija (oklep)
+      "roman-centurion",              // NOVA: Taunt + oklep tank
       ...rep("roman-mars", 2),        // War finisher
       ...rep("roman-minerva", 2),     // Wisdom
       ...rep("roman-romulus", 2),     // War/Wisdom
@@ -205,9 +212,9 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-legion-aegis", "equip-spear-olympus",
       // Minioni (1 mana)
-      ...rep("minion-legionnaire", 2), ...rep("minion-velite", 2),
-      // Napadalni uroki
-      ...rep("spell-javelin", 2),
+      ...rep("minion-legionnaire", 2), "minion-velite", "minion-ballista",
+      // Napadalni uroki + Victoria (battlecry rally)
+      "spell-javelin", "roman-victoria",
       // Skalirni motor (Korak 3)
       "champ-standard-bearer",
       // Dual energija
@@ -224,8 +231,9 @@ const STARTER_DECKS = {
     blurb: "Keltski deck mistike. Nature in Sun moč, prekletstva, zdravljenje in junak Cúchulainn.",
     style: "Nature • Sun • Mystic",
     list: [
-      // 16 Champions — Nature/Sun jedro
-      ...rep("celtic-cernunnos", 3),  // Nature body 40/60
+      // 16 Champions — Nature/Sun jedro (max 2 kopiji)
+      ...rep("celtic-cernunnos", 2),  // Nature body + battlecry 20
+      "celtic-scathach",              // NOVA: battlecry vlek + rally napad
       ...rep("celtic-druid", 2),      // Nature draw/heal
       ...rep("celtic-cuchulainn", 2), // War finisher 80
       ...rep("celtic-lugh", 2),       // Sun 40/60
@@ -247,9 +255,9 @@ const STARTER_DECKS = {
       // Oprema (orožje/oklep)
       "equip-gaebolg", "equip-bark-carapace",
       // Minioni (1 mana)
-      ...rep("minion-druid-acolyte", 2), ...rep("minion-pixie", 2),
-      // Napadalni uroki
-      ...rep("spell-archer-volley", 2),
+      ...rep("minion-druid-acolyte", 2), "minion-pixie", "minion-wisp",
+      // Napadalni uroki + Dagda (Fortify tank)
+      "spell-archer-volley", "celtic-dagda",
       // Dual energija + mana dork
       "energy-dual-sunmoon", "minion-grove-sprite",
     ],
