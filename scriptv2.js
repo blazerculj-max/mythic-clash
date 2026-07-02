@@ -1221,8 +1221,17 @@ function champPreviewCard(d) {
 /* ---------------- RENDER ---------------- */
 let lastChampFx = {};   // {uid:{hp,buffs,x,y}} — za smrt/heal/buff FX
 let prevYouMana = [];   // za mana tap/dodajanje FX
+// ambientne iskre nad bojiščem (čista dekoracija, enkratna injekcija)
+function ensureEmbers() {
+  const f = document.querySelector(".v2-field");
+  if (!f || f.querySelector(".v2-embers")) return;
+  const e = el("div", "v2-embers");
+  e.innerHTML = "<i></i>".repeat(14);
+  f.appendChild(e);
+}
 function render() {
   if (!G.players.length) return;
+  ensureEmbers();
   renderSide($("#v2-opp"), G.players[1], false);
   renderSide($("#v2-you"), G.players[0], true);
   renderHand();
@@ -2029,7 +2038,28 @@ function checkOver() {
     setTimeout(() => onRunBattleEnd(won), 1100);
     return;
   }
-  setTimeout(() => toast(G.winner === 0 ? "🏆 ZMAGA!" : "Poraz — heroj je padel."), 200);
+  setTimeout(() => showGameOverOverlay(G.winner === 0), 700);
+}
+// slavnostna zmagovalna/poraz scena (hitra igra; run ima svoj zaključek)
+function showGameOverOverlay(won) {
+  if (document.getElementById("v2-gameover")) return;
+  const o = el("div", "v2-gameover " + (won ? "won" : "lost"));
+  o.id = "v2-gameover";
+  o.innerHTML = `
+    <div class="go-rays"></div>
+    <div class="go-inner">
+      <div class="go-medal">${won ? "🏆" : "💀"}</div>
+      <h1 class="go-title">${won ? "ZMAGA" : "PORAZ"}</h1>
+      <p class="go-sub">${won ? "Nasprotnikov heroj je padel. Panteon slavi tvoje ime." : "Tvoj heroj je padel. A legende se vračajo…"}</p>
+      <button class="btn-primary" id="go-menu">Nazaj v meni</button>
+    </div>`;
+  document.body.appendChild(o);
+  requestAnimationFrame(() => o.classList.add("show"));
+  o.querySelector("#go-menu").addEventListener("click", () => {
+    o.remove();
+    $("#v2-game").classList.add("hidden");
+    backToMenu();
+  });
 }
 
 /* ---------------- BOOT ---------------- */

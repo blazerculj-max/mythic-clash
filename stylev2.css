@@ -846,3 +846,242 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
 .v2-fd.retal { color: #ffb15e; font-size: 26px; text-shadow: 0 2px 0 #6b3410, 0 0 12px rgba(255,150,60,0.7); }
 .v2-fd.retal::before { content: "↩ "; font-size: 18px; }
 .v2-dmgprev .dp-retal { display: block; font-size: 11px; color: #ffb15e; font-family: "SF Mono", monospace; margin-top: 2px; }
+
+/* =====================================================================
+   PREMIUM ARENA OVERHAUL — plošča kot v vrhunskih card igrah
+   (ornamenti, herojske plošče, ambient, poliran combat)
+===================================================================== */
+
+/* — Bojišče: bogata tekstura, zlat okvir, kotni ornamenti — */
+.v2-field {
+  position: relative;
+  border: 1px solid rgba(255, 205, 120, 0.28);
+  background:
+    radial-gradient(4px 4px at 12px 12px, rgba(255,216,107,0.5), transparent 70%),
+    radial-gradient(4px 4px at calc(100% - 12px) 12px, rgba(255,216,107,0.5), transparent 70%),
+    radial-gradient(4px 4px at 12px calc(100% - 12px), rgba(255,216,107,0.5), transparent 70%),
+    radial-gradient(4px 4px at calc(100% - 12px) calc(100% - 12px), rgba(255,216,107,0.5), transparent 70%),
+    radial-gradient(130% 70% at 50% -8%, rgba(122, 88, 190, 0.22), transparent 55%),
+    radial-gradient(140% 75% at 50% 108%, rgba(214, 158, 70, 0.20), transparent 55%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px),
+    radial-gradient(95% 60% at 50% 50%, rgba(44, 46, 76, 0.5), rgba(6, 6, 11, 0.92) 80%),
+    linear-gradient(180deg, #171423, #0a0a12 52%, #171320);
+  box-shadow:
+    inset 0 0 150px rgba(0, 0, 0, 0.78),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 18px 60px rgba(0, 0, 0, 0.55);
+}
+/* tanka notranja zlata linija (gravura) */
+.v2-field::before {
+  content: ""; position: absolute; inset: 6px; border-radius: inherit; pointer-events: none; z-index: 0;
+  border: 1px solid rgba(255, 205, 120, 0.10);
+}
+.v2-side, .v2-mid { position: relative; z-index: 1; }
+
+/* — Ambientne iskre (embers) — */
+.v2-embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; border-radius: inherit; }
+.v2-embers i {
+  position: absolute; bottom: -12px; width: 5px; height: 5px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #ffe9b0, #f0a93c 55%, transparent 75%);
+  filter: blur(0.4px); opacity: 0;
+  animation: emberRise 9s linear infinite;
+}
+@keyframes emberRise {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  8%   { opacity: 0.85; }
+  55%  { opacity: 0.5; }
+  100% { transform: translate(var(--sway, 20px), -78vh) scale(0.4); opacity: 0; }
+}
+.v2-embers i:nth-child(1)  { left: 6%;  --sway: 26px;  animation-duration: 10s;  animation-delay: 0s;   width: 4px; height: 4px; }
+.v2-embers i:nth-child(2)  { left: 14%; --sway: -18px; animation-duration: 13s;  animation-delay: 2.2s; }
+.v2-embers i:nth-child(3)  { left: 23%; --sway: 34px;  animation-duration: 8.5s; animation-delay: 4.5s; width: 3px; height: 3px; }
+.v2-embers i:nth-child(4)  { left: 31%; --sway: -25px; animation-duration: 12s;  animation-delay: 1.1s; }
+.v2-embers i:nth-child(5)  { left: 39%; --sway: 15px;  animation-duration: 9.5s; animation-delay: 6s;   width: 6px; height: 6px; }
+.v2-embers i:nth-child(6)  { left: 47%; --sway: -30px; animation-duration: 14s;  animation-delay: 3.4s; width: 3px; height: 3px; }
+.v2-embers i:nth-child(7)  { left: 55%; --sway: 22px;  animation-duration: 11s;  animation-delay: 0.8s; }
+.v2-embers i:nth-child(8)  { left: 62%; --sway: -14px; animation-duration: 9s;   animation-delay: 5.2s; width: 4px; height: 4px; }
+.v2-embers i:nth-child(9)  { left: 70%; --sway: 30px;  animation-duration: 12.5s;animation-delay: 2.8s; width: 3px; height: 3px; }
+.v2-embers i:nth-child(10) { left: 78%; --sway: -22px; animation-duration: 10.5s;animation-delay: 7s; }
+.v2-embers i:nth-child(11) { left: 85%; --sway: 18px;  animation-duration: 13.5s;animation-delay: 4s;   width: 6px; height: 6px; }
+.v2-embers i:nth-child(12) { left: 92%; --sway: -28px; animation-duration: 9.8s; animation-delay: 1.6s; width: 3px; height: 3px; }
+.v2-embers i:nth-child(13) { left: 50%; --sway: 12px;  animation-duration: 15s;  animation-delay: 8s;   width: 4px; height: 4px; }
+.v2-embers i:nth-child(14) { left: 4%;  --sway: -16px; animation-duration: 11.5s;animation-delay: 6.6s; width: 3px; height: 3px; }
+
+/* — Sredinska ločnica: medaljon + žareče linije — */
+.v2-mid {
+  border-top: 1px solid rgba(255, 205, 120, 0.22);
+  border-bottom: 1px solid rgba(255, 205, 120, 0.22);
+  background:
+    linear-gradient(90deg, transparent 2%, rgba(255, 208, 100, 0.10) 18%, rgba(255, 208, 100, 0.03) 50%, rgba(255, 208, 100, 0.10) 82%, transparent 98%);
+  box-shadow: 0 0 26px rgba(255, 195, 85, 0.10), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.4);
+}
+.v2-mid > * { position: relative; z-index: 1; }
+.v2-mid::before {
+  content: "⚔"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--gold);
+  background: radial-gradient(circle at 38% 30%, #2e2a42, #14121f 70%);
+  border: 1px solid rgba(255, 205, 120, 0.45); border-radius: 50%;
+  box-shadow: 0 0 16px rgba(255, 200, 90, 0.28), inset 0 2px 4px rgba(255,255,255,0.10), inset 0 -3px 6px rgba(0,0,0,0.5);
+  pointer-events: none; z-index: 0;
+}
+
+/* — End turn: HS-style zlat gumb z dihanjem — */
+.action-btn.end-turn {
+  border-radius: 999px !important; max-width: 210px; padding: 10px 26px;
+  font-family: Georgia, serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+  background: linear-gradient(180deg, #ffe9a8, #f2c661 45%, #c99a3e 80%, #8f6f2b);
+  border: 1px solid #6b5220 !important;
+  box-shadow: 0 3px 0 #6b5220, 0 8px 18px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.75), 0 0 0 0 rgba(255,216,107,0.0);
+  animation: endTurnBreath 2.4s ease-in-out infinite;
+  transition: transform .1s ease, filter .15s ease;
+}
+.action-btn.end-turn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.action-btn.end-turn:active { transform: translateY(1px); box-shadow: 0 1px 0 #6b5220, 0 4px 10px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.6); }
+@keyframes endTurnBreath {
+  0%, 100% { box-shadow: 0 3px 0 #6b5220, 0 8px 18px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.75), 0 0 0 0 rgba(255,216,107,0.0); }
+  50%      { box-shadow: 0 3px 0 #6b5220, 0 8px 18px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.75), 0 0 22px 4px rgba(255,216,107,0.30); }
+}
+
+/* — Herojske plošče: ornamentiran portret + poliran HP trak — */
+.v2-hero-ava {
+  width: 50px; height: 50px; font-size: 23px;
+  border: none;
+  box-shadow:
+    0 0 0 2px #191426,
+    0 0 0 3.5px var(--gold-dim),
+    0 0 0 5px rgba(0, 0, 0, 0.65),
+    0 5px 16px rgba(0, 0, 0, 0.6),
+    inset 0 2px 6px rgba(255, 255, 255, 0.30),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.45);
+}
+.v2-hero-name { font-family: Georgia, serif; font-size: 14px; letter-spacing: 0.04em; color: #f3e7c8; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.v2-hero-pw {
+  font-family: "SF Mono", monospace; font-size: 9px;
+  border: 1px solid rgba(255, 216, 107, 0.35); border-radius: 999px; padding: 2px 8px;
+  background: rgba(255, 216, 107, 0.08); margin-left: 8px;
+}
+.v2-hero-bar {
+  height: 20px; border: 1px solid rgba(255, 205, 120, 0.35);
+  background: linear-gradient(180deg, rgba(20,10,12,0.9), rgba(40,16,16,0.7));
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.05);
+}
+.v2-hero-bar::after {
+  content: ""; position: absolute; inset: 1px 1px 55% 1px; border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.28), transparent); pointer-events: none;
+}
+.v2-hero-fill { background: linear-gradient(180deg, #ff7b62, #d63b2b 55%, #8e1f14); }
+.v2-hero-life { font-size: 12px; letter-spacing: 0.03em; }
+
+/* — Karte: globina arta (vinjeta + spodnji prehod), gravirana imena — */
+.v2-champ-art::before, .v2-hc-art::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.5), inset 0 -26px 20px -14px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.08);
+}
+.v2-champ-name { font-family: Georgia, serif; letter-spacing: 0.02em; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.v2-champ-body { background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.00) 40%); border-top: 1px solid rgba(255,255,255,0.07); }
+.v2-atk { border-radius: 5px; }
+.v2-atk.ok { box-shadow: inset 0 0 0 1px rgba(111, 217, 138, 0.25); }
+
+/* — Puščica napada: tok energije (dash flow) — */
+#v2-arrow-line { stroke-dasharray: 13 9; animation: arrowFlow 0.45s linear infinite; }
+@keyframes arrowFlow { to { stroke-dashoffset: -22; } }
+#v2-arrow.lethal #v2-arrow-line { stroke: #ff5e4d; }
+
+/* — Tarča: pulzirajoč obroč — */
+.v2-champ.targetable { animation: targetPulse 0.9s ease-in-out infinite; }
+@keyframes targetPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--danger), 0 0 14px rgba(255, 107, 94, 0.45); }
+  50%      { box-shadow: 0 0 0 3px var(--danger), 0 0 26px rgba(255, 107, 94, 0.75); }
+}
+
+/* — Turn banner: slavnostni trak čez celo širino — */
+.v2-turnbanner span {
+  font-family: Georgia, serif; letter-spacing: 0.22em;
+  border-top: 1px solid rgba(255, 216, 107, 0.5); border-bottom: 1px solid rgba(255, 216, 107, 0.5);
+  border-left: none; border-right: none; border-radius: 0;
+  padding: 14px 70px;
+  background:
+    linear-gradient(90deg, transparent, rgba(10, 8, 16, 0.92) 18%, rgba(10, 8, 16, 0.92) 82%, transparent);
+}
+.v2-turnbanner.opp span { border-color: rgba(255, 107, 94, 0.5); }
+
+/* — Paneli: gravirane glave + žlahtni gumbi — */
+.mana-panel h4::after, .action-panel h4::after {
+  content: ""; display: block; height: 1px; margin-top: 7px;
+  background: linear-gradient(90deg, var(--gold-dim), rgba(255, 216, 107, 0.05));
+}
+.action-btn { position: relative; overflow: hidden; }
+.action-btn:not(:disabled):hover { border-color: rgba(255, 216, 107, 0.55); }
+
+/* — Roka: mehak zlat sij pod kartami — */
+.v2-hand-wrap { background: radial-gradient(60% 90% at 50% 115%, rgba(255, 200, 90, 0.07), transparent 70%); }
+
+/* — Prazen board: gravirana linija — */
+.v2-empty {
+  border: 1px dashed rgba(255, 216, 107, 0.14) !important;
+  color: rgba(236, 232, 223, 0.35) !important;
+  font-family: Georgia, serif; font-style: italic; letter-spacing: 0.06em;
+}
+
+/* — Večji, veličastnejši board šampioni (le ko je dovolj višine) — */
+@media (min-height: 781px) {
+  .v2-champ { width: 150px; flex-basis: 150px; }
+  .v2-champ-art { height: 96px; font-size: 34px; }
+  .v2-champ-name { font-size: 13px; }
+  .v2-champ-gem { width: 29px; height: 29px; font-size: 14px; }
+  .v2-champ .v2-atk { font-size: 10px; }
+  .v2-board-row { gap: 9px; }
+}
+
+/* — Enovrstična imena (poravnane višine kart; polno ime v tooltipu) — */
+.v2-champ-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* — Višja vrstica za roko (manj prekrivanja spodnje vrstice) — */
+@media (min-height: 781px) {
+  .v2-arena { grid-template-rows: minmax(0, 1fr) 198px; }
+  .v2-hand { padding-bottom: 4px; }
+}
+
+/* — Zmagovalna / poraz scena — */
+.v2-gameover {
+  position: fixed; inset: 0; z-index: 9500; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(80% 80% at 50% 45%, rgba(10, 8, 18, 0.82), rgba(4, 3, 8, 0.96));
+  opacity: 0; transition: opacity 0.5s ease;
+}
+.v2-gameover.show { opacity: 1; }
+.go-rays {
+  position: absolute; left: 50%; top: 45%; width: 1200px; height: 1200px; transform: translate(-50%, -50%);
+  background: conic-gradient(from 0deg,
+    transparent 0deg, rgba(255, 216, 107, 0.10) 8deg, transparent 16deg,
+    transparent 40deg, rgba(255, 216, 107, 0.08) 48deg, transparent 56deg,
+    transparent 90deg, rgba(255, 216, 107, 0.10) 98deg, transparent 106deg,
+    transparent 140deg, rgba(255, 216, 107, 0.08) 148deg, transparent 156deg,
+    transparent 190deg, rgba(255, 216, 107, 0.10) 198deg, transparent 206deg,
+    transparent 240deg, rgba(255, 216, 107, 0.08) 248deg, transparent 256deg,
+    transparent 290deg, rgba(255, 216, 107, 0.10) 298deg, transparent 306deg, transparent 360deg);
+  animation: goRays 26s linear infinite; pointer-events: none;
+}
+.v2-gameover.lost .go-rays { filter: hue-rotate(-35deg) saturate(0.5) brightness(0.6); animation-duration: 44s; }
+@keyframes goRays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.go-inner { position: relative; text-align: center; animation: goPop 0.7s cubic-bezier(.2, 1.1, .3, 1.15); }
+@keyframes goPop { 0% { transform: scale(0.6) translateY(30px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+.go-medal {
+  width: 110px; height: 110px; margin: 0 auto 18px; display: flex; align-items: center; justify-content: center; font-size: 52px;
+  border-radius: 50%; background: radial-gradient(circle at 38% 30%, #3a3354, #16131f 72%);
+  border: 2px solid rgba(255, 205, 120, 0.55);
+  box-shadow: 0 0 40px rgba(255, 200, 90, 0.35), inset 0 3px 8px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.55);
+}
+.v2-gameover.lost .go-medal { border-color: rgba(255, 110, 95, 0.5); box-shadow: 0 0 40px rgba(255, 95, 80, 0.25), inset 0 3px 8px rgba(255,255,255,0.12), inset 0 -6px 12px rgba(0,0,0,0.55); }
+.go-title {
+  font-family: Georgia, serif; font-size: 64px; letter-spacing: 0.28em; margin: 0 0 10px; padding-left: 0.28em;
+  background: linear-gradient(180deg, #fff7e0 0%, #f4d585 45%, var(--gold) 65%, #8f6f2b 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 42px rgba(255, 205, 110, 0.30);
+}
+.v2-gameover.lost .go-title {
+  background: linear-gradient(180deg, #ffd9d2, #ff6b5e 55%, #7a241d);
+  -webkit-background-clip: text; background-clip: text; text-shadow: 0 0 42px rgba(255, 100, 80, 0.22);
+}
+.go-sub { color: var(--ink-dim); font-size: 15px; margin: 0 0 26px; font-style: italic; }
