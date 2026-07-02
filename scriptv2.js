@@ -1537,15 +1537,16 @@ function atkRowsHtml(d, owner) {
 }
 const STATUS_BUFFS = ["blessing", "shield", "guard"];
 const STATUS_SHORT = { burn: "Ožig", freeze: "Zmrznjen", stun: "Omama", curse: "Prekletstvo", blessing: "Blagoslov", shield: "Shield", poison: "Strup", guard: "Garda" };
+const STATUS_CHIP = { burn: "Ožig", freeze: "Zmrz.", stun: "Omama", curse: "Kletev", blessing: "Blag.", shield: "Shield", poison: "Strup", guard: "Garda" };
 function statusChips(c) {
   const s = c.status || {}; const out = [];
   const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
-  // kompaktni ikonski badge-i — VSI vidni; ime+učinek v tooltipu (hover/dvoklik)
+  // badge-i z ikono IN kratko oznako — VSI vidni; polna razlaga v tooltipu (hover/dvoklik)
   for (const k in map) if (s[k]) {
     const t = STATUS_TEXT[k] || [k, ""];
     const kind = STATUS_BUFFS.includes(k) ? "buff" : "debuff";
     const n = (typeof s[k] === "number" && s[k] > 1) ? `<b>${s[k]}</b>` : "";
-    out.push(`<span class="v2-st ${kind}" ${tipAttr(t[0], (STATUS_SHORT[k] || k) + " — " + t[1])}>${map[k]}${n}</span>`);
+    out.push(`<span class="v2-st ${kind}" ${tipAttr(t[0], (STATUS_SHORT[k] || k) + " — " + t[1])}>${map[k]}${n}<i>${STATUS_CHIP[k] || k}</i></span>`);
   }
   return out.join("");
 }
@@ -1956,7 +1957,7 @@ $("#v2-end") && document.addEventListener("DOMContentLoaded", () => {});
 function endHumanTurn() {
   if (G.turn !== 0 || G.over) return;
   selAttacker = null; selAtkIndex = null;
-  V2.endTurn(); render();
+  V2.endTurn(); render(); checkOver();
   if (!G.over) setTimeout(runAiTurn, 500);
 }
 function runAiTurn() {
@@ -2047,6 +2048,12 @@ function aiAbilities() {
     else if (hpw.kind === "heroAttack") use = !opp.board.some(c => !c.tapped) || opp.life <= hpw.value + 25; // pritiskaj obraz proti lethalu
     else if (hpw.kind === "shieldAll") use = ai.board.length >= 2 && opp.board.length >= 1;
     if (use) { V2.useHeroPower(ai); SFX.play("hero"); render(); setTimeout(aiAbilities, 600); return; }
+  }
+  // EVOLVE: uri šampiona, kadar ne gre za lethal in ostane dovolj mane za napade
+  if (aiDecidePosture() !== "lethal") {
+    const trainee = ai.board.find(x => V2.canActivate && V2.canActivate(ai, x) && (def(x).activated || {}).effect === "evolve" &&
+      ai.mana.filter(m => !m.tapped).length >= ((def(x).activated.cost || []).length + 2));
+    if (trainee) { V2.activateAbility(ai, trainee.uid); SFX.play("hero"); render(); setTimeout(aiAbilities, 500); return; }
   }
   // obramba: heal poškodovanega; Fortify (zid), ko je AI pod pritiskom
   const underPressure = ai.life < ai.maxLife * 0.5 || opp.board.reduce((s, x) => s + aiChampThreat(x), 0) >= ai.life * 0.5;

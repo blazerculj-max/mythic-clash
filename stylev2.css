@@ -13,9 +13,9 @@
 #v2-game { height: 100vh; height: 100dvh; overflow: hidden; }
 .v2-arena {
   height: 100%; display: grid;
-  grid-template-columns: minmax(0,1fr) 264px;
+  grid-template-columns: minmax(0,1fr) 218px;
   grid-template-rows: minmax(0,1fr) 160px;
-  gap: 8px; padding: 8px; max-width: 1240px; margin: 0 auto;
+  gap: 8px; padding: 8px; max-width: 1400px; margin: 0 auto;
 }
 /* ENO bojišče: nasprotnik zgoraj, ti spodaj, vmes ločnica */
 .v2-field {
@@ -33,7 +33,7 @@
   padding: 5px 14px; border-top: 1px solid var(--panel-edge); border-bottom: 1px solid var(--panel-edge);
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent); }
 .v2-hand-wrap { grid-column: 1; grid-row: 2; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
-.v2-panel { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.v2-panel { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .v2-turn { font-size: 13px; color: var(--ink-dim); }
 .v2-turn b { color: var(--gold-bright); }
 
@@ -95,8 +95,9 @@
 .v2-hpfill { height: 100%; background: linear-gradient(90deg, var(--good), #aef0c0); }
 .v2-hpfill.low { background: linear-gradient(90deg, var(--danger), #ffb0a8); }
 .v2-status { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; min-height: 14px; font-size: 11px; }
-.v2-st { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 17px; height: 17px; padding: 0 3px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 1; border: 1px solid transparent; }
-.v2-st b { font-size: 8px; }
+.v2-st { display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 17px; height: 18px; padding: 0 4px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 1; border: 1px solid transparent; }
+.v2-st b { font-size: 9px; }
+.v2-st i { font-style: normal; font-size: 8px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
 .v2-st.buff { background: rgba(94,201,122,0.16); border-color: rgba(94,201,122,0.5); color: #b6f0c6; }
 .v2-st.debuff { background: rgba(255,107,94,0.16); border-color: rgba(255,107,94,0.5); color: #ffc0b6; }
 .v2-kw { margin-left: auto; opacity: 0.9; display: inline-flex; gap: 2px; align-self: center; }
@@ -499,14 +500,28 @@
 .log-panel.collapsed .log-list { display: none; }
 .log-panel.collapsed { flex: 0 0 auto; }
 
-/* ---------------- Taunt "zid" poudarek (Faza B) ---------------- */
-.v2-champ.taunt { border-color: #7fb3ff; box-shadow: inset 0 0 0 2px rgba(127,179,255,0.45), 0 0 12px rgba(127,179,255,0.3); }
-.v2-champ.taunt::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; z-index: 7;
-  background: linear-gradient(180deg, #9ecbff, #3a6ea5); box-shadow: 0 0 8px #7fb3ff; }
-.v2-champ.taunt.ready { box-shadow: inset 0 0 0 2px rgba(127,179,255,0.5), 0 0 0 1px var(--good), 0 0 14px rgba(111,217,138,0.3); }
-.v2-champ.taunt.targetable { box-shadow: 0 0 0 2px var(--danger), 0 0 18px rgba(255,107,94,0.6), inset 0 0 0 2px rgba(127,179,255,0.4); }
-.v2-tag.taunt { left: 8px; }
-.hint.taunt-hint { color: #cfe3ff; background: rgba(127,179,255,0.12); border: 1px solid rgba(127,179,255,0.4); border-radius: 8px; padding: 5px 8px; }
+/* ---------------- Taunt "zid" poudarek: zlat pulzirajoč obroč + pasica ---------------- */
+.v2-champ.taunt {
+  border-color: rgba(233,196,106,0.85);
+  outline: 2px solid rgba(233,196,106,0.7); outline-offset: 2px;
+  box-shadow: 0 0 16px rgba(233,196,106,0.35);
+  animation: tauntRing 1.7s ease-in-out infinite;
+}
+@keyframes tauntRing {
+  0%, 100% { outline-color: rgba(233,196,106,0.35); box-shadow: 0 0 10px rgba(233,196,106,0.2); }
+  50%      { outline-color: rgba(233,196,106,1);    box-shadow: 0 0 18px rgba(233,196,106,0.5); }
+}
+.v2-champ.taunt::before { content: "🛡 ZID"; position: absolute; top: 0; left: 0; z-index: 7;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.12em; color: #241a04;
+  background: linear-gradient(180deg, #f3d488, #d9a441); padding: 2px 8px 2px 6px;
+  border-radius: 0 0 9px 0; box-shadow: 0 1px 6px rgba(0,0,0,0.55); pointer-events: none; }
+.v2-champ.taunt.ready { box-shadow: 0 0 0 1px var(--good), 0 0 16px rgba(233,196,106,0.35); }
+.v2-champ.taunt.selected-att { outline-color: var(--gold-bright); animation: none; }
+.v2-champ.taunt.targetable { outline-color: var(--danger); animation: none;
+  box-shadow: 0 0 0 2px var(--danger), 0 0 18px rgba(255,107,94,0.6); }
+.v2-tag.taunt { display: none; } /* pasico "🛡 ZID" nosi ::before — star chip bi podvajal */
+.hint.taunt-hint { color: #f6e7bd; background: rgba(233,196,106,0.10); border: 1px solid rgba(233,196,106,0.45); border-radius: 8px; padding: 5px 8px; }
+@media (prefers-reduced-motion: reduce) { .v2-champ.taunt { animation: none; } }
 
 /* ---------------- Simetrična postavitev: tvoja noga (heroj + energije v eni vrstici) ---------------- */
 .v2-you-footer { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex: 0 0 auto; padding-top: 4px; border-top: 1px dashed var(--panel-edge); }
@@ -805,14 +820,14 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
    MANA V DESNEM PANELU + VEČJI KRISTALI + CARD-DRAW ANIMACIJA
 =================================================================== */
 /* mana plošča v desnem stolpcu (vedno vidna, je roka ne prekriva) */
-.mana-panel { border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 12px; flex: 0 0 auto; }
-.mana-panel h4 { font-size: 12px; letter-spacing: 0.14em; color: var(--gold); font-family: "SF Mono", monospace; margin-bottom: 10px; text-transform: uppercase; }
+.mana-panel { border: 1px solid var(--panel-edge); border-radius: var(--radius); background: var(--panel); padding: 9px 10px; flex: 0 0 auto; }
+.mana-panel h4 { font-size: 11px; letter-spacing: 0.12em; color: var(--gold); font-family: "SF Mono", monospace; margin-bottom: 6px; text-transform: uppercase; }
 .mana-panel .v2-manazone { border-top: none; margin: 0; padding: 0; display: block; }
 .mana-panel .mz-lab { display: block; margin-bottom: 8px; }
 .mana-panel .mz-cancel { float: right; }
 /* večji kristali, razporejeni v mrežo */
 .mana-panel .mz-pips { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
-.mana-panel .v2-manacard { width: 100%; height: 56px; font-size: 22px; border-radius: 10px; }
+.mana-panel .v2-manacard { width: 100%; height: 48px; font-size: 19px; border-radius: 10px; }
 .mana-panel .v2-manacard small { font-size: 9px; margin-top: 1px; }
 .mana-panel .v2-manacard.selectable:hover { transform: translateY(-3px) scale(1.05); }
 .mana-panel .mz-empty { grid-column: 1 / -1; }
@@ -1134,3 +1149,10 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
 }
 .v2-redflash.show { opacity: 1; animation: redflashOut 0.5s ease-out forwards; }
 @keyframes redflashOut { 0% { opacity: 1; } 35% { opacity: 0.85; } 100% { opacity: 0; } }
+
+/* ---------------- Ožji desni panel: kompaktni paneli v areni ---------------- */
+.v2-panel .action-panel, .v2-panel .log-panel { padding: 9px 10px; }
+.v2-panel .action-panel h4, .v2-panel .log-panel h4 { font-size: 11px; margin-bottom: 6px; letter-spacing: 0.12em; }
+.v2-panel .action-btn { padding: 7px 9px; font-size: 12px; margin-bottom: 6px; }
+.v2-panel .log-list { font-size: 11px; }
+.v2-panel .hint { font-size: 10px; }
