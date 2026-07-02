@@ -3,6 +3,7 @@
 ============================================================================ */
 const V2 = window.V2;
 const G = V2.G;
+if (!window.T) window.T = (sl) => sl; // fallback, če i18n.js ni naložen
 const def = V2.def;
 const $ = s => document.querySelector(s);
 function el(t, c, h) { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; }
@@ -119,6 +120,13 @@ const KW_GLOSSARY = {
   decay: "⌛ Razpad — izgublja HP vsak konec poteze.",
   charge: "⚡ Naval — lahko napade že v potezi priklica.",
 };
+// EN prevodi slovarjev (i18n.js); v angleščini prepišejo slovenske vnose
+if (window.MC_LANG === "en" && window.MC_EN) {
+  Object.assign(STATUS_TEXT, MC_EN.STATUS_TEXT);
+  Object.assign(KEYWORD_TEXT, MC_EN.KEYWORD_TEXT);
+  Object.assign(EFFECT_TEXT, MC_EN.EFFECT_TEXT);
+  Object.assign(KW_GLOSSARY, MC_EN.KW_GLOSSARY);
+}
 // iz učinka napada izlušči, katere statuse povzroči (za razlago)
 function kwsForEffect(e) {
   if (!e) return [];
@@ -139,9 +147,9 @@ function kwGlossaryLines(kws) {
   return out;
 }
 function atkTipText(atk) {
-  let s = `${atk.damage} škode · cena ${(atk.cost || []).length} mane`;
+  let s = `${atk.damage} ${T("škode", "damage")} · ${T("cena", "cost")} ${(atk.cost || []).length} ${T("mane", "mana")}`;
   if (atk.text) s += "\n" + atk.text;
-  if (atk.effect && EFFECT_TEXT[atk.effect]) s += "\nUčinek: " + EFFECT_TEXT[atk.effect];
+  if (atk.effect && EFFECT_TEXT[atk.effect]) s += "\n" + T("Učinek", "Effect") + ": " + EFFECT_TEXT[atk.effect];
   const g = kwGlossaryLines(kwsForEffect(atk.effect));
   if (g.length) s += "\n\n" + g.join("\n");
   return s;
@@ -149,11 +157,11 @@ function atkTipText(atk) {
 function cardTipText(d) {
   const lines = [];
   if (d.type === "Champion") {
-    lines.push(`Šampion · ${d.pantheon} · ❤${d.hp}`);
+    lines.push(`${T("Šampion", "Champion")} · ${d.pantheon} · ❤${d.hp}`);
     (d.attacks || []).forEach(a => lines.push(`• ${a.name}: ${a.damage} dmg (${(a.cost || []).length} mane)`));
-    if (d.ability) lines.push(`Sposobnost — ${d.ability.name}: ${d.ability.text}`);
+    if (d.ability) lines.push(`${T("Sposobnost", "Ability")} — ${d.ability.name}: ${d.ability.text}`);
     if (d.activated) lines.push(`⚡ ${d.activated.name}: ${d.activated.text}`);
-    if (d.weakness) lines.push(`Šibkost: ${d.weakness}  ·  Odpornost: ${d.resistance || "—"}`);
+    if (d.weakness) lines.push(`${T("Šibkost", "Weakness")}: ${d.weakness}  ·  ${T("Odpornost", "Resistance")}: ${d.resistance || "—"}`);
     // razlaga ključnih besed te karte
     const kws = [];
     (d.attacks || []).forEach(a => kwsForEffect(a.effect).forEach(k => kws.push(k)));
@@ -479,17 +487,19 @@ function setupHeader(sub) {
 function buildSetup() { loadRun(); showMainMenu(); }
 function showMainMenu() {
   loadRun();
-  const resume = RUN ? `<button class="mode-card resume" data-m="resume"><div class="mc-ic">▶</div><h3>Nadaljuj</h3><p>${RUN.mode === "arena" ? "Arena" : "Kampanja"} v teku — ${RUN.deck.length} kart.</p></button>` : "";
-  const w = setupInner(`${setupHeader("Izberi način igre.")}
+  const resume = RUN ? `<button class="mode-card resume" data-m="resume"><div class="mc-ic">▶</div><h3>${T("Nadaljuj", "Resume")}</h3><p>${RUN.mode === "arena" ? "Arena" : T("Kampanja", "Campaign")} ${T("v teku", "in progress")} — ${RUN.deck.length} ${T("kart", "cards")}.</p></button>` : "";
+  const w = setupInner(`${setupHeader(T("Izberi način igre.", "Choose a game mode."))}
     <div class="mode-grid">
-      <button class="mode-card" data-m="premade"><div class="mc-ic">⚔️</div><h3>Hitra igra</h3><p>Izberi enega od premade deckov in se bori proti naključnemu nasprotniku.</p></button>
-      <button class="mode-card" data-m="custom"><div class="mc-ic">🛠️</div><h3>Custom deck</h3><p>Sestavi svoj deck in igraj proti smiselnemu nasprotniku.</p></button>
-      <button class="mode-card" data-m="campaign"><div class="mc-ic">🗺️</div><h3>Kampanja</h3><p>Premagaj 6 vse težjih panteonov. Deck in heroj rasteta. 1 poraz konča.</p></button>
-      <button class="mode-card" data-m="arena"><div class="mc-ic">🏟️</div><h3>Arena</h3><p>Draftaj deck 30 kart (3 na izbiro). Nagrada po vsaki zmagi. Do 3 porazov.</p></button>
+      <button class="mode-card" data-m="premade"><div class="mc-ic">⚔️</div><h3>${T("Hitra igra", "Quick match")}</h3><p>${T("Izberi enega od premade deckov in se bori proti naključnemu nasprotniku.", "Pick a premade deck and battle a random opponent.")}</p></button>
+      <button class="mode-card" data-m="custom"><div class="mc-ic">🛠️</div><h3>${T("Custom deck", "Custom deck")}</h3><p>${T("Sestavi svoj deck in igraj proti smiselnemu nasprotniku.", "Build your own deck and face a fitting opponent.")}</p></button>
+      <button class="mode-card" data-m="campaign"><div class="mc-ic">🗺️</div><h3>${T("Kampanja", "Campaign")}</h3><p>${T("Premagaj 6 vse težjih panteonov. Deck in heroj rasteta. 1 poraz konča.", "Defeat 6 ever-harder pantheons. Deck and hero grow. 1 loss ends the run.")}</p></button>
+      <button class="mode-card" data-m="arena"><div class="mc-ic">🏟️</div><h3>Arena</h3><p>${T("Draftaj deck 30 kart (3 na izbiro). Nagrada po vsaki zmagi. Do 3 porazov.", "Draft a 30-card deck (pick 1 of 3). Reward after every win. Up to 3 losses.")}</p></button>
+      <button class="mode-card" data-m="tutorial"><div class="mc-ic">📖</div><h3>${T("Vodnik", "Tutorial")}</h3><p>${T("Nauči se igrati — voden prvi boj s sprotnimi namigi.", "Learn to play — a guided first battle with step-by-step tips.")}</p></button>
     </div>
     ${resume}`);
   w.querySelectorAll(".mode-card").forEach(b => b.addEventListener("click", () => {
     const m = b.dataset.m;
+    if (m === "tutorial") { if (window.startTutorial) window.startTutorial(); return; }
     if (m === "premade") showPremade();
     else if (m === "custom") showCustomBuilder();
     else if (m === "campaign") { if (RUN && RUN.mode === "campaign") showRunMap(); else { clearRun(); openRunStart(); } }
@@ -505,17 +515,17 @@ function showPremade() {
       <span class="deck-pantheon">${d.pantheon}</span><div class="deck-symbol">${st.symbol}</div>
       <h3>${d.name}</h3><div class="deck-style">${d.style}</div><div class="deck-blurb">${d.blurb}</div>${heroPowerBlurb(d.pantheon)}</button>`;
   }).join("");
-  const w = setupInner(`${setupHeader("Hitra igra — izberi deck.")}
-    <button class="rules-toggle" id="back-menu" style="align-self:flex-start">← Nazaj</button>
+  const w = setupInner(`${setupHeader(T("Hitra igra — izberi deck.", "Quick match — pick a deck."))}
+    <button class="rules-toggle" id="back-menu" style="align-self:flex-start">${T("← Nazaj", "← Back")}</button>
     <div id="v2-decks" class="v2-decks">${cards}</div>
-    <div class="difficulty-block"><span class="eyebrow">Težavnost</span><div id="v2-diff" class="diff-row"></div></div>
-    <button id="v2-start" class="btn-primary" disabled>Začni bitko</button>`);
+    <div class="difficulty-block"><span class="eyebrow">${T("Težavnost", "Difficulty")}</span><div id="v2-diff" class="diff-row"></div></div>
+    <button id="v2-start" class="btn-primary" disabled>${T("Začni bitko", "Start battle")}</button>`);
   w.querySelector("#back-menu").addEventListener("click", showMainMenu);
   w.querySelectorAll(".deck-card").forEach(b => b.addEventListener("click", () => {
     chosenDeck = b.dataset.deck; w.querySelectorAll(".deck-card").forEach(c => c.classList.remove("selected")); b.classList.add("selected"); w.querySelector("#v2-start").disabled = false;
   }));
   const dr = w.querySelector("#v2-diff");
-  [["easy", "Lahko"], ["normal", "Normalno"], ["hard", "Težko"]].forEach(([id, lab]) => {
+  [["easy", T("Lahko", "Easy")], ["normal", T("Normalno", "Normal")], ["hard", T("Težko", "Hard")]].forEach(([id, lab]) => {
     const b = el("button", "diff-chip" + (id === chosenDiff ? " sel" : ""), `<span class="diff-name">${lab}</span>`);
     b.addEventListener("click", () => { chosenDiff = id; dr.querySelectorAll(".diff-chip").forEach(c => c.classList.remove("sel")); b.classList.add("sel"); });
     dr.appendChild(b);
@@ -942,7 +952,7 @@ function showArenaMap() {
   const champs = RUN.deck.filter(id => (CARDS[id] || {}).type === "Champion").length;
   const over = RUN.losses >= 3;
   const hearts = "❤".repeat(3 - RUN.losses) + "🖤".repeat(RUN.losses);
-  const diffLab = RUN.wins < 3 ? "Lahko" : RUN.wins < 6 ? "Normalno" : "Težko";
+  const diffLab = RUN.wins < 3 ? T("Lahko", "Easy") : RUN.wins < 6 ? T("Normalno", "Normal") : T("Težko", "Hard");
   const s = showRunScreen(`
     <header class="run-head"><div><span class="eyebrow">Arena · ${RUN.wins} zmag</span><h2 class="run-title">${over ? "🏟️ Arena končana" : "Arena"}</h2></div>
       <button class="rules-toggle" id="run-quit">Opusti</button></header>
@@ -1228,8 +1238,8 @@ function runGameOver(won) {
 function showFirstPick() {
   seenChampUids = new Set(); lastChampFx = {}; prevYouMana = []; seenHandUids = new Set(); firstHandRender = true; // nova bitka -> ponastavi FX sledenje
   const you = G.players[0];
-  const titleEl = document.querySelector("#v2-pick .mull-title"); if (titleEl) titleEl.textContent = "Mulligan — obdrži ali zameši roko";
-  const subEl = document.querySelector("#v2-pick .mull-sub"); if (subEl) subEl.innerHTML = "Začneš s <b>praznim boardom</b> — vse igraš iz roke. Prvi mulligan je zastonj, vsak naslednji poteguje 1 karto manj.";
+  const titleEl = document.querySelector("#v2-pick .mull-title"); if (titleEl) titleEl.textContent = T("Mulligan — obdrži ali zameši roko", "Mulligan — keep or reshuffle your hand");
+  const subEl = document.querySelector("#v2-pick .mull-sub"); if (subEl) subEl.innerHTML = T("Začneš s <b>praznim boardom</b> — vse igraš iz roke. Prvi mulligan je zastonj, vsak naslednji poteguje 1 karto manj.", "You start with an <b>empty board</b> — everything is played from hand. The first mulligan is free; each next one draws 1 card fewer.");
   const wrap = $("#v2-pick-cards"); wrap.innerHTML = "";
   you.hand.forEach(inst => {
     const d = def(inst);
@@ -1240,8 +1250,8 @@ function showFirstPick() {
   actions.innerHTML = "";
   const mulls = you._mulligans || 0;
   const nextCost = mulls === 0 ? "zastonj" : "−" + mulls + (mulls === 1 ? " karta" : " kart");
-  const keep = el("button", "mull-btn keep", "✓ Obdrži in začni");
-  keep.addEventListener("click", () => { V2.keepHand(); $("#v2-pick").classList.add("hidden"); render(); showTurnBanner("Tvoja poteza", "you"); });
+  const keep = el("button", "mull-btn keep", T("✓ Obdrži in začni", "✓ Keep and start"));
+  keep.addEventListener("click", () => { V2.keepHand(); $("#v2-pick").classList.add("hidden"); render(); showTurnBanner(T("Tvoja poteza", "Your turn"), "you"); });
   const mull = el("button", "mull-btn mull", `🔄 Mulligan (${nextCost})`);
   mull.addEventListener("click", () => { V2.mulliganHand(); showFirstPick(); });
   actions.appendChild(keep); actions.appendChild(mull);
@@ -1317,7 +1327,7 @@ function render() {
   renderActions();
   renderManaPanel();
   renderLog();
-  $("#v2-turn").innerHTML = G.over ? "" : `Poteza ${G.turnCount} · na potezi: <b>${G.turn === 0 ? "Ti" : "Nasprotnik"}</b>`;
+  $("#v2-turn").innerHTML = G.over ? "" : `${T("Poteza", "Turn")} ${G.turnCount} · ${T("na potezi", "acting")}: <b>${G.turn === 0 ? T("Ti", "You") : T("Nasprotnik", "Opponent")}</b>`;
   $("#v2-end").style.display = (G.turn === 0 && !G.over) ? "" : "none";
   updateArrow();
   hideDmgPreview();
@@ -1538,6 +1548,10 @@ function atkRowsHtml(d, owner) {
 const STATUS_BUFFS = ["blessing", "shield", "guard"];
 const STATUS_SHORT = { burn: "Ožig", freeze: "Zmrznjen", stun: "Omama", curse: "Prekletstvo", blessing: "Blagoslov", shield: "Shield", poison: "Strup", guard: "Garda" };
 const STATUS_CHIP = { burn: "Ožig", freeze: "Zmrz.", stun: "Omama", curse: "Kletev", blessing: "Blag.", shield: "Shield", poison: "Strup", guard: "Garda" };
+if (window.MC_LANG === "en" && window.MC_EN) {
+  Object.assign(STATUS_SHORT, MC_EN.STATUS_SHORT);
+  Object.assign(STATUS_CHIP, MC_EN.STATUS_CHIP);
+}
 function statusChips(c) {
   const s = c.status || {}; const out = [];
   const map = { burn: "🔥", freeze: "❄️", stun: "💫", curse: "💀", blessing: "✨", shield: "🛡️", poison: "☠️", guard: "⛨" };
@@ -1625,8 +1639,8 @@ function isPlayable(inst) {
 
 function renderActions() {
   const panel = $("#v2-actions"); panel.innerHTML = "";
-  if (G.over) { panel.appendChild(el("div", "hint", G.winner === 0 ? "ZMAGA! 🏆" : "Poraz.")); return; }
-  if (G.turn !== 0) { panel.appendChild(el("div", "hint", "Nasprotnik je na potezi…")); return; }
+  if (G.over) { panel.appendChild(el("div", "hint", G.winner === 0 ? T("ZMAGA! 🏆", "VICTORY! 🏆") : T("Poraz.", "Defeat."))); return; }
+  if (G.turn !== 0) { panel.appendChild(el("div", "hint", T("Nasprotnik je na potezi…", "Opponent is taking their turn…"))); return; }
   const you = G.players[0];
 
   // ročna izbira mane -> sedaj v coni energij POD boardom
@@ -1648,7 +1662,7 @@ function renderActions() {
     const c = you.board.find(x => x.uid === selAttacker); const d = c ? def(c) : null;
     if (d) {
       panel.appendChild(el("div", "hint", `Napada: <b>${d.name}</b>. Izberi napad, nato tarčo.`));
-      if (V2.tauntsOf(G.players[1]).length) panel.appendChild(el("div", "hint taunt-hint", `🛡 Nasprotnik ima <b>zid (Taunt)</b> — najprej premagaj branilce z 🛡 (obraz in ostali so zaščiteni).`));
+      if (V2.tauntsOf(G.players[1]).length) panel.appendChild(el("div", "hint taunt-hint", T(`🛡 Nasprotnik ima <b>zid (Taunt)</b> — najprej premagaj branilce z 🛡 (obraz in ostali so zaščiteni).`, `🛡 The opponent has a <b>wall (Taunt)</b> — defeat the 🛡 defenders first (face and others are protected).`)));
       d.attacks.forEach((atk, i) => {
         const can = V2.canPay(you, atk.cost, d.id === "celtic-lugh");
         const b = el("button", "action-btn attack" + (selAtkIndex === i ? " sel" : "") + (atk.basic ? " basic-atk" : "") + (atk.effect || atk.noFace || atk.scale ? " has-fx" : ""));
@@ -1685,7 +1699,7 @@ function renderActions() {
       }
     }
   } else {
-    panel.appendChild(el("div", "hint", "Klikni svojega <b>netapnjenega</b> šampiona za napad, ali igraj karto iz roke (energija / priklic)."));
+    panel.appendChild(el("div", "hint", T("Klikni svojega <b>netapnjenega</b> šampiona za napad, ali igraj karto iz roke (energija / priklic).", "Click your <b>untapped</b> champion to attack, or play a card from hand (energy / summon).")));
     // Hero Power
     if (you.heroPower) {
       const hpw = you.heroPower;
@@ -1963,7 +1977,7 @@ function endHumanTurn() {
 function runAiTurn() {
   if (G.over) { checkOver(); return; }
   aiBusy = true;
-  showTurnBanner("Poteza nasprotnika", "opp");
+  showTurnBanner(T("Poteza nasprotnika", "Opponent's turn"), "opp");
   const ai = G.players[1];
   const e = ai.hand.find(i => def(i).type === "Energy"); if (e) V2.playEnergy(ai, e);
   render();
@@ -2067,7 +2081,7 @@ function aiAbilities() {
 function aiAttack(queue) {
   if (G.over) { aiBusy = false; checkOver(); return; }
   const ai = G.players[1], you = G.players[0];
-  if (!queue.length) { V2.endTurn(); aiBusy = false; render(); checkOver(); if (!G.over) showTurnBanner("Tvoja poteza", "you"); return; }
+  if (!queue.length) { V2.endTurn(); aiBusy = false; render(); checkOver(); if (!G.over) showTurnBanner(T("Tvoja poteza", "Your turn"), "you"); return; }
   const c = queue.shift();
   if (!V2.canAttack(ai, c)) { aiAttack(queue); return; }
   const taunts = V2.tauntsOf(you);
@@ -2144,7 +2158,7 @@ function showGameOverOverlay(won) {
     <div class="go-rays"></div>
     <div class="go-inner">
       <div class="go-medal">${won ? "🏆" : "💀"}</div>
-      <h1 class="go-title">${won ? "ZMAGA" : "PORAZ"}</h1>
+      <h1 class="go-title">${won ? T("ZMAGA", "VICTORY") : T("PORAZ", "DEFEAT")}</h1>
       <p class="go-sub">${won ? "Nasprotnikov heroj je padel. Panteon slavi tvoje ime." : "Tvoj heroj je padel. A legende se vračajo…"}</p>
       <button class="btn-primary" id="go-menu">Nazaj v meni</button>
     </div>`;
