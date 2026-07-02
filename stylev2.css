@@ -1184,3 +1184,33 @@ body.v2-dragging .v2-handcard:not(.dragging-src) { transition: opacity .15s; opa
   backdrop-filter: blur(4px); transition: border-color .15s, transform .15s; }
 #mc-lang-btn:hover { border-color: var(--gold-bright, #e9c46a); transform: translateY(-1px); }
 @media (max-width: 720px) { #tut-coach { max-width: calc(100vw - 28px); } }
+
+/* ---------------- Nastavitve (⚙) ---------------- */
+#mc-settings-btn { position: fixed; top: 12px; right: 112px; z-index: 9000; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--panel-edge); background: rgba(14,14,26,0.85); color: var(--gold-bright); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.5); transition: transform .12s, border-color .15s; }
+#mc-settings-btn:hover { transform: scale(1.08) rotate(20deg); border-color: var(--gold-bright); }
+#mc-settings { position: fixed; inset: 0; z-index: 9600; background: rgba(6,6,12,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; }
+#mc-settings.hidden { display: none; }
+.mcs-box { width: min(400px, 92vw); background: linear-gradient(180deg, rgba(26,22,34,0.98), rgba(14,12,20,0.98));
+  border: 1px solid rgba(233,196,106,0.5); border-radius: 16px; padding: 20px 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
+.mcs-box h3 { color: var(--gold-bright); font-size: 16px; letter-spacing: 0.08em; margin-bottom: 16px; text-transform: uppercase; }
+.mcs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+  font-size: 13px; color: var(--ink); flex-wrap: wrap; }
+.mcs-row input[type=range] { flex: 1; min-width: 120px; accent-color: var(--gold-bright); }
+#mcs-volval { font-family: "SF Mono", monospace; font-size: 11px; color: var(--gold-bright); min-width: 38px; text-align: right; }
+.mcs-seg { display: inline-flex; border: 1px solid var(--panel-edge); border-radius: 9px; overflow: hidden; }
+.mcs-seg button { background: none; border: none; color: var(--ink-dim); font-family: inherit; font-size: 12px;
+  padding: 7px 12px; cursor: pointer; transition: background .15s, color .15s; }
+.mcs-seg button.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold-dim)); color: #1a1407; font-weight: 700; }
+.mcs-wide { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--panel-edge); color: var(--ink);
+  font-family: inherit; font-size: 13px; padding: 9px; border-radius: 9px; cursor: pointer; }
+.mcs-wide:hover { border-color: var(--gold-bright); }
+.mcs-close { display: block; margin: 6px auto 0; background: none; border: none; color: var(--ink-dim);
+  font-family: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.mcs-close:hover { color: var(--ink); }
+/* hitri način: pospešene CSS animacije glavnih FX */
+body.mc-fast .v2-champ.entering { animation-duration: 0.28s; }
+body.mc-fast .v2-handcard.drawn { animation-duration: 0.3s; }
+body.mc-fast .v2-hit { animation-duration: 0.24s; }
